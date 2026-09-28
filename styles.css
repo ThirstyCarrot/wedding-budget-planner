@@ -1466,3 +1466,148 @@ dialog[open]::backdrop {
   }
 }
 
+/* =========================================================================
+   TOOLTIPS & EXPLANATION POPOVERS
+   ========================================================================= */
+.label-text-with-tooltip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: help;
+  user-select: none;
+  border-bottom: 1px dotted var(--gold-border);
+  text-underline-offset: 3px;
+  transition: all var(--transition-fast);
+}
+
+.label-text-with-tooltip:hover,
+.label-text-with-tooltip:focus {
+  color: var(--gold-hover);
+  border-bottom-color: var(--gold-primary);
+  outline: none;
+}
+
+.info-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.74rem;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gold-subtle);
+  border: 1px solid var(--gold-border);
+  color: var(--gold-hover);
+  flex-shrink: 0;
+  transition: transform var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+
+.label-text-with-tooltip:hover .info-badge,
+.label-text-with-tooltip:focus .info-badge {
+  transform: scale(1.18);
+  background: var(--gold-primary);
+  color: #FFFFFF;
+}
+
+/* App Tooltip Popover */
+.app-tooltip {
+  position: fixed;
+  margin: 0;
+  inset: auto;
+  z-index: 1000000;
+  width: max-content;
+  max-width: 350px;
+  min-width: 270px;
+  padding: 16px 18px;
+  background: linear-gradient(145deg, rgba(34, 30, 27, 0.98) 0%, rgba(22, 20, 18, 0.98) 100%);
+  border: 1px solid var(--gold-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.38), 0 2px 8px rgba(197, 160, 89, 0.22);
+  color: #F8F5F0;
+  font-family: var(--font-sans);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: none;
+}
+
+.app-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  display: block;
+}
+
+/* Tooltip Header */
+.app-tooltip .tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  color: var(--gold-light);
+  font-weight: 700;
+}
+
+.app-tooltip .tooltip-icon {
+  font-size: 1.2rem;
+}
+
+/* Tooltip Body */
+.app-tooltip .tooltip-body {
+  font-size: 0.83rem;
+  line-height: 1.48;
+  color: #E2DFD9;
+  margin-bottom: 8px;
+}
+
+/* How It Works Callout */
+.app-tooltip .tooltip-how {
+  background: rgba(255, 255, 255, 0.06);
+  border-left: 3px solid var(--gold-primary);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #D3CECA;
+  margin-top: 8px;
+}
+
+.app-tooltip .tooltip-how strong {
+  color: var(--gold-light);
+}
+
+/* Pro Tip Callout */
+.app-tooltip .tooltip-tip {
+  background: rgba(197, 160, 89, 0.14);
+  border-radius: 4px;
+  padding: 7px 10px;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: #F5E8CC;
+  margin-top: 8px;
+}
+
+/* Arrow indicator */
+.tooltip-arrow {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgba(28, 25, 23, 0.98);
+  border: 1px solid var(--gold-border);
+  transform: rotate(45deg);
+}
+
+.tooltip-arrow.arrow-up {
+  top: -6px;
+  border-bottom: none;
+  border-right: none;
+}
+
+.tooltip-arrow.arrow-down {
+  bottom: -6px;
+  border-top: none;
+  border-left: none;
+}
+

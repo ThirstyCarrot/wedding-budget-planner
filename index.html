@@ -392,7 +392,10 @@
         <div class="simulator-form-grid">
           <div class="form-group">
             <label for="simCurrentSavings">
-              <span>Current Wedding Savings in Bank</span>
+              <span class="label-text-with-tooltip" data-tooltip-id="tt-current-savings" tabindex="0">
+                Current Wedding Savings in Bank
+                <span class="info-badge" aria-label="Info about Current Wedding Savings">ℹ️</span>
+              </span>
               <span class="field-hint">Starting pool</span>
             </label>
             <input type="number" id="simCurrentSavings" class="form-control" value="7500" min="0" step="100">
@@ -400,7 +403,10 @@
 
           <div class="form-group">
             <label for="simPaycheckCadence">
-              <span>Paycheck / Savings Frequency</span>
+              <span class="label-text-with-tooltip" data-tooltip-id="tt-cadence" tabindex="0">
+                Paycheck / Savings Frequency
+                <span class="info-badge" aria-label="Info about Savings Frequency">ℹ️</span>
+              </span>
               <span class="field-hint">How often you set money aside</span>
             </label>
             <select id="simPaycheckCadence" class="form-control">
@@ -413,7 +419,10 @@
 
           <div class="form-group">
             <label for="simPlannedSavings">
-              <span>Planned Savings per Paycheck</span>
+              <span class="label-text-with-tooltip" data-tooltip-id="tt-planned-savings" tabindex="0">
+                Planned Savings per Paycheck
+                <span class="info-badge" aria-label="Info about Planned Savings">ℹ️</span>
+              </span>
               <span class="field-hint">Amount you put away</span>
             </label>
             <input type="number" id="simPlannedSavings" class="form-control" value="800" min="0" step="25">
@@ -421,7 +430,10 @@
 
           <div class="form-group">
             <label for="simSafetyCushion">
-              <span>Safety Cushion Buffer</span>
+              <span class="label-text-with-tooltip" data-tooltip-id="tt-safety-cushion" tabindex="0">
+                Safety Cushion Buffer
+                <span class="info-badge" aria-label="Info about Safety Cushion Buffer">ℹ️</span>
+              </span>
               <span class="field-hint">Minimum cash reserve</span>
             </label>
             <input type="number" id="simSafetyCushion" class="form-control" value="1000" min="0" step="100">
@@ -561,7 +573,10 @@
         <!-- Optional Target Budget Goal Section -->
         <div class="form-group budget-option-card">
           <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 0;">
-            <span style="font-weight: 700; color: var(--text-main);">Set a Fixed Budget Goal?</span>
+            <span class="label-text-with-tooltip" data-tooltip-id="tt-budget-goal" tabindex="0" style="font-weight: 700; color: var(--text-main);">
+              Set a Fixed Budget Goal?
+              <span class="info-badge" aria-label="Info about Fixed Budget Goal">ℹ️</span>
+            </span>
             <input type="checkbox" id="setHasTargetBudget" style="width: 18px; height: 18px; cursor: pointer;">
           </label>
           <p class="field-hint" style="margin-top: 4px; margin-bottom: 6px;">
@@ -574,13 +589,24 @@
         </div>
 
         <div class="form-group">
-          <label for="setCurrentSavings">Current Money Saved ($)</label>
+          <label for="setCurrentSavings">
+            <span class="label-text-with-tooltip" data-tooltip-id="tt-current-savings" tabindex="0">
+              Current Money Saved ($)
+              <span class="info-badge" aria-label="Info about Current Money Saved">ℹ️</span>
+            </span>
+            <span class="field-hint">In bank today</span>
+          </label>
           <input type="number" id="setCurrentSavings" class="form-control" min="0" step="100" required>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
           <div class="form-group">
-            <label for="setPaycheckCadence">Savings Cadence</label>
+            <label for="setPaycheckCadence">
+              <span class="label-text-with-tooltip" data-tooltip-id="tt-cadence" tabindex="0">
+                Savings Cadence
+                <span class="info-badge" aria-label="Info about Savings Cadence">ℹ️</span>
+              </span>
+            </label>
             <select id="setPaycheckCadence" class="form-control">
               <option value="weekly">Weekly</option>
               <option value="bi-weekly">Bi-Weekly</option>
@@ -589,13 +615,24 @@
             </select>
           </div>
           <div class="form-group">
-            <label for="setPlannedPaycheck">Savings per Cadence ($)</label>
+            <label for="setPlannedPaycheck">
+              <span class="label-text-with-tooltip" data-tooltip-id="tt-planned-savings" tabindex="0">
+                Savings per Cadence ($)
+                <span class="info-badge" aria-label="Info about Savings per Cadence">ℹ️</span>
+              </span>
+            </label>
             <input type="number" id="setPlannedPaycheck" class="form-control" min="0" step="25" required>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="setSafetyCushion">Safety Cushion Reserve ($)</label>
+          <label for="setSafetyCushion">
+            <span class="label-text-with-tooltip" data-tooltip-id="tt-safety-cushion" tabindex="0">
+              Safety Cushion Reserve ($)
+              <span class="info-badge" aria-label="Info about Safety Cushion Reserve">ℹ️</span>
+            </span>
+            <span class="field-hint">Protected minimum balance</span>
+          </label>
           <input type="number" id="setSafetyCushion" class="form-control" min="0" step="100" required>
         </div>
       </div>
@@ -649,6 +686,9 @@
 
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer" aria-live="assertive"></div>
+
+  <!-- Global Explanation Tooltip / Popover -->
+  <div id="globalTooltip" class="app-tooltip" popover="manual" role="tooltip" aria-live="polite"></div>
 
   <!-- Scripts -->
   <script src="sample-data.js"></script>

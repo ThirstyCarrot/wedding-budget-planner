@@ -174,6 +174,7 @@
   function init() {
     loadState();
     setupEventListeners();
+    setupTooltipListeners();
     populateCategorySelect();
     startCountdownTimer();
     renderAll();
@@ -1805,6 +1806,188 @@
       clearTimeout(timer);
       timer = setTimeout(() => fn.apply(this, args), ms);
     };
+  }
+
+  // =========================================================================
+  // TOOLTIP & EXPLANATION SYSTEM
+  // =========================================================================
+  const TOOLTIP_DATA = {
+    'tt-safety-cushion': {
+      icon: '🛡️',
+      title: 'Safety Cushion Reserve',
+      body: 'A protected cash buffer kept in your wedding savings account at all times that is never spent on planned wedding bills.',
+      howItWorks: 'The Cashflow Simulator tests your planned savings against each vendor’s payment due date. If an upcoming bill (like a big venue deposit or caterer final balance) would draw your bank balance below this cushion, you receive an immediate advance warning so you can adjust your savings pace before the deadline.',
+      tip: '💡 Most couples maintain a $1,000 – $2,000 buffer to absorb surprise alteration fees, vendor gratuities, delivery surcharges, or sudden guest count changes without financial stress.'
+    },
+    'tt-current-savings': {
+      icon: '🏦',
+      title: 'Current Wedding Savings',
+      body: 'The exact amount of cash you and your partner have in your wedding savings account right now.',
+      howItWorks: 'This serves as your starting baseline. All upcoming vendor payment milestones draw down from this pool as they come due, while your planned paycheck contributions replenish it over time.'
+    },
+    'tt-cadence': {
+      icon: '⏱️',
+      title: 'Savings Cadence',
+      body: 'How frequently you deposit money into your wedding savings account.',
+      howItWorks: 'Matches your real-world paycheck cycle (Weekly = 7 days, Bi-Weekly = 14 days, Semi-Monthly = 15.2 days, Monthly = 30.4 days) so the simulation mirrors your exact cash inflow.'
+    },
+    'tt-planned-savings': {
+      icon: '💰',
+      title: 'Savings per Paycheck',
+      body: 'The dollar amount you and your partner plan to set aside each pay period towards your wedding.',
+      howItWorks: 'The simulator calculates your projected bank balance after every single paycheck. If you fall short on any due date, click "⚡ Auto-Balance Savings Pace" in the Simulator to calculate the exact pace needed.'
+    },
+    'tt-budget-goal': {
+      icon: '🎯',
+      title: 'Fixed Budget vs. Bottom-Up',
+      body: 'You do not need a fixed budget upfront to plan your wedding!',
+      howItWorks: '• Bottom-Up (Default): Calculates your wedding total by adding up the estimated costs of items you actually plan to have.\n• Budget Goal: Lets you set an overall spending cap to track whether your estimates stay under or over budget.'
+    }
+  };
+
+  let activeTooltipTrigger = null;
+  const tooltipEl = document.getElementById('globalTooltip');
+
+  function showTooltip(triggerEl) {
+    const tooltipId = triggerEl.dataset.tooltipId;
+    const data = TOOLTIP_DATA[tooltipId];
+    if (!data || !tooltipEl) return;
+
+    activeTooltipTrigger = triggerEl;
+
+    tooltipEl.innerHTML = `
+      <div class="tooltip-header">
+        <span class="tooltip-icon">${data.icon || 'ℹ️'}</span>
+        <strong>${escapeHtml(data.title)}</strong>
+      </div>
+      <div class="tooltip-body">${escapeHtml(data.body)}</div>
+      ${data.howItWorks ? `
+        <div class="tooltip-how">
+          <strong>How it works:</strong> ${escapeHtml(data.howItWorks)}
+        </div>
+      ` : ''}
+      ${data.tip ? `
+        <div class="tooltip-tip">${escapeHtml(data.tip)}</div>
+      ` : ''}
+      <div class="tooltip-arrow" id="tooltipArrow"></div>
+    `;
+
+    // Ensure tooltip element is in top-layer popover if supported
+    if (typeof tooltipEl.showPopover === 'function') {
+      try {
+        if (!tooltipEl.matches(':popover-open')) {
+          tooltipEl.showPopover();
+        }
+      } catch (err) {
+        tooltipEl.style.display = 'block';
+      }
+    } else {
+      tooltipEl.style.display = 'block';
+    }
+
+    positionTooltip(triggerEl);
+    tooltipEl.classList.add('visible');
+  }
+
+  function positionTooltip(triggerEl) {
+    if (!tooltipEl) return;
+    const rect = triggerEl.getBoundingClientRect();
+    const ttRect = tooltipEl.getBoundingClientRect();
+    const arrow = document.getElementById('tooltipArrow');
+
+    const gap = 10;
+    const padding = 14;
+
+    // Check space above vs below
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const placeAbove = spaceBelow < (ttRect.height + gap + 10) && spaceAbove > spaceBelow;
+
+    let top;
+    if (placeAbove) {
+      top = rect.top - ttRect.height - gap;
+      if (arrow) arrow.className = 'tooltip-arrow arrow-down';
+    } else {
+      top = rect.bottom + gap;
+      if (arrow) arrow.className = 'tooltip-arrow arrow-up';
+    }
+
+    // Horizontal centering
+    let left = rect.left + (rect.width / 2) - (ttRect.width / 2);
+    left = Math.max(padding, Math.min(window.innerWidth - ttRect.width - padding, left));
+
+    // Align arrow to trigger center
+    if (arrow) {
+      const triggerCenter = rect.left + (rect.width / 2);
+      const arrowLeft = Math.max(16, Math.min(ttRect.width - 24, triggerCenter - left));
+      arrow.style.left = `${arrowLeft}px`;
+    }
+
+    tooltipEl.style.top = `${Math.round(top)}px`;
+    tooltipEl.style.left = `${Math.round(left)}px`;
+  }
+
+  function hideTooltip() {
+    if (!tooltipEl) return;
+    activeTooltipTrigger = null;
+    tooltipEl.classList.remove('visible');
+    if (typeof tooltipEl.hidePopover === 'function') {
+      try {
+        if (tooltipEl.matches(':popover-open')) {
+          tooltipEl.hidePopover();
+        }
+      } catch (err) {
+        tooltipEl.style.display = 'none';
+      }
+    } else {
+      tooltipEl.style.display = 'none';
+    }
+  }
+
+  function setupTooltipListeners() {
+    document.querySelectorAll('.label-text-with-tooltip').forEach(el => {
+      el.addEventListener('mouseenter', () => showTooltip(el));
+      el.addEventListener('mouseleave', () => hideTooltip());
+      el.addEventListener('focus', () => showTooltip(el));
+      el.addEventListener('blur', () => hideTooltip());
+
+      // Toggle on mobile click / tap
+      el.addEventListener('click', (e) => {
+        if (activeTooltipTrigger === el) {
+          hideTooltip();
+        } else {
+          showTooltip(el);
+          e.stopPropagation();
+        }
+      });
+    });
+
+    // Dismiss tooltip on outside click or escape
+    document.addEventListener('click', (e) => {
+      if (activeTooltipTrigger && !e.target.closest('.label-text-with-tooltip')) {
+        hideTooltip();
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && activeTooltipTrigger) {
+        hideTooltip();
+      }
+    });
+
+    // Reposition on scroll or resize if active
+    window.addEventListener('scroll', () => {
+      if (activeTooltipTrigger) positionTooltip(activeTooltipTrigger);
+    }, { passive: true });
+    window.addEventListener('resize', () => {
+      if (activeTooltipTrigger) positionTooltip(activeTooltipTrigger);
+    }, { passive: true });
+
+    document.querySelectorAll('.modal-body').forEach(mb => {
+      mb.addEventListener('scroll', () => {
+        if (activeTooltipTrigger) positionTooltip(activeTooltipTrigger);
+      }, { passive: true });
+    });
   }
 
   // Start the application
