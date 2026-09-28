@@ -165,8 +165,28 @@
     loadSampleDataBtn: document.getElementById('loadSampleDataBtn'),
     resetAllDataBtn: document.getElementById('resetAllDataBtn'),
 
+    // Supabase Elements
+    supabaseStatusBadge: document.getElementById('supabaseStatusBadge'),
+    supabaseUrl: document.getElementById('supabaseUrl'),
+    supabaseAnonKey: document.getElementById('supabaseAnonKey'),
+    supabaseSyncId: document.getElementById('supabaseSyncId'),
+    connectSupabaseBtn: document.getElementById('connectSupabaseBtn'),
+    disconnectSupabaseBtn: document.getElementById('disconnectSupabaseBtn'),
+    copySupabaseSqlBtn: document.getElementById('copySupabaseSqlBtn'),
+    supabaseSyncNotice: document.getElementById('supabaseSyncNotice'),
+
     toastContainer: document.getElementById('toastContainer')
   };
+
+  // Storage Keys for Supabase Config
+  const SUPABASE_CONFIG_KEY = 'wedding_supabase_config_v1';
+  let supabaseClient = null;
+  let supabaseConfig = {
+    url: '',
+    anonKey: '',
+    syncId: 'wedding_plan_default'
+  };
+  let supabaseSyncDebounce = null;
 
   // =========================================================================
   // INITIALIZATION & STATE MANAGEMENT
@@ -178,6 +198,7 @@
     populateCategorySelect();
     startCountdownTimer();
     renderAll();
+    initSupabaseClient();
   }
 
   const BLANK_STATE = {
@@ -233,8 +254,141 @@
     }
   }
 
-  function saveState() {
+  function saveState(pushToCloud = true) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (pushToCloud && supabaseClient) {
+      syncToSupabase();
+    }
+  }
+
+  // =========================================================================
+  // SUPABASE CLOUD SYNC ENGINE
+  // =========================================================================
+  function loadSupabaseConfig() {
+    try {
+      const saved = localStorage.getItem(SUPABASE_CONFIG_KEY);
+      if (saved) {
+        supabaseConfig = JSON.parse(saved);
+        if (DOM.supabaseUrl) DOM.supabaseUrl.value = supabaseConfig.url || '';
+        if (DOM.supabaseAnonKey) DOM.supabaseAnonKey.value = supabaseConfig.anonKey || '';
+        if (DOM.supabaseSyncId) DOM.supabaseSyncId.value = supabaseConfig.syncId || 'wedding_plan_default';
+      }
+    } catch (e) {
+      console.warn('Failed to load Supabase config', e);
+    }
+  }
+
+  function initSupabaseClient() {
+    loadSupabaseConfig();
+    if (!window.supabase || !supabaseConfig.url || !supabaseConfig.anonKey) {
+      updateSupabaseBadge('offline');
+      return;
+    }
+
+    try {
+      supabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
+      updateSupabaseBadge('connected');
+      if (DOM.disconnectSupabaseBtn) DOM.disconnectSupabaseBtn.style.display = 'inline-block';
+      syncFromSupabase();
+    } catch (err) {
+      console.error('Failed to create Supabase client', err);
+      updateSupabaseBadge('error');
+    }
+  }
+
+  function updateSupabaseBadge(status) {
+    if (!DOM.supabaseStatusBadge) return;
+    if (status === 'connected') {
+      DOM.supabaseStatusBadge.textContent = '🟢 Cloud Synced';
+      DOM.supabaseStatusBadge.style.background = 'rgba(104, 130, 122, 0.15)';
+      DOM.supabaseStatusBadge.style.color = '#3F5B53';
+    } else if (status === 'syncing') {
+      DOM.supabaseStatusBadge.textContent = '🔄 Syncing...';
+      DOM.supabaseStatusBadge.style.background = 'rgba(197, 160, 89, 0.2)';
+      DOM.supabaseStatusBadge.style.color = '#7A5B20';
+    } else if (status === 'error') {
+      DOM.supabaseStatusBadge.textContent = '⚠️ Config / Table Error';
+      DOM.supabaseStatusBadge.style.background = 'rgba(196, 121, 125, 0.2)';
+      DOM.supabaseStatusBadge.style.color = '#8A3238';
+    } else {
+      DOM.supabaseStatusBadge.textContent = 'Offline (Local Only)';
+      DOM.supabaseStatusBadge.style.background = '#E8E5E1';
+      DOM.supabaseStatusBadge.style.color = 'var(--text-muted)';
+    }
+  }
+
+  async function syncFromSupabase() {
+    if (!supabaseClient) return;
+    const syncId = (supabaseConfig.syncId && supabaseConfig.syncId.trim()) || 'wedding_plan_default';
+    try {
+      updateSupabaseBadge('syncing');
+      const { data, error } = await supabaseClient
+        .from('wedding_plans')
+        .select('data, updated_at')
+        .eq('id', syncId)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Supabase fetch notice:', error.message);
+        if (error.code === '42P01') {
+          showSupabaseNotice('Connected to Supabase, but "wedding_plans" table was not found. Click "📋 Copy SQL Schema" and run it in Supabase SQL Editor.', 'warning');
+        }
+        updateSupabaseBadge('error');
+        return;
+      }
+
+      if (data && data.data && typeof data.data === 'object') {
+        state = data.data;
+        saveState(false);
+        renderAll();
+        updateSupabaseBadge('connected');
+        showToast('Restored latest wedding data from Supabase cloud', '☁️');
+      } else {
+        // Plan doesn't exist yet on remote, upload current local state
+        syncToSupabase();
+      }
+    } catch (e) {
+      console.error('Supabase sync error', e);
+      updateSupabaseBadge('error');
+    }
+  }
+
+  function syncToSupabase() {
+    if (!supabaseClient) return;
+    if (supabaseSyncDebounce) clearTimeout(supabaseSyncDebounce);
+    supabaseSyncDebounce = setTimeout(async () => {
+      try {
+        updateSupabaseBadge('syncing');
+        const syncId = (supabaseConfig.syncId && supabaseConfig.syncId.trim()) || 'wedding_plan_default';
+        const { error } = await supabaseClient
+          .from('wedding_plans')
+          .upsert({
+            id: syncId,
+            data: state,
+            updated_at: new Date().toISOString()
+          });
+
+        if (error) {
+          console.warn('Supabase upsert error:', error);
+          if (error.code === '42P01') {
+            showSupabaseNotice('Table "wedding_plans" missing in Supabase. Run the SQL schema to enable cloud saves.', 'warning');
+          }
+          updateSupabaseBadge('error');
+        } else {
+          updateSupabaseBadge('connected');
+        }
+      } catch (err) {
+        console.error('Supabase upload error', err);
+        updateSupabaseBadge('error');
+      }
+    }, 400);
+  }
+
+  function showSupabaseNotice(msg, type = 'info') {
+    if (!DOM.supabaseSyncNotice) return;
+    DOM.supabaseSyncNotice.style.display = 'block';
+    DOM.supabaseSyncNotice.style.color = type === 'warning' ? 'var(--danger-primary)' : 'var(--sage-primary)';
+    DOM.supabaseSyncNotice.textContent = msg;
   }
 
   function showToast(message, icon = '✨') {
@@ -1833,6 +1987,103 @@
         renderAll();
       }
     });
+
+    // Supabase Connect / Disconnect / SQL Actions
+    if (DOM.connectSupabaseBtn) {
+      DOM.connectSupabaseBtn.addEventListener('click', async () => {
+        const url = (DOM.supabaseUrl.value || '').trim();
+        const anonKey = (DOM.supabaseAnonKey.value || '').trim();
+        const syncId = (DOM.supabaseSyncId.value || '').trim() || 'wedding_plan_default';
+
+        if (!url || !anonKey) {
+          alert('Please enter both your Supabase Project URL and Anon Public Key.');
+          return;
+        }
+
+        supabaseConfig = { url, anonKey, syncId };
+        localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify(supabaseConfig));
+
+        try {
+          if (!window.supabase) {
+            alert('Supabase client library is still loading. Please try again in a moment.');
+            return;
+          }
+          supabaseClient = window.supabase.createClient(url, anonKey);
+          updateSupabaseBadge('syncing');
+
+          // Verify connectivity and table status
+          const { data, error } = await supabaseClient
+            .from('wedding_plans')
+            .select('id')
+            .eq('id', syncId)
+            .maybeSingle();
+
+          if (error && error.code === '42P01') {
+            showSupabaseNotice('Connected to Supabase! However, the table "wedding_plans" does not exist yet. Click "📋 Copy SQL Schema" and run it in your Supabase SQL Editor.', 'warning');
+            updateSupabaseBadge('error');
+            return;
+          }
+
+          if (DOM.disconnectSupabaseBtn) DOM.disconnectSupabaseBtn.style.display = 'inline-block';
+          showSupabaseNotice('Successfully connected to Supabase cloud database!', 'success');
+          updateSupabaseBadge('connected');
+          showToast('Connected to Supabase cloud database!', '☁️');
+
+          // Initial sync
+          if (data && data.id) {
+            syncFromSupabase();
+          } else {
+            syncToSupabase();
+          }
+        } catch (err) {
+          alert('Failed to connect to Supabase: ' + err.message);
+          updateSupabaseBadge('error');
+        }
+      });
+    }
+
+    if (DOM.disconnectSupabaseBtn) {
+      DOM.disconnectSupabaseBtn.addEventListener('click', () => {
+        if (confirm('Disconnect from Supabase cloud? Your wedding data will remain safely saved locally on this device.')) {
+          supabaseClient = null;
+          localStorage.removeItem(SUPABASE_CONFIG_KEY);
+          DOM.supabaseUrl.value = '';
+          DOM.supabaseAnonKey.value = '';
+          DOM.supabaseSyncId.value = '';
+          DOM.disconnectSupabaseBtn.style.display = 'none';
+          updateSupabaseBadge('offline');
+          showSupabaseNotice('Disconnected from Supabase. Working locally.', 'info');
+          showToast('Disconnected from Supabase', '🔌');
+        }
+      });
+    }
+
+    if (DOM.copySupabaseSqlBtn) {
+      DOM.copySupabaseSqlBtn.addEventListener('click', () => {
+        const sql = `-- Supabase SQL Setup for Wedding Budget Planner
+create table if not exists public.wedding_plans (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.wedding_plans enable row level security;
+
+create policy "Allow public read on wedding_plans" on public.wedding_plans for select using (true);
+create policy "Allow public insert on wedding_plans" on public.wedding_plans for insert with check (true);
+create policy "Allow public update on wedding_plans" on public.wedding_plans for update using (true);
+`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(sql).then(() => {
+            showToast('Copied Supabase SQL schema to clipboard!', '📋');
+          }).catch(() => {
+            prompt('Copy the SQL below and run it in Supabase SQL Editor:', sql);
+          });
+        } else {
+          prompt('Copy the SQL below and run it in Supabase SQL Editor:', sql);
+        }
+      });
+    }
 
     // Window resize chart re-render
     window.addEventListener('resize', debounce(() => {

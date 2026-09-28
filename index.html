@@ -658,6 +658,48 @@
       </p>
 
       <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <!-- Supabase Cloud Sync Card -->
+        <div class="supabase-sync-card" style="background: rgba(197, 160, 89, 0.07); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-bottom: 6px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.25rem;">☁️</span>
+              <strong style="color: var(--text-main); font-size: 0.95rem;">Supabase Cloud Database</strong>
+            </div>
+            <span class="badge-pill" id="supabaseStatusBadge" style="background: #E8E5E1; color: var(--text-muted); font-size: 0.75rem;">Offline (Local Only)</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+            Connect your Supabase project to automatically save your wedding plan to the cloud and sync with your partner in real time.
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div>
+              <label for="supabaseUrl" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Supabase Project URL</label>
+              <input type="url" id="supabaseUrl" class="form-control" placeholder="https://xyzcompany.supabase.co" style="font-size: 0.82rem;">
+            </div>
+            <div>
+              <label for="supabaseAnonKey" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Supabase Anon Public API Key</label>
+              <input type="password" id="supabaseAnonKey" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-size: 0.82rem;">
+            </div>
+            <div>
+              <label for="supabaseSyncId" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Wedding Sync Passphrase / ID</label>
+              <input type="text" id="supabaseSyncId" class="form-control" placeholder="e.g. our-wedding-2027" style="font-size: 0.82rem;">
+              <span class="field-hint" style="font-size: 0.75rem;">Share this same ID with your partner so both devices sync the same budget.</span>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+              <button type="button" class="btn btn-primary btn-sm" id="connectSupabaseBtn" style="flex: 1;">
+                🔗 Save & Connect
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="disconnectSupabaseBtn" style="display: none;">
+                Disconnect
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="copySupabaseSqlBtn" title="Copy SQL schema for Supabase SQL Editor">
+                📋 Copy SQL Schema
+              </button>
+            </div>
+            <div id="supabaseSyncNotice" style="font-size: 0.8rem; margin-top: 4px; display: none;"></div>
+          </div>
+        </div>
+
         <button class="btn btn-secondary" id="exportJsonBtn">
           📥 Export Data to JSON File
         </button>
@@ -665,12 +707,12 @@
           📊 Export Payment Schedule to CSV
         </button>
         
-        <div style="margin-top: 10px;">
+        <div style="margin-top: 6px;">
           <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Restore from JSON File</label>
           <input type="file" id="importJsonInput" accept=".json" class="form-control">
         </div>
 
-        <hr style="border: none; border-top: 1px solid var(--border-color); margin: 10px 0;">
+        <hr style="border: none; border-top: 1px solid var(--border-color); margin: 6px 0;">
 
         <div style="display: flex; justify-content: space-between; gap: 12px;">
           <button class="btn btn-secondary" id="loadSampleDataBtn" title="Load sample $36k wedding">
@@ -691,6 +733,7 @@
   <div id="globalTooltip" class="app-tooltip" popover="manual" role="tooltip" aria-live="polite"></div>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="sample-data.js"></script>
   <script src="app.js"></script>
 </body>
