@@ -180,26 +180,55 @@
     renderAll();
   }
 
+  const BLANK_STATE = {
+    coupleNames: '',
+    weddingDate: '',
+    hasTargetBudget: false,
+    targetBudget: 0,
+    currentSavings: 0,
+    paycheckCadence: 'bi-weekly',
+    plannedSavingsPerPaycheck: 0,
+    safetyCushion: 1000,
+    expenses: []
+  };
+
+  function getBlankState() {
+    return JSON.parse(JSON.stringify(BLANK_STATE));
+  }
+
   function loadState() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         state = JSON.parse(saved);
-        if (state.hasTargetBudget === undefined) {
-          state.hasTargetBudget = false;
-        }
-        // Automatically balance legacy sample data if present
-        if (state.currentSavings === 7500 && state.plannedSavingsPerPaycheck === 800) {
-          state.currentSavings = 12000;
-          state.plannedSavingsPerPaycheck = 1200;
+
+        // Detect if previously saved state is legacy demo/sample data for random people ("Sophia & Liam" or "Elena & Julian")
+        const isLegacySample = (
+          (state.coupleNames === 'Sophia & Liam' || state.coupleNames === 'Elena & Julian') &&
+          Array.isArray(state.expenses) &&
+          state.expenses.some(e => e.id === 'exp-1' || e.name === 'Grand Garden Estate Venue Rental' || e.name === 'Château Grandview Estate') &&
+          !state._explicitSampleLoaded
+        );
+
+        if (isLegacySample) {
+          state = getBlankState();
           saveState();
+        } else {
+          if (state.hasTargetBudget === undefined) {
+            state.hasTargetBudget = false;
+          }
+          if (!Array.isArray(state.expenses)) {
+            state.expenses = [];
+          }
         }
       } catch (e) {
-        console.error('Failed to parse saved state, using sample data', e);
-        state = JSON.parse(JSON.stringify(window.DEFAULT_WEDDING_DATA || DEFAULT_WEDDING_DATA));
+        console.error('Failed to parse saved state, starting blank slate', e);
+        state = getBlankState();
+        saveState();
       }
     } else {
-      state = JSON.parse(JSON.stringify(window.DEFAULT_WEDDING_DATA || DEFAULT_WEDDING_DATA));
+      // First visit: start with a fresh blank slate
+      state = getBlankState();
       saveState();
     }
   }
@@ -230,7 +259,7 @@
   }
 
   function formatDate(dateStr) {
-    if (!dateStr) return 'No Date';
+    if (!dateStr) return 'Not set yet';
     const parts = dateStr.split('-');
     if (parts.length !== 3) return dateStr;
     const year = parseInt(parts[0], 10);
@@ -284,7 +313,14 @@
   // =========================================================================
   function startCountdownTimer() {
     function updateTicker() {
-      if (!state.weddingDate) return;
+      if (!state.weddingDate) {
+        DOM.cdDays.textContent = '--';
+        DOM.cdHours.textContent = '--';
+        DOM.cdMins.textContent = '--';
+        DOM.cdSecs.textContent = '--';
+        DOM.countdownDaysText.textContent = "No date set";
+        return;
+      }
       const parts = state.weddingDate.split('-');
       const weddingTime = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)).getTime();
       const now = new Date().getTime();
@@ -374,20 +410,22 @@
     const totalRemainingDue = unpaid.reduce((sum, m) => sum + m.amount, 0);
 
     // Days to wedding
-    const daysToWedding = Math.max(1, getDaysRemaining(state.weddingDate));
-    const weeksToWedding = Math.max(1 / 7, daysToWedding / 7);
-    const paychecksToWedding = Math.max(1 / cadenceDays, daysToWedding / cadenceDays);
-    const monthsToWedding = Math.max(1 / 30.4, daysToWedding / 30.417);
+    const hasWeddingDate = Boolean(state.weddingDate);
+    const rawDays = getDaysRemaining(state.weddingDate);
+    const daysToWedding = hasWeddingDate ? Math.max(1, rawDays) : 0;
+    const weeksToWedding = daysToWedding > 0 ? Math.max(1 / 7, daysToWedding / 7) : 0;
+    const paychecksToWedding = daysToWedding > 0 ? Math.max(1 / cadenceDays, daysToWedding / cadenceDays) : 0;
+    const monthsToWedding = daysToWedding > 0 ? Math.max(1 / 30.4, daysToWedding / 30.417) : 0;
 
     // Net savings gap needed to cover everything by wedding day
     const netGapToWedding = Math.max(0, totalRemainingDue - currentSavings);
 
     // Overall wedding velocity rates
     const velocity = {
-      perDay: netGapToWedding / daysToWedding,
-      perWeek: netGapToWedding / weeksToWedding,
-      perPaycheck: netGapToWedding / paychecksToWedding,
-      perMonth: netGapToWedding / monthsToWedding
+      perDay: (hasWeddingDate && daysToWedding > 0) ? (netGapToWedding / daysToWedding) : 0,
+      perWeek: (hasWeddingDate && weeksToWedding > 0) ? (netGapToWedding / weeksToWedding) : 0,
+      perPaycheck: (hasWeddingDate && paychecksToWedding > 0) ? (netGapToWedding / paychecksToWedding) : 0,
+      perMonth: (hasWeddingDate && monthsToWedding > 0) ? (netGapToWedding / monthsToWedding) : 0
     };
 
     // Calculate cumulative due & required savings per milestone
@@ -561,7 +599,7 @@
 
   function renderHeader(data) {
     DOM.brandMonogram.textContent = generateMonogram(state.coupleNames);
-    DOM.coupleHeading.textContent = state.coupleNames ? `${state.coupleNames}'s Wedding` : 'Wedding Budget & Savings';
+    DOM.coupleHeading.textContent = state.coupleNames ? `${state.coupleNames}'s Wedding` : 'Our Wedding Budget';
     DOM.displayWeddingDate.textContent = formatDate(state.weddingDate);
     DOM.currentCadenceLabel.textContent = `${getCadenceName(state.paycheckCadence)} (${formatCurrency(state.plannedSavingsPerPaycheck)})`;
     DOM.unpaidMilestonesCount.textContent = data.unpaid.length;
@@ -572,6 +610,27 @@
     const sim = data.simulation;
     const next = data.nextUpcomingMilestone;
     const cadence = getCadenceName(state.paycheckCadence);
+
+    if (data.milestones.length === 0) {
+      banner.className = 'crunch-banner';
+      banner.style.borderLeftColor = 'var(--gold-primary)';
+      DOM.crunchBannerIcon.textContent = '💍';
+      DOM.crunchBannerTitle.textContent = 'Welcome to Your Wedding Budget Planner';
+      DOM.crunchBannerText.innerHTML = `
+        Your planner is ready as a clean blank slate! Click <strong>+ Add Expense</strong> to start adding estimated costs and payment milestones, 
+        or open <button type="button" class="btn-link-action" id="bannerOpenSettingsBtn">Settings</button> to customize your wedding date and savings frequency.
+      `;
+      DOM.crunchNextAmount.textContent = '$0';
+      DOM.crunchPaceLabel.textContent = 'Next Milestone';
+      DOM.crunchNextPace.textContent = 'None yet';
+      DOM.crunchNextPace.className = 'crunch-stat-value';
+      DOM.chartStatusPill.textContent = 'Blank Slate';
+      DOM.chartStatusPill.className = 'badge-pill badge-upcoming';
+
+      const bannerSettingsBtn = document.getElementById('bannerOpenSettingsBtn');
+      if (bannerSettingsBtn) bannerSettingsBtn.onclick = openSettingsModal;
+      return;
+    }
 
     if (data.unpaid.length === 0) {
       banner.className = 'crunch-banner';
@@ -669,7 +728,7 @@
       if (DOM.kpiBudgetIcon) DOM.kpiBudgetIcon.textContent = '📊';
       DOM.kpiTargetBudget.textContent = formatCurrency(data.totalEstimated);
       DOM.kpiBudgetDiff.innerHTML = `Sum of ${state.expenses.length} estimated items • <button type="button" class="btn-link-action" id="kpiSetBudgetBtn">Set goal</button>`;
-      DOM.kpiBudgetBar.style.width = '100%';
+      DOM.kpiBudgetBar.style.width = state.expenses.length > 0 ? '100%' : '0%';
 
       const setGoalBtn = document.getElementById('kpiSetBudgetBtn');
       if (setGoalBtn) {
@@ -683,7 +742,7 @@
     // 2. Actual Total
     DOM.kpiActualCost.textContent = formatCurrency(data.totalActual);
     DOM.kpiAllocatedMeta.textContent = `Estimated: ${formatCurrency(data.totalEstimated)}`;
-    DOM.kpiActualBar.style.width = '100%';
+    DOM.kpiActualBar.style.width = data.totalActual > 0 ? '100%' : '0%';
 
     // 3. Paid So Far
     DOM.kpiPaidSoFar.textContent = formatCurrency(data.totalPaid);
@@ -699,7 +758,10 @@
 
     // 5. Current Savings Pool
     DOM.kpiCurrentSavings.textContent = formatCurrency(data.currentSavings);
-    if (data.netGapToWedding <= 0) {
+    if (data.totalRemainingDue === 0) {
+      DOM.kpiSavingsGap.innerHTML = `<span style="color: var(--text-muted);">$0 balance to cover</span>`;
+      DOM.kpiSavingsCoverageBar.style.width = '0%';
+    } else if (data.netGapToWedding <= 0) {
       DOM.kpiSavingsGap.innerHTML = `<span style="color: var(--sage-primary);">100% of remaining bills covered!</span>`;
       DOM.kpiSavingsCoverageBar.style.width = '100%';
     } else {
@@ -721,6 +783,43 @@
     else if (state.paycheckCadence === 'monthly') DOM.rateBoxes.month.classList.add('active-cadence');
     else DOM.rateBoxes.paycheck.classList.add('active-cadence');
 
+    if (!state.weddingDate && data.totalEstimated === 0) {
+      DOM.velocityAdviceText.innerHTML = `
+        Your planner is currently a blank slate. Start by setting your wedding date in 
+        <button type="button" class="btn-link-action" id="velOpenSettingsBtn">Settings</button> 
+        and clicking <strong>+ Add Expense</strong> above.
+      `;
+      const btn = document.getElementById('velOpenSettingsBtn');
+      if (btn) btn.onclick = openSettingsModal;
+      return;
+    }
+
+    if (!state.weddingDate && data.totalEstimated > 0) {
+      DOM.velocityAdviceText.innerHTML = `
+        You have <strong>${formatCurrency(data.totalEstimated)}</strong> in estimated expenses. 
+        Set your wedding date in <button type="button" class="btn-link-action" id="velOpenSettingsBtn">Settings</button> 
+        to calculate required daily and paycheck savings targets.
+      `;
+      const btn = document.getElementById('velOpenSettingsBtn');
+      if (btn) btn.onclick = openSettingsModal;
+      return;
+    }
+
+    if (state.weddingDate && data.totalEstimated === 0) {
+      DOM.velocityAdviceText.innerHTML = `
+        Your wedding is scheduled for <strong>${formatDate(state.weddingDate)}</strong> (${data.daysToWedding} days away). 
+        Click <strong>+ Add Expense</strong> to begin adding items and calculating your required savings pace.
+      `;
+      return;
+    }
+
+    if (data.netGapToWedding <= 0) {
+      DOM.velocityAdviceText.innerHTML = `
+        🎉 <strong>Your wedding costs are 100% covered!</strong> Your savings pool covers all remaining unpaid expenses.
+      `;
+      return;
+    }
+
     DOM.velocityAdviceText.innerHTML = `
       To cover your <strong>${formatCurrency(data.netGapToWedding)}</strong> net balance 
       over the remaining <strong>${data.daysToWedding} days</strong> (${data.paychecksToWedding.toFixed(1)} ${getCadenceName(state.paycheckCadence).toLowerCase()} paychecks),
@@ -731,6 +830,19 @@
   function renderDashboardMilestones(data) {
     const list = DOM.dashboardMilestonesList;
     list.innerHTML = '';
+
+    if (data.milestones.length === 0) {
+      list.innerHTML = `
+        <div style="text-align: center; padding: 36px 20px; color: var(--text-muted);">
+          <span style="font-size: 2.2rem; display: block; margin-bottom: 8px;">📋</span>
+          <p style="font-size: 0.95rem; margin-bottom: 14px;">No upcoming payments scheduled yet.</p>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('openAddExpenseBtn').click()">
+            <span>+</span> Add Expense & Milestones
+          </button>
+        </div>
+      `;
+      return;
+    }
 
     const nextThree = data.unpaid.slice(0, 4);
 
@@ -753,6 +865,20 @@
   function renderFullSchedule(data) {
     const list = DOM.fullTimelineList;
     list.innerHTML = '';
+
+    if (data.milestones.length === 0) {
+      list.innerHTML = `
+        <div style="text-align: center; padding: 48px 20px; color: var(--text-muted);">
+          <span style="font-size: 2.5rem; display: block; margin-bottom: 10px;">📅</span>
+          <h4 style="font-family: var(--font-heading); font-size: 1.35rem; color: var(--text-main); margin-bottom: 6px;">Your Payment Schedule is Clear</h4>
+          <p style="font-size: 0.95rem; margin-bottom: 16px;">Add vendor expenses with installment dates to see your complete chronological payment timeline here.</p>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('openAddExpenseBtn').click()">
+            <span>+</span> Add Payment Milestone
+          </button>
+        </div>
+      `;
+      return;
+    }
 
     let items = data.milestones;
 
@@ -896,6 +1022,21 @@
     const container = DOM.budgetCategoryGroupsContainer;
     container.innerHTML = '';
 
+    if (state.expenses.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 48px 24px; background: white; border-radius: 12px; border: 1px dashed var(--border-color); margin-top: 16px;">
+          <span style="font-size: 2.5rem; display: block; margin-bottom: 10px;">📋</span>
+          <h3 style="font-family: var(--font-heading); font-size: 1.45rem; color: var(--text-main); margin-bottom: 6px;">Your Wedding Planner is a Blank Slate</h3>
+          <p style="color: var(--text-muted); font-size: 0.92rem; max-width: 480px; margin: 0 auto 18px auto;">
+            Add your estimated wedding items (venue, catering, attire, photography, etc.). The app will automatically sum your estimated costs and calculate required savings by your payment due dates.
+          </p>
+          <button class="btn btn-primary" onclick="document.getElementById('openAddExpenseBtn').click()">
+            <span>+</span> Add Your First Expense
+          </button>
+        </div>
+      `;
+    }
+
     DEFAULT_CATEGORIES.forEach(category => {
       const categoryExpenses = state.expenses.filter(exp => exp.categoryId === category.id);
       if (categoryExpenses.length === 0) return; // Only show non-empty or create placeholder
@@ -1000,23 +1141,32 @@
     // Render Category Legend List for the chart panel
     const legendList = DOM.categoryLegendList;
     legendList.innerHTML = '';
-    DEFAULT_CATEGORIES.forEach(cat => {
-      const expenses = state.expenses.filter(e => e.categoryId === cat.id);
-      if (expenses.length === 0) return;
-      const total = expenses.reduce((s, e) => s + Number(e.actualCost || 0), 0);
-      const pct = data.totalActual > 0 ? Math.round((total / data.totalActual) * 100) : 0;
-
-      const item = document.createElement('div');
-      item.className = 'legend-item';
-      item.innerHTML = `
-        <div class="legend-left">
-          <span class="legend-color-dot" style="background: ${cat.color};"></span>
-          <span>${cat.icon} ${escapeHtml(cat.name)}</span>
+    const hasExpenses = state.expenses.length > 0;
+    if (!hasExpenses) {
+      legendList.innerHTML = `
+        <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+          Category breakdown will appear here once you add expenses.
         </div>
-        <span style="font-weight: 700;">${formatCurrency(total)} (${pct}%)</span>
       `;
-      legendList.appendChild(item);
-    });
+    } else {
+      DEFAULT_CATEGORIES.forEach(cat => {
+        const expenses = state.expenses.filter(e => e.categoryId === cat.id);
+        if (expenses.length === 0) return;
+        const total = expenses.reduce((s, e) => s + Number(e.actualCost || 0), 0);
+        const pct = data.totalActual > 0 ? Math.round((total / data.totalActual) * 100) : 0;
+
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `
+          <div class="legend-left">
+            <span class="legend-color-dot" style="background: ${cat.color};"></span>
+            <span>${cat.icon} ${escapeHtml(cat.name)}</span>
+          </div>
+          <span style="font-weight: 700;">${formatCurrency(total)} (${pct}%)</span>
+        `;
+        legendList.appendChild(item);
+      });
+    }
   }
 
   function renderSimulator(data) {
@@ -1032,8 +1182,26 @@
     const detail = DOM.simStatusDetail;
     const cadence = getCadenceName(state.paycheckCadence);
 
+    const tbody = DOM.simBreakdownBody;
+    tbody.innerHTML = '';
+
+    if (sim.timelineSteps.length === 0) {
+      banner.className = 'sim-status-banner';
+      banner.style.background = 'rgba(197, 160, 89, 0.08)';
+      banner.style.borderColor = 'rgba(197, 160, 89, 0.3)';
+      icon.textContent = '💡';
+      heading.textContent = 'Cash Flow Simulator Ready';
+      detail.innerHTML = `
+        Add expenses with payment milestones to simulate and verify your cashflow balance over time.
+      `;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">No upcoming payments to simulate. Add your expenses to run cashflow simulations.</td></tr>`;
+      return;
+    }
+
     if (sim.hasDeficit) {
       banner.className = 'sim-status-banner red';
+      banner.style.background = '';
+      banner.style.borderColor = '';
       icon.textContent = '⚠️';
       heading.textContent = 'Cash Shortfall Detected!';
       detail.innerHTML = `
@@ -1043,6 +1211,8 @@
       `;
     } else {
       banner.className = 'sim-status-banner green';
+      banner.style.background = '';
+      banner.style.borderColor = '';
       icon.textContent = '✅';
       heading.textContent = 'Healthy & Stress-Free Cashflow Plan';
       detail.innerHTML = `
@@ -1050,15 +1220,6 @@
         your projected cash reserves never fall below your ${formatCurrency(state.safetyCushion)} cushion! 
         Minimum cushion reached will be <strong>${formatCurrency(sim.minBalance)}</strong>.
       `;
-    }
-
-    // Populate simulator breakdown table
-    const tbody = DOM.simBreakdownBody;
-    tbody.innerHTML = '';
-
-    if (sim.timelineSteps.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No upcoming payments to simulate.</td></tr>`;
-      return;
     }
 
     sim.timelineSteps.forEach(step => {
@@ -1656,6 +1817,7 @@
     DOM.loadSampleDataBtn.addEventListener('click', () => {
       if (confirm('Load sample wedding data? This will replace your current entries.')) {
         state = JSON.parse(JSON.stringify(DEFAULT_WEDDING_DATA));
+        state._explicitSampleLoaded = true;
         saveState();
         DOM.dataModal.close();
         showToast('Sample wedding data loaded', '💍');
@@ -1664,20 +1826,10 @@
     });
     DOM.resetAllDataBtn.addEventListener('click', () => {
       if (confirm('Are you sure you want to start from scratch? All expenses will be cleared.')) {
-        state = {
-          coupleNames: 'Our Wedding',
-          weddingDate: '2027-06-01',
-          hasTargetBudget: false,
-          targetBudget: 0,
-          currentSavings: 3000,
-          paycheckCadence: 'bi-weekly',
-          plannedSavingsPerPaycheck: 500,
-          safetyCushion: 1000,
-          expenses: []
-        };
+        state = getBlankState();
         saveState();
         DOM.dataModal.close();
-        showToast('Started fresh wedding plan', '🌱');
+        showToast('Started fresh blank-slate wedding plan', '🌱');
         renderAll();
       }
     });
