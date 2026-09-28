@@ -264,11 +264,42 @@
   // =========================================================================
   // SUPABASE CLOUD SYNC ENGINE
   // =========================================================================
+  function sanitizeSupabaseUrl(rawUrl) {
+    if (!rawUrl) return '';
+    let url = rawUrl.trim().replace(/^['"]|['"]$/g, '');
+    // Check if user pasted a Supabase dashboard URL instead of API URL
+    const dashboardMatch = url.match(/supabase\.com\/dashboard\/project\/([a-z0-9_-]+)/i);
+    if (dashboardMatch && dashboardMatch[1]) {
+      url = `https://${dashboardMatch[1]}.supabase.co`;
+    }
+    // Prepend https:// if protocol is missing
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
+    }
+    // Strip trailing slashes
+    return url.replace(/\/+$/, '');
+  }
+
+  function sanitizeAnonKey(rawKey) {
+    if (!rawKey) return '';
+    return rawKey.trim().replace(/^['"]|['"]$/g, '');
+  }
+
+  function sanitizeSyncId(rawId) {
+    if (!rawId) return 'wedding_plan_default';
+    const cleaned = rawId.trim().replace(/^['"]|['"]$/g, '');
+    return cleaned || 'wedding_plan_default';
+  }
+
   function loadSupabaseConfig() {
     try {
       const saved = localStorage.getItem(SUPABASE_CONFIG_KEY);
       if (saved) {
         supabaseConfig = JSON.parse(saved);
+        supabaseConfig.url = sanitizeSupabaseUrl(supabaseConfig.url);
+        supabaseConfig.anonKey = sanitizeAnonKey(supabaseConfig.anonKey);
+        supabaseConfig.syncId = sanitizeSyncId(supabaseConfig.syncId);
+
         if (DOM.supabaseUrl) DOM.supabaseUrl.value = supabaseConfig.url || '';
         if (DOM.supabaseAnonKey) DOM.supabaseAnonKey.value = supabaseConfig.anonKey || '';
         if (DOM.supabaseSyncId) DOM.supabaseSyncId.value = supabaseConfig.syncId || 'wedding_plan_default';
@@ -287,16 +318,22 @@
 
     try {
       supabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
-      updateSupabaseBadge('connected');
       if (DOM.disconnectSupabaseBtn) DOM.disconnectSupabaseBtn.style.display = 'inline-block';
       syncFromSupabase();
     } catch (err) {
       console.error('Failed to create Supabase client', err);
       updateSupabaseBadge('error');
+      handleSupabaseError(err);
     }
   }
 
   function updateSupabaseBadge(status) {
+    const dot = document.getElementById('headerCloudDot');
+    if (dot) {
+      dot.className = 'cloud-status-dot ' + (status === 'connected' ? 'connected' : (status === 'syncing' ? 'syncing' : (status === 'error' ? 'error' : '')));
+      dot.title = status === 'connected' ? 'Cloud Synced' : (status === 'syncing' ? 'Syncing with Supabase...' : (status === 'error' ? 'Supabase Table/Config Error' : 'Local Only (Offline)'));
+    }
+
     if (!DOM.supabaseStatusBadge) return;
     if (status === 'connected') {
       DOM.supabaseStatusBadge.textContent = '🟢 Cloud Synced';
@@ -317,9 +354,67 @@
     }
   }
 
+  function handleSupabaseError(error) {
+    if (!error) return;
+    const msg = ((error.message || '') + ' ' + (error.details || '') + ' ' + (error.hint || '')).toLowerCase();
+    const code = error.code || '';
+
+    // 1. Missing table "wedding_plans"
+    const isMissingTable = (
+      code === '42P01' ||
+      code === 'PGRST204' ||
+      code === 'PGRST205' ||
+      msg.includes('wedding_plans') ||
+      msg.includes('relation') ||
+      msg.includes('schema cache') ||
+      msg.includes('does not exist')
+    );
+
+    if (isMissingTable) {
+      showSupabaseNotice(
+        `<strong>⚠️ Missing Database Table: "wedding_plans"</strong><br>` +
+        `Your Supabase project is reachable, but the <code>wedding_plans</code> table has not been created in your database yet.<br><br>` +
+        `<strong>How to fix in 30 seconds:</strong><br>` +
+        `1. Click the <strong>📋 Copy SQL Schema</strong> button below.<br>` +
+        `2. In your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; font-weight: 700;">Supabase Dashboard</a>, open the <strong>SQL Editor</strong> tab (left sidebar).<br>` +
+        `3. Click <strong>New query</strong>, paste the copied SQL, and click <strong>▶ Run</strong>.<br>` +
+        `4. Then return here and click <strong>Save & Connect</strong> again.`,
+        'warning'
+      );
+      return;
+    }
+
+    // 2. Invalid API Key
+    if (code === 'PGRST301' || msg.includes('jwt') || msg.includes('api key') || msg.includes('unauthorized') || msg.includes('invalid api key')) {
+      showSupabaseNotice(
+        `<strong>⚠️ Invalid Supabase Anon Key</strong><br>` +
+        `Please check that you copied the <em>anon public</em> key from your Supabase Project Settings ➔ API.`,
+        'warning'
+      );
+      return;
+    }
+
+    // 3. Network or URL error
+    if (msg.includes('fetch') || msg.includes('network') || msg.includes('failed to fetch')) {
+      showSupabaseNotice(
+        `<strong>⚠️ Could Not Reach Supabase URL</strong><br>` +
+        `Unable to connect to <code>${escapeHtml(supabaseConfig.url || 'URL')}</code>. ` +
+        `Please verify that your Project URL looks like <code>https://your-project.supabase.co</code>.`,
+        'warning'
+      );
+      return;
+    }
+
+    // 4. Fallback general error
+    showSupabaseNotice(
+      `<strong>⚠️ Supabase Sync Issue</strong><br>${escapeHtml(error.message || error.details || 'Connection error. Check browser console.')}`,
+      'warning'
+    );
+  }
+
   async function syncFromSupabase() {
     if (!supabaseClient) return;
-    const syncId = (supabaseConfig.syncId && supabaseConfig.syncId.trim()) || 'wedding_plan_default';
+    const syncId = sanitizeSyncId(supabaseConfig.syncId);
     try {
       updateSupabaseBadge('syncing');
       const { data, error } = await supabaseClient
@@ -329,10 +424,8 @@
         .maybeSingle();
 
       if (error) {
-        console.warn('Supabase fetch notice:', error.message);
-        if (error.code === '42P01') {
-          showSupabaseNotice('Connected to Supabase, but "wedding_plans" table was not found. Click "📋 Copy SQL Schema" and run it in Supabase SQL Editor.', 'warning');
-        }
+        console.warn('Supabase fetch error:', error);
+        handleSupabaseError(error);
         updateSupabaseBadge('error');
         return;
       }
@@ -342,6 +435,7 @@
         saveState(false);
         renderAll();
         updateSupabaseBadge('connected');
+        showSupabaseNotice('<strong>✅ Synced with Supabase cloud</strong>', 'success');
         showToast('Restored latest wedding data from Supabase cloud', '☁️');
       } else {
         // Plan doesn't exist yet on remote, upload current local state
@@ -349,6 +443,7 @@
       }
     } catch (e) {
       console.error('Supabase sync error', e);
+      handleSupabaseError(e);
       updateSupabaseBadge('error');
     }
   }
@@ -359,7 +454,7 @@
     supabaseSyncDebounce = setTimeout(async () => {
       try {
         updateSupabaseBadge('syncing');
-        const syncId = (supabaseConfig.syncId && supabaseConfig.syncId.trim()) || 'wedding_plan_default';
+        const syncId = sanitizeSyncId(supabaseConfig.syncId);
         const { error } = await supabaseClient
           .from('wedding_plans')
           .upsert({
@@ -370,25 +465,24 @@
 
         if (error) {
           console.warn('Supabase upsert error:', error);
-          if (error.code === '42P01') {
-            showSupabaseNotice('Table "wedding_plans" missing in Supabase. Run the SQL schema to enable cloud saves.', 'warning');
-          }
+          handleSupabaseError(error);
           updateSupabaseBadge('error');
         } else {
           updateSupabaseBadge('connected');
         }
       } catch (err) {
         console.error('Supabase upload error', err);
+        handleSupabaseError(err);
         updateSupabaseBadge('error');
       }
     }, 400);
   }
 
-  function showSupabaseNotice(msg, type = 'info') {
+  function showSupabaseNotice(htmlMsg, type = 'info') {
     if (!DOM.supabaseSyncNotice) return;
+    DOM.supabaseSyncNotice.className = 'supabase-sync-notice notice-' + type;
     DOM.supabaseSyncNotice.style.display = 'block';
-    DOM.supabaseSyncNotice.style.color = type === 'warning' ? 'var(--danger-primary)' : 'var(--sage-primary)';
-    DOM.supabaseSyncNotice.textContent = msg;
+    DOM.supabaseSyncNotice.innerHTML = htmlMsg;
   }
 
   function showToast(message, icon = '✨') {
@@ -1989,14 +2083,30 @@
     });
 
     // Supabase Connect / Disconnect / SQL Actions
+    if (DOM.supabaseStatusBadge) {
+      DOM.supabaseStatusBadge.addEventListener('click', () => {
+        if (DOM.dataModal && !DOM.dataModal.open) {
+          DOM.dataModal.showModal();
+        }
+      });
+    }
+
     if (DOM.connectSupabaseBtn) {
       DOM.connectSupabaseBtn.addEventListener('click', async () => {
-        const url = (DOM.supabaseUrl.value || '').trim();
-        const anonKey = (DOM.supabaseAnonKey.value || '').trim();
-        const syncId = (DOM.supabaseSyncId.value || '').trim() || 'wedding_plan_default';
+        let url = (DOM.supabaseUrl.value || '').trim();
+        let anonKey = (DOM.supabaseAnonKey.value || '').trim();
+        let syncId = (DOM.supabaseSyncId.value || '').trim();
+
+        url = sanitizeSupabaseUrl(url);
+        anonKey = sanitizeAnonKey(anonKey);
+        syncId = sanitizeSyncId(syncId);
+
+        if (DOM.supabaseUrl) DOM.supabaseUrl.value = url;
+        if (DOM.supabaseAnonKey) DOM.supabaseAnonKey.value = anonKey;
+        if (DOM.supabaseSyncId) DOM.supabaseSyncId.value = syncId;
 
         if (!url || !anonKey) {
-          alert('Please enter both your Supabase Project URL and Anon Public Key.');
+          showSupabaseNotice('Please enter both your Supabase Project URL and Anon Public Key.', 'warning');
           return;
         }
 
@@ -2005,7 +2115,7 @@
 
         try {
           if (!window.supabase) {
-            alert('Supabase client library is still loading. Please try again in a moment.');
+            showSupabaseNotice('Supabase client library is still loading. Please check your internet connection and try again in a moment.', 'warning');
             return;
           }
           supabaseClient = window.supabase.createClient(url, anonKey);
@@ -2018,14 +2128,15 @@
             .eq('id', syncId)
             .maybeSingle();
 
-          if (error && error.code === '42P01') {
-            showSupabaseNotice('Connected to Supabase! However, the table "wedding_plans" does not exist yet. Click "📋 Copy SQL Schema" and run it in your Supabase SQL Editor.', 'warning');
+          if (error) {
+            console.warn('Supabase connect check error:', error);
+            handleSupabaseError(error);
             updateSupabaseBadge('error');
             return;
           }
 
           if (DOM.disconnectSupabaseBtn) DOM.disconnectSupabaseBtn.style.display = 'inline-block';
-          showSupabaseNotice('Successfully connected to Supabase cloud database!', 'success');
+          showSupabaseNotice('<strong>✅ Successfully connected to Supabase cloud!</strong><br>Your wedding data is now syncing in real-time.', 'success');
           updateSupabaseBadge('connected');
           showToast('Connected to Supabase cloud database!', '☁️');
 
@@ -2036,7 +2147,8 @@
             syncToSupabase();
           }
         } catch (err) {
-          alert('Failed to connect to Supabase: ' + err.message);
+          console.error('Failed to connect to Supabase:', err);
+          handleSupabaseError(err);
           updateSupabaseBadge('error');
         }
       });
@@ -2069,6 +2181,10 @@ create table if not exists public.wedding_plans (
 
 alter table public.wedding_plans enable row level security;
 
+drop policy if exists "Allow public read on wedding_plans" on public.wedding_plans;
+drop policy if exists "Allow public insert on wedding_plans" on public.wedding_plans;
+drop policy if exists "Allow public update on wedding_plans" on public.wedding_plans;
+
 create policy "Allow public read on wedding_plans" on public.wedding_plans for select using (true);
 create policy "Allow public insert on wedding_plans" on public.wedding_plans for insert with check (true);
 create policy "Allow public update on wedding_plans" on public.wedding_plans for update using (true);
@@ -2076,6 +2192,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(sql).then(() => {
             showToast('Copied Supabase SQL schema to clipboard!', '📋');
+            showSupabaseNotice('<strong>📋 SQL Schema copied to clipboard!</strong><br>Now paste it in Supabase <strong>SQL Editor</strong> ➔ click <strong>Run</strong>, then return here and click <strong>Save & Connect</strong>.', 'info');
           }).catch(() => {
             prompt('Copy the SQL below and run it in Supabase SQL Editor:', sql);
           });

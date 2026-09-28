@@ -1617,3 +1617,68 @@ dialog[open]::backdrop {
   border-left: none;
 }
 
+/* Supabase Cloud Sync UI */
+.supabase-sync-notice {
+  display: none;
+  font-size: 0.82rem;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+.supabase-sync-notice.notice-warning {
+  display: block;
+  background: rgba(196, 121, 125, 0.12);
+  border: 1px solid rgba(196, 121, 125, 0.4);
+  color: #8A3238;
+}
+
+.supabase-sync-notice.notice-success {
+  display: block;
+  background: rgba(104, 130, 122, 0.12);
+  border: 1px solid rgba(104, 130, 122, 0.4);
+  color: #2E4C43;
+}
+
+.supabase-sync-notice.notice-info {
+  display: block;
+  background: rgba(197, 160, 89, 0.12);
+  border: 1px solid rgba(197, 160, 89, 0.4);
+  color: #6D4C13;
+}
+
+.supabase-sync-notice code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+
+.cloud-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #A8A29E;
+  margin-left: 4px;
+  vertical-align: middle;
+  transition: background var(--transition-normal);
+}
+
+.cloud-status-dot.connected {
+  background: #2E8540;
+  box-shadow: 0 0 6px rgba(46, 133, 64, 0.6);
+}
+
+.cloud-status-dot.syncing {
+  background: #D97706;
+}
+
+.cloud-status-dot.error {
+  background: #DC2626;
+  box-shadow: 0 0 6px rgba(220, 38, 38, 0.6);
+}
+
+

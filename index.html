@@ -60,8 +60,8 @@
         <button class="btn btn-secondary" id="openSettingsBtn" title="Wedding Settings & Budget">
           ⚙️ Settings
         </button>
-        <button class="btn btn-secondary" id="openDataToolsBtn" title="Export / Import & Backups">
-          💾 Data
+        <button class="btn btn-secondary" id="openDataToolsBtn" title="Export / Import, Supabase Cloud & Backups">
+          💾 Data <span class="cloud-status-dot" id="headerCloudDot" title="Cloud status: Local only"></span>
         </button>
         <button class="btn btn-secondary" id="printReportBtn" title="Print Budget Report">
           🖨️ Print
@@ -665,7 +665,7 @@
               <span style="font-size: 1.25rem;">☁️</span>
               <strong style="color: var(--text-main); font-size: 0.95rem;">Supabase Cloud Database</strong>
             </div>
-            <span class="badge-pill" id="supabaseStatusBadge" style="background: #E8E5E1; color: var(--text-muted); font-size: 0.75rem;">Offline (Local Only)</span>
+            <span class="badge-pill" id="supabaseStatusBadge" style="background: #E8E5E1; color: var(--text-muted); font-size: 0.75rem; cursor: pointer;" title="Click to view cloud sync details">Offline (Local Only)</span>
           </div>
           <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
             Connect your Supabase project to automatically save your wedding plan to the cloud and sync with your partner in real time.
@@ -696,7 +696,7 @@
                 📋 Copy SQL Schema
               </button>
             </div>
-            <div id="supabaseSyncNotice" style="font-size: 0.8rem; margin-top: 4px; display: none;"></div>
+            <div id="supabaseSyncNotice" class="supabase-sync-notice"></div>
           </div>
         </div>
 
