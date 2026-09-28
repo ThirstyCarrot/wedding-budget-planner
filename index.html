@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EternalPlan - Wedding Budget & Due-Date Savings Planner</title>
+  <meta name="description" content="Plan your dream wedding budget and calculate exactly how much money you need to save by every payment due date to ensure smooth, stress-free cash flow.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%3E<text y=%2226%22 font-size=%2226%22>💍</text></svg>">
+</head>
+<body>
+  <!-- Ambient background glow -->
+  <div class="bg-ambient-orb orb-1"></div>
+  <div class="bg-ambient-orb orb-2"></div>
+
+  <div class="app-container">
+    <!-- Top Header & Hero -->
+    <header class="header-hero">
+      <div class="brand-wrapper">
+        <div class="brand-monogram" id="brandMonogram">S&L</div>
+        <div class="brand-titles">
+          <h1 id="coupleHeading">Sophia & Liam's Wedding</h1>
+          <div class="subtitle">
+            <span>Wedding Date:</span>
+            <span class="wedding-date-tag" id="displayWeddingDate">June 19, 2027</span>
+            <span>•</span>
+            <span id="countdownDaysText">264 days away</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Countdown Ticker -->
+      <div class="countdown-box" id="countdownBox">
+        <span class="countdown-label">Countdown</span>
+        <div class="countdown-digits">
+          <div class="digit-block">
+            <span class="digit-num" id="cdDays">00</span>
+            <span class="digit-unit">Days</span>
+          </div>
+          <div class="digit-block">
+            <span class="digit-num" id="cdHours">00</span>
+            <span class="digit-unit">Hrs</span>
+          </div>
+          <div class="digit-block">
+            <span class="digit-num" id="cdMins">00</span>
+            <span class="digit-unit">Min</span>
+          </div>
+          <div class="digit-block">
+            <span class="digit-num" id="cdSecs">00</span>
+            <span class="digit-unit">Sec</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="header-actions">
+        <button class="btn btn-primary" id="openAddExpenseBtn">
+          <span>+</span> Add Expense
+        </button>
+        <button class="btn btn-secondary" id="openSettingsBtn" title="Wedding Settings & Budget">
+          ⚙️ Settings
+        </button>
+        <button class="btn btn-secondary" id="openDataToolsBtn" title="Export / Import & Backups">
+          💾 Data
+        </button>
+        <button class="btn btn-secondary" id="printReportBtn" title="Print Budget Report">
+          🖨️ Print
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs-wrapper" aria-label="Planner Views">
+      <div class="nav-tabs" role="tablist">
+        <button class="tab-btn active" role="tab" aria-selected="true" data-tab="dashboard">
+          <span>📊</span> Dashboard & Roadmap
+        </button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="schedule">
+          <span>📅</span> Payment Due Dates
+          <span class="badge-pill" id="unpaidMilestonesCount">0</span>
+        </button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="budget">
+          <span>📋</span> Budget & Expenses
+        </button>
+        <button class="tab-btn" role="tab" aria-selected="false" data-tab="simulator">
+          <span>💡</span> Paycheck & Cashflow Simulator
+        </button>
+      </div>
+
+      <div class="tab-meta-status" id="headerCadenceIndicator">
+        <span class="rate-sub">Savings Cadence:</span>
+        <strong id="currentCadenceLabel">Bi-Weekly ($800)</strong>
+      </div>
+    </nav>
+
+    <!-- Dynamic Crunch Alert Banner -->
+    <section class="crunch-banner" id="crunchAlertBanner" aria-live="polite">
+      <div class="crunch-icon" id="crunchBannerIcon">⚠️</div>
+      <div class="crunch-content">
+        <h3 id="crunchBannerTitle">Next Payment Crunch Analysis</h3>
+        <p id="crunchBannerText">
+          Loading your payment timeline...
+        </p>
+      </div>
+      <div class="crunch-metric-group">
+        <div>
+          <div class="crunch-stat-label">Next Payment Due</div>
+          <div class="crunch-stat-value" id="crunchNextAmount">$0</div>
+        </div>
+        <div>
+          <div class="crunch-stat-label" id="crunchPaceLabel">Pace Needed</div>
+          <div class="crunch-stat-value highlight" id="crunchNextPace">$0/paycheck</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Top KPI Cards -->
+    <section class="kpi-grid" aria-label="Key Performance Indicators">
+      <!-- Estimated Total or Target Budget -->
+      <div class="kpi-card" id="kpiBudgetCard">
+        <div class="kpi-header">
+          <span class="kpi-title" id="kpiBudgetTitle">Total Estimated Cost</span>
+          <span class="kpi-icon" id="kpiBudgetIcon">📊</span>
+        </div>
+        <div class="kpi-main-val" id="kpiTargetBudget">$35,780</div>
+        <div class="kpi-meta" id="kpiBudgetDiff">Sum of your estimated items</div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-bar" id="kpiBudgetBar" style="width: 100%;"></div>
+        </div>
+      </div>
+
+      <!-- Contracted / Actual Cost -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Actual Total</span>
+          <span class="kpi-icon">📝</span>
+        </div>
+        <div class="kpi-main-val" id="kpiActualCost">$35,030</div>
+        <div class="kpi-meta" id="kpiAllocatedMeta">Across 12 vendors</div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-bar success" id="kpiActualBar" style="width: 97%;"></div>
+        </div>
+      </div>
+
+      <!-- Paid So Far -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Paid to Date</span>
+          <span class="kpi-icon">✅</span>
+        </div>
+        <div class="kpi-main-val" id="kpiPaidSoFar">$3,800</div>
+        <div class="kpi-meta" id="kpiPaidPct">10.8% of wedding paid</div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-bar success" id="kpiPaidBar" style="width: 11%;"></div>
+        </div>
+      </div>
+
+      <!-- Remaining Balance Due -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Remaining to Pay</span>
+          <span class="kpi-icon">⏳</span>
+        </div>
+        <div class="kpi-main-val" id="kpiRemainingDue">$31,230</div>
+        <div class="kpi-meta" id="kpiUpcomingCount">16 payments remaining</div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-bar rose" id="kpiRemainingBar" style="width: 89%;"></div>
+        </div>
+      </div>
+
+      <!-- Current Savings & Gap -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Current Savings Pool</span>
+          <span class="kpi-icon">🏦</span>
+        </div>
+        <div class="kpi-main-val" id="kpiCurrentSavings">$7,500</div>
+        <div class="kpi-meta" id="kpiSavingsGap">Net gap to save: $23,730</div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-bar" id="kpiSavingsCoverageBar" style="width: 24%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         TAB 1: DASHBOARD & ROADMAP
+         ========================================================================= -->
+    <main id="tab-dashboard" class="tab-pane active">
+      <!-- Savings Velocity & Pace Calculator Card -->
+      <div class="panel-card velocity-calculator-card">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2>Required Savings Velocity</h2>
+            <p>How much you need to set aside to cover all wedding costs comfortably by your wedding day:</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="jumpToSimulatorBtn">
+            Adjust Savings Plan ↗
+          </button>
+        </div>
+
+        <div class="velocity-rates-grid">
+          <div class="rate-box" id="rateBoxDay">
+            <div class="rate-label">Per Day</div>
+            <div class="rate-value" id="ratePerDay">$89</div>
+            <div class="rate-sub">Every single day</div>
+          </div>
+          <div class="rate-box" id="rateBoxWeek">
+            <div class="rate-label">Per Week</div>
+            <div class="rate-value" id="ratePerWeek">$627</div>
+            <div class="rate-sub">Every 7 days</div>
+          </div>
+          <div class="rate-box active-cadence" id="rateBoxPaycheck">
+            <div class="rate-label">Per Paycheck (Bi-Weekly)</div>
+            <div class="rate-value" id="ratePerPaycheck">$1,255</div>
+            <div class="rate-sub">Your primary cadence</div>
+          </div>
+          <div class="rate-box" id="rateBoxMonth">
+            <div class="rate-label">Per Month</div>
+            <div class="rate-value" id="ratePerMonth">$2,718</div>
+            <div class="rate-sub">Monthly transfer</div>
+          </div>
+        </div>
+
+        <p class="field-hint" id="velocityAdviceText">
+          Based on <strong>$23,730</strong> net savings required across <strong>264 days</strong> (18.9 bi-weekly paychecks).
+        </p>
+      </div>
+
+      <!-- Chart and Category Grid -->
+      <div class="dashboard-grid-2">
+        <!-- Interactive Cashflow & Payments Timeline Chart -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2>Cashflow & Milestone Trajectory</h2>
+              <p>Projected savings accumulation vs cumulative payment due dates over time</p>
+            </div>
+            <span class="badge-pill badge-upcoming" id="chartStatusPill">On Track</span>
+          </div>
+
+          <div class="chart-container">
+            <canvas id="cashflowCanvas"></canvas>
+          </div>
+          <div class="legend-item" style="justify-content: center; gap: 24px; margin-top: 10px;">
+            <div class="legend-left">
+              <span class="legend-color-dot" style="background: #C5A059;"></span>
+              <span>Projected Savings Balance</span>
+            </div>
+            <div class="legend-left">
+              <span class="legend-color-dot" style="background: #C4797D;"></span>
+              <span>Cumulative Payments Due</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Spend Breakdown -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2>Budget Allocation</h2>
+              <p>Breakdown by wedding expense category</p>
+            </div>
+          </div>
+
+          <div class="chart-container" style="height: 200px;">
+            <canvas id="categoryDonutCanvas"></canvas>
+          </div>
+
+          <div class="category-legend-list" id="categoryLegendList">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Immediate Upcoming Milestones Section -->
+      <div class="panel-card" style="margin-top: 24px;">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2>Next Upcoming Payments Due</h2>
+            <p>Immediate deadlines requiring your attention</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="viewAllScheduleBtn">
+            View All Due Dates (Calendar) →
+          </button>
+        </div>
+
+        <div class="timeline-list" id="dashboardMilestonesList">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </main>
+
+    <!-- =========================================================================
+         TAB 2: PAYMENT DUE DATES & SCHEDULE
+         ========================================================================= -->
+    <main id="tab-schedule" class="tab-pane" style="display: none;">
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2>Payment Due Date Timeline</h2>
+            <p>Every deposit, interim payment, and final balance sorted chronologically with required savings velocity</p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="addExpenseFromScheduleBtn">
+            + Add Payment Milestone
+          </button>
+        </div>
+
+        <!-- Filter Chips -->
+        <div class="filter-chips-row">
+          <button class="chip-btn active" data-schedule-filter="all-unpaid">All Upcoming Unpaid</button>
+          <button class="chip-btn" data-schedule-filter="next-30">Due in 30 Days</button>
+          <button class="chip-btn" data-schedule-filter="next-60">Due in 60 Days</button>
+          <button class="chip-btn" data-schedule-filter="overdue">Overdue</button>
+          <button class="chip-btn" data-schedule-filter="paid">Paid & Completed</button>
+          <button class="chip-btn" data-schedule-filter="all">Show All</button>
+        </div>
+
+        <!-- Timeline List -->
+        <div class="timeline-list" id="fullTimelineList">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </main>
+
+    <!-- =========================================================================
+         TAB 3: BUDGET & EXPENSES
+         ========================================================================= -->
+    <main id="tab-budget" class="tab-pane" style="display: none;">
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2>Budget Categories & Vendors</h2>
+            <p>Manage individual vendors, contracts, estimates, and payment splits</p>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary btn-sm" id="toggleAllCategoriesBtn">
+              Expand / Collapse All
+            </button>
+            <button class="btn btn-primary btn-sm" id="addExpenseFromBudgetBtn">
+              + Add Expense
+            </button>
+          </div>
+        </div>
+
+        <!-- Real-time Estimated Expenses Summary Banner -->
+        <div class="budget-totals-summary-banner" id="budgetTotalsSummaryBanner">
+          <div class="totals-banner-item">
+            <div class="totals-banner-label">Total Estimated Cost</div>
+            <div class="totals-banner-val" id="summaryTotalEstimated">$35,780</div>
+            <div class="totals-banner-sub" id="summaryItemCount">Across 12 items</div>
+          </div>
+          <div class="totals-banner-divider"></div>
+          <div class="totals-banner-item">
+            <div class="totals-banner-label">Total Actual / Contracted</div>
+            <div class="totals-banner-val" id="summaryTotalActual">$35,780</div>
+            <div class="totals-banner-sub" id="summaryPaidMeta">Total booked vendors</div>
+          </div>
+          <div class="totals-banner-divider"></div>
+          <div class="totals-banner-item">
+            <div class="totals-banner-label" id="summaryBudgetLabel">Budget Goal (Optional)</div>
+            <div class="totals-banner-val" id="summaryTargetBudget" style="font-size: 1.3rem;">Not Set (Bottom-Up)</div>
+            <div class="totals-banner-sub">
+              <button type="button" class="btn-link-action" id="toggleBudgetModeInlineBtn">
+                ⚙️ Set Budget Goal
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Groups Container -->
+        <div id="budgetCategoryGroupsContainer">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </main>
+
+    <!-- =========================================================================
+         TAB 4: PAYCHECK & CASHFLOW SIMULATOR
+         ========================================================================= -->
+    <main id="tab-simulator" class="tab-pane" style="display: none;">
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h2>Paycheck & Cashflow Simulator</h2>
+            <p>Stress-test your savings pace: simulate every paycheck and verify you will never run short on a payment due date</p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="autoSolvePaceBtn">
+            ⚡ Auto-Balance Savings Pace
+          </button>
+        </div>
+
+        <div class="simulator-form-grid">
+          <div class="form-group">
+            <label for="simCurrentSavings">
+              <span>Current Wedding Savings in Bank</span>
+              <span class="field-hint">Starting pool</span>
+            </label>
+            <input type="number" id="simCurrentSavings" class="form-control" value="7500" min="0" step="100">
+          </div>
+
+          <div class="form-group">
+            <label for="simPaycheckCadence">
+              <span>Paycheck / Savings Frequency</span>
+              <span class="field-hint">How often you set money aside</span>
+            </label>
+            <select id="simPaycheckCadence" class="form-control">
+              <option value="weekly">Weekly (Every 7 days)</option>
+              <option value="bi-weekly" selected>Bi-Weekly (Every 14 days)</option>
+              <option value="semi-monthly">Semi-Monthly (Twice a month)</option>
+              <option value="monthly">Monthly (Once a month)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="simPlannedSavings">
+              <span>Planned Savings per Paycheck</span>
+              <span class="field-hint">Amount you put away</span>
+            </label>
+            <input type="number" id="simPlannedSavings" class="form-control" value="800" min="0" step="25">
+          </div>
+
+          <div class="form-group">
+            <label for="simSafetyCushion">
+              <span>Safety Cushion Buffer</span>
+              <span class="field-hint">Minimum cash reserve</span>
+            </label>
+            <input type="number" id="simSafetyCushion" class="form-control" value="1000" min="0" step="100">
+          </div>
+        </div>
+
+        <!-- Simulation Results Section -->
+        <div class="sim-results-panel">
+          <div class="sim-status-banner green" id="simStatusBanner">
+            <span style="font-size: 1.4rem;" id="simStatusIcon">✅</span>
+            <div>
+              <h4 id="simStatusHeading" style="font-size: 1.1rem; font-weight: 700;">Healthy Cash Flow Plan</h4>
+              <p id="simStatusDetail" style="font-size: 0.88rem;">
+                At your planned pace of $800 every 2 weeks, your wedding cash balance stays positive at every payment milestone!
+              </p>
+            </div>
+          </div>
+
+          <h4 style="font-family: var(--font-serif); font-size: 1.25rem; margin-bottom: 12px;">Milestone Cash Balance Forecast</h4>
+          <div style="overflow-x: auto;">
+            <table class="sim-breakdown-table" id="simBreakdownTable">
+              <thead>
+                <tr>
+                  <th>Due Date</th>
+                  <th>Payment Description</th>
+                  <th>Vendor</th>
+                  <th>Amount Due</th>
+                  <th>Projected Bank Balance</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="simBreakdownBody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: ADD / EDIT EXPENSE
+       ========================================================================= -->
+  <dialog id="expenseModal" aria-labelledby="modalTitle">
+    <div class="modal-header">
+      <h3 id="modalTitle">Add Wedding Expense</h3>
+      <button type="button" class="btn btn-text" id="closeExpenseModalBtn" aria-label="Close modal">✕</button>
+    </div>
+    <form id="expenseForm">
+      <input type="hidden" id="editExpenseId" value="">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="expenseCategory">Category</label>
+          <select id="expenseCategory" class="form-control" required>
+            <!-- Categories injected by JS -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="expenseName">Expense / Item Name</label>
+          <input type="text" id="expenseName" class="form-control" placeholder="e.g. 8-Hour Photography Package" required>
+        </div>
+
+        <div class="form-group">
+          <label for="expenseVendor">Vendor / Provider (Optional)</label>
+          <input type="text" id="expenseVendor" class="form-control" placeholder="e.g. Luminary Visuals Studio">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label for="expenseEstimatedCost">
+              <span>Estimated Cost ($)</span>
+              <span class="field-hint" style="color: var(--gold-hover); font-weight: 600;">Core Estimate</span>
+            </label>
+            <input type="number" id="expenseEstimatedCost" class="form-control" min="0" step="10" placeholder="e.g. 2500" required>
+          </div>
+          <div class="form-group">
+            <label for="expenseActualCost">
+              <span>Actual / Contracted ($)</span>
+              <span class="field-hint">(Optional)</span>
+            </label>
+            <input type="number" id="expenseActualCost" class="form-control" min="0" step="10" placeholder="Defaults to estimate">
+          </div>
+        </div>
+
+        <!-- Milestones Breakdown Box -->
+        <div class="modal-milestones-box">
+          <div class="milestone-header-line">
+            <label style="font-weight: 700; font-size: 0.88rem;">Payment Milestones & Due Dates</label>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn btn-secondary btn-sm" id="autoFillMilestoneBtn" title="Set single payment for full cost">⚡ Pay on Wedding Day</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="addMilestoneRowBtn">+ Add Milestone</button>
+            </div>
+          </div>
+          <p class="field-hint" style="margin-bottom: 10px;">
+            Break this cost into deposit and balance due dates (or set a single payment due date):
+          </p>
+          <div id="modalMilestonesContainer">
+            <!-- Dynamic milestone rows injected here -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="expenseNotes">Notes / Inclusions</label>
+          <textarea id="expenseNotes" class="form-control" rows="2" placeholder="Contract details, inclusions, cancellation terms..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelExpenseModalBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveExpenseSubmitBtn">Save Expense</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- =========================================================================
+       MODAL: SETTINGS & WEDDING PROFILE
+       ========================================================================= -->
+  <dialog id="settingsModal" aria-labelledby="settingsTitle">
+    <div class="modal-header">
+      <h3 id="settingsTitle">Wedding & Budget Settings</h3>
+      <button type="button" class="btn btn-text" id="closeSettingsModalBtn" aria-label="Close modal">✕</button>
+    </div>
+    <form id="settingsForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="setCoupleNames">Couple Names / Title</label>
+          <input type="text" id="setCoupleNames" class="form-control" placeholder="e.g. Sophia & Liam" required>
+        </div>
+
+        <div class="form-group">
+          <label for="setWeddingDate">Wedding Date</label>
+          <input type="date" id="setWeddingDate" class="form-control" required>
+        </div>
+
+        <!-- Optional Target Budget Goal Section -->
+        <div class="form-group budget-option-card">
+          <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 0;">
+            <span style="font-weight: 700; color: var(--text-main);">Set a Fixed Budget Goal?</span>
+            <input type="checkbox" id="setHasTargetBudget" style="width: 18px; height: 18px; cursor: pointer;">
+          </label>
+          <p class="field-hint" style="margin-top: 4px; margin-bottom: 6px;">
+            Leave unchecked to calculate your total purely from the items and estimated expenses you add.
+          </p>
+          <div id="targetBudgetInputWrapper" style="display: none; margin-top: 8px;">
+            <label for="setTargetBudget" style="font-size: 0.8rem; font-weight: 600;">Overall Budget Goal ($)</label>
+            <input type="number" id="setTargetBudget" class="form-control" min="0" step="500" placeholder="e.g. 35000">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="setCurrentSavings">Current Money Saved ($)</label>
+          <input type="number" id="setCurrentSavings" class="form-control" min="0" step="100" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label for="setPaycheckCadence">Savings Cadence</label>
+            <select id="setPaycheckCadence" class="form-control">
+              <option value="weekly">Weekly</option>
+              <option value="bi-weekly">Bi-Weekly</option>
+              <option value="semi-monthly">Semi-Monthly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="setPlannedPaycheck">Savings per Cadence ($)</label>
+            <input type="number" id="setPlannedPaycheck" class="form-control" min="0" step="25" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="setSafetyCushion">Safety Cushion Reserve ($)</label>
+          <input type="number" id="setSafetyCushion" class="form-control" min="0" step="100" required>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelSettingsModalBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- =========================================================================
+       MODAL: DATA TOOLS (BACKUP, RESTORE, SAMPLE DATA, RESET)
+       ========================================================================= -->
+  <dialog id="dataModal" aria-labelledby="dataToolsTitle">
+    <div class="modal-header">
+      <h3 id="dataToolsTitle">Data & Backup Tools</h3>
+      <button type="button" class="btn btn-text" id="closeDataModalBtn" aria-label="Close modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size: 0.9rem; color: var(--text-muted);">
+        Your wedding budget data is automatically saved locally in your browser. Use the tools below to export backups or reset.
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <button class="btn btn-secondary" id="exportJsonBtn">
+          📥 Export Data to JSON File
+        </button>
+        <button class="btn btn-secondary" id="exportCsvBtn">
+          📊 Export Payment Schedule to CSV
+        </button>
+        
+        <div style="margin-top: 10px;">
+          <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Restore from JSON File</label>
+          <input type="file" id="importJsonInput" accept=".json" class="form-control">
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color); margin: 10px 0;">
+
+        <div style="display: flex; justify-content: space-between; gap: 12px;">
+          <button class="btn btn-secondary" id="loadSampleDataBtn" title="Load sample $36k wedding">
+            🔄 Load Sample Wedding
+          </button>
+          <button class="btn btn-danger" id="resetAllDataBtn" title="Wipe all data">
+            ⚠️ Start From Scratch
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="assertive"></div>
+
+  <!-- Scripts -->
+  <script src="sample-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
