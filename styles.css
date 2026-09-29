@@ -1234,13 +1234,65 @@ dialog[open]::backdrop {
   margin-bottom: 12px;
 }
 
+#expenseModal {
+  max-width: 680px;
+  width: 94vw;
+}
+
 .milestone-input-row {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1.2fr auto auto;
+  grid-template-columns: minmax(130px, 1.8fr) minmax(90px, 1fr) minmax(148px, 1.35fr) auto auto;
   gap: 8px;
   align-items: center;
   margin-bottom: 10px;
 }
+
+.milestone-input-row .m-date {
+  min-width: 145px;
+  padding: 8px 6px;
+  font-size: 0.82rem;
+  letter-spacing: -0.01em;
+}
+
+.milestone-input-row .m-amount {
+  min-width: 85px;
+}
+
+/* Ensure HTML5 date pickers don't truncate text */
+input[type="date"] {
+  min-height: 38px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 2px;
+  margin-left: 2px;
+}
+
+@media (max-width: 640px) {
+  .milestone-input-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    background: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+  }
+  .milestone-input-row .m-title {
+    grid-column: 1 / -1;
+  }
+  .milestone-input-row .m-date {
+    min-width: 100%;
+  }
+  .milestone-input-row label {
+    grid-column: 1 / 2;
+  }
+  .milestone-input-row .remove-m-row-btn {
+    grid-column: 2 / 3;
+    justify-self: end;
+  }
+}
+
 
 /* Toast Notifications */
 .toast-container {

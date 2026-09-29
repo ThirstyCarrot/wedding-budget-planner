@@ -262,7 +262,7 @@
             </div>
           </div>
 
-          <div class="chart-container" style="height: 200px;">
+          <div class="chart-container" style="height: 240px;">
             <canvas id="categoryDonutCanvas"></canvas>
           </div>
 
@@ -398,7 +398,7 @@
               </span>
               <span class="field-hint">Starting pool</span>
             </label>
-            <input type="number" id="simCurrentSavings" class="form-control" value="0" min="0" step="100">
+            <input type="number" id="simCurrentSavings" class="form-control" value="0" min="0" step="1">
           </div>
 
           <div class="form-group">
@@ -425,7 +425,7 @@
               </span>
               <span class="field-hint">Amount you put away</span>
             </label>
-            <input type="number" id="simPlannedSavings" class="form-control" value="0" min="0" step="25">
+            <input type="number" id="simPlannedSavings" class="form-control" value="0" min="0" step="1">
           </div>
 
           <div class="form-group">
@@ -436,7 +436,7 @@
               </span>
               <span class="field-hint">Minimum cash reserve</span>
             </label>
-            <input type="number" id="simSafetyCushion" class="form-control" value="1000" min="0" step="100">
+            <input type="number" id="simSafetyCushion" class="form-control" value="1000" min="0" step="1">
           </div>
         </div>
 
@@ -509,14 +509,14 @@
               <span>Estimated Cost ($)</span>
               <span class="field-hint" style="color: var(--gold-hover); font-weight: 600;">Core Estimate</span>
             </label>
-            <input type="number" id="expenseEstimatedCost" class="form-control" min="0" step="10" placeholder="e.g. 2500" required>
+            <input type="number" id="expenseEstimatedCost" class="form-control" min="0" step="1" placeholder="e.g. 2500" required>
           </div>
           <div class="form-group">
             <label for="expenseActualCost">
               <span>Actual / Contracted ($)</span>
               <span class="field-hint">(Optional)</span>
             </label>
-            <input type="number" id="expenseActualCost" class="form-control" min="0" step="10" placeholder="Defaults to estimate">
+            <input type="number" id="expenseActualCost" class="form-control" min="0" step="1" placeholder="Defaults to estimate">
           </div>
         </div>
 
@@ -584,7 +584,7 @@
           </p>
           <div id="targetBudgetInputWrapper" style="display: none; margin-top: 8px;">
             <label for="setTargetBudget" style="font-size: 0.8rem; font-weight: 600;">Overall Budget Goal ($)</label>
-            <input type="number" id="setTargetBudget" class="form-control" min="0" step="500" placeholder="e.g. 35000">
+            <input type="number" id="setTargetBudget" class="form-control" min="0" step="1" placeholder="e.g. 35000">
           </div>
         </div>
 
@@ -596,7 +596,7 @@
             </span>
             <span class="field-hint">In bank today</span>
           </label>
-          <input type="number" id="setCurrentSavings" class="form-control" min="0" step="100" required>
+          <input type="number" id="setCurrentSavings" class="form-control" min="0" step="1" required>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
@@ -621,7 +621,7 @@
                 <span class="info-badge" aria-label="Info about Savings per Cadence">ℹ️</span>
               </span>
             </label>
-            <input type="number" id="setPlannedPaycheck" class="form-control" min="0" step="25" required>
+            <input type="number" id="setPlannedPaycheck" class="form-control" min="0" step="1" required>
           </div>
         </div>
 
@@ -633,7 +633,7 @@
             </span>
             <span class="field-hint">Protected minimum balance</span>
           </label>
-          <input type="number" id="setSafetyCushion" class="form-control" min="0" step="100" required>
+          <input type="number" id="setSafetyCushion" class="form-control" min="0" step="1" required>
         </div>
       </div>
 

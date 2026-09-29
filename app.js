@@ -23,6 +23,16 @@
   let scheduleFilter = 'all-unpaid';
   let activeExpenseModalId = null;
 
+  // Standard Industry Wedding Budget Benchmark Distribution
+  const BENCHMARK_DISTRIBUTION = [
+    { name: 'Reception & Venue', pct: 45, color: '#B38A58', icon: '🏰' },
+    { name: 'Photography & Video', pct: 15, color: '#916A7E', icon: '📸' },
+    { name: 'Attire, Rings & Beauty', pct: 12, color: '#68827A', icon: '👗' },
+    { name: 'Floral & Decor', pct: 10, color: '#889868', icon: '💐' },
+    { name: 'Music & Entertainment', pct: 8, color: '#A06B52', icon: '🎷' },
+    { name: 'Stationery & Misc', pct: 10, color: '#768599', icon: '💌' }
+  ];
+
   // DOM Elements
   const DOM = {
     // Header & Hero
@@ -975,7 +985,8 @@
       if (DOM.kpiBudgetTitle) DOM.kpiBudgetTitle.textContent = 'Total Estimated Cost';
       if (DOM.kpiBudgetIcon) DOM.kpiBudgetIcon.textContent = '📊';
       DOM.kpiTargetBudget.textContent = formatCurrency(data.totalEstimated);
-      DOM.kpiBudgetDiff.innerHTML = `Sum of ${state.expenses.length} estimated items • <button type="button" class="btn-link-action" id="kpiSetBudgetBtn">Set goal</button>`;
+      const itemsLabel = state.expenses.length === 1 ? '1 item' : `${state.expenses.length} items`;
+      DOM.kpiBudgetDiff.innerHTML = `<span style="color: var(--text-muted);">Across ${itemsLabel}</span> <button type="button" class="btn-link-action" id="kpiSetBudgetBtn" style="margin-left: auto;">Set budget goal →</button>`;
       DOM.kpiBudgetBar.style.width = state.expenses.length > 0 ? '100%' : '0%';
 
       const setGoalBtn = document.getElementById('kpiSetBudgetBtn');
@@ -1387,21 +1398,43 @@
     });
 
     // Render Category Legend List for the chart panel
+    // Render Category Legend List for the chart panel
     const legendList = DOM.categoryLegendList;
+    if (!legendList) return;
     legendList.innerHTML = '';
     const hasExpenses = state.expenses.length > 0;
     if (!hasExpenses) {
-      legendList.innerHTML = `
-        <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
-          Category breakdown will appear here once you add expenses.
+      let benchmarkHtml = `
+        <div style="margin-bottom: 8px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gold-hover); display: flex; justify-content: space-between; align-items: center;">
+          <span>Recommended Benchmarks</span>
+          <span style="font-weight: 500; font-size: 0.72rem; color: var(--text-light);">Industry Standard</span>
         </div>
       `;
+
+      BENCHMARK_DISTRIBUTION.forEach(b => {
+        benchmarkHtml += `
+          <div class="legend-item" style="padding: 5px 8px;">
+            <div class="legend-left" style="gap: 8px;">
+              <span class="legend-color-dot" style="background: ${b.color}; width: 10px; height: 10px;"></span>
+              <span style="font-size: 0.82rem;">${b.icon} ${b.name}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 55px; height: 5px; background: rgba(0,0,0,0.06); border-radius: 4px; overflow: hidden;">
+                <div style="width: ${b.pct * 2}%; height: 100%; background: ${b.color}; border-radius: 4px;"></div>
+              </div>
+              <span style="font-weight: 700; font-size: 0.82rem; min-width: 32px; text-align: right;">${b.pct}%</span>
+            </div>
+          </div>
+        `;
+      });
+      legendList.innerHTML = benchmarkHtml;
     } else {
       DEFAULT_CATEGORIES.forEach(cat => {
         const expenses = state.expenses.filter(e => e.categoryId === cat.id);
         if (expenses.length === 0) return;
-        const total = expenses.reduce((s, e) => s + Number(e.actualCost || 0), 0);
-        const pct = data.totalActual > 0 ? Math.round((total / data.totalActual) * 100) : 0;
+        const total = expenses.reduce((s, e) => s + Number(e.actualCost || e.estimatedCost || 0), 0);
+        const totalBase = data.totalActual > 0 ? data.totalActual : (data.totalEstimated || 1);
+        const pct = Math.round((total / totalBase) * 100);
 
         const item = document.createElement('div');
         item.className = 'legend-item';
@@ -1410,7 +1443,12 @@
             <span class="legend-color-dot" style="background: ${cat.color};"></span>
             <span>${cat.icon} ${escapeHtml(cat.name)}</span>
           </div>
-          <span style="font-weight: 700;">${formatCurrency(total)} (${pct}%)</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 60px; height: 5px; background: rgba(0,0,0,0.06); border-radius: 4px; overflow: hidden;">
+              <div style="width: ${pct}%; height: 100%; background: ${cat.color}; border-radius: 4px;"></div>
+            </div>
+            <span style="font-weight: 700; font-size: 0.82rem;">${formatCurrency(total)} (${pct}%)</span>
+          </div>
         `;
         legendList.appendChild(item);
       });
@@ -1515,29 +1553,67 @@
     const { ctx, width, height } = setupCanvasDPI(canvas);
     ctx.clearRect(0, 0, width, height);
 
-    const steps = data.simulation.timelineSteps;
-    if (steps.length === 0) {
-      ctx.fillStyle = '#6E6862';
-      ctx.font = '14px Plus Jakarta Sans';
-      ctx.textAlign = 'center';
-      ctx.fillText('No upcoming payment milestones to chart', width / 2, height / 2);
-      return;
-    }
-
-    const padLeft = 60;
+    const padLeft = 65;
     const padRight = 30;
-    const padTop = 20;
+    const padTop = 28;
     const padBottom = 40;
     const chartW = width - padLeft - padRight;
     const chartH = height - padTop - padBottom;
 
+    const realSteps = data.simulation.timelineSteps;
+    const isPreview = realSteps.length === 0;
+
+    // Build timeline points (either real or realistic pro-forma preview)
+    let steps = [];
+    if (isPreview) {
+      // Determine illustrative scale based on target budget or typical average
+      const baseBudget = state.targetBudget > 0 
+        ? state.targetBudget 
+        : (data.totalEstimated > 0 ? data.totalEstimated : 28000);
+      const startSavings = Math.max(state.currentSavings || 0, Math.round(baseBudget * 0.15));
+      const cushion = state.safetyCushion || 1000;
+      
+      const previewMilestones = [
+        { label: 'Venue Deposit', dateLabel: 'Deposit', duePct: 0.25, savingsPct: 0.35 },
+        { label: 'Photo/Video', dateLabel: '6 Mos', duePct: 0.45, savingsPct: 0.55 },
+        { label: 'Attire & Rings', dateLabel: '4 Mos', duePct: 0.65, savingsPct: 0.75 },
+        { label: 'Floral & Music', dateLabel: '2 Mos', duePct: 0.82, savingsPct: 0.90 },
+        { label: 'Final Balances', dateLabel: 'Wedding Day', duePct: 1.00, savingsPct: 1.05 }
+      ];
+
+      steps = previewMilestones.map((m) => {
+        const cumulativeDue = Math.round(baseBudget * m.duePct);
+        const cumSavings = Math.round(startSavings + (baseBudget * (m.savingsPct - 0.15)));
+        const projectedBalance = cumSavings - cumulativeDue + cushion;
+        return {
+          label: m.label,
+          dateLabel: m.dateLabel,
+          cumulativeDue,
+          projectedBalance,
+          isDeficit: false
+        };
+      });
+    } else {
+      steps = realSteps.map((s) => {
+        const parts = s.milestone.dueDate.split('-');
+        const dateLabel = parts.length === 3 ? `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}` : s.milestone.dueDate;
+        return {
+          label: s.milestone.title,
+          dateLabel,
+          cumulativeDue: s.cumulativeDue,
+          projectedBalance: s.projectedBalance,
+          isDeficit: s.isDeficit
+        };
+      });
+    }
+
     // Determine scale
     let maxVal = Math.max(
-      data.totalActual,
-      data.currentSavings + (steps[steps.length - 1].paychecksReceived * state.plannedSavingsPerPaycheck),
-      ...steps.map(s => s.projectedBalance)
+      ...steps.map(s => Math.max(s.cumulativeDue || 0, s.projectedBalance || 0)),
+      state.safetyCushion || 1000,
+      1000
     );
-    let minVal = Math.min(0, ...steps.map(s => s.projectedBalance));
+    let minVal = Math.min(0, ...steps.map(s => s.projectedBalance || 0));
     maxVal = Math.ceil((maxVal * 1.15) / 1000) * 1000;
     if (minVal < 0) minVal = Math.floor((minVal * 1.2) / 1000) * 1000;
 
@@ -1552,11 +1628,11 @@
       return padLeft + (index / (total - 1)) * chartW;
     }
 
-    // Grid lines
-    ctx.strokeStyle = 'rgba(60, 50, 40, 0.08)';
+    // 1. Grid Lines & Left Axis Labels
+    ctx.strokeStyle = 'rgba(60, 50, 40, 0.07)';
     ctx.lineWidth = 1;
-    ctx.fillStyle = '#989189';
-    ctx.font = '11px Plus Jakarta Sans';
+    ctx.fillStyle = '#8A847D';
+    ctx.font = '500 11px Plus Jakarta Sans, sans-serif';
     ctx.textAlign = 'right';
 
     const gridSteps = 4;
@@ -1567,13 +1643,18 @@
       ctx.moveTo(padLeft, y);
       ctx.lineTo(width - padRight, y);
       ctx.stroke();
-      ctx.fillText('$' + Math.round(v).toLocaleString(), padLeft - 8, y + 4);
+
+      let label = '$' + Math.round(v).toLocaleString();
+      if (Math.abs(v) >= 10000) {
+        label = '$' + Math.round(v / 1000) + 'k';
+      }
+      ctx.fillText(label, padLeft - 8, y + 4);
     }
 
-    // Zero / Baseline if applicable
+    // 2. Zero baseline if negative
     if (minVal < 0) {
       const zeroY = getY(0);
-      ctx.strokeStyle = 'rgba(192, 57, 43, 0.4)';
+      ctx.strokeStyle = 'rgba(192, 57, 43, 0.35)';
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
       ctx.moveTo(padLeft, zeroY);
@@ -1582,53 +1663,163 @@
       ctx.setLineDash([]);
     }
 
-    // Line 1: Cumulative Payments Due (Rose/Red)
-    ctx.strokeStyle = '#C4797D';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    steps.forEach((s, idx) => {
-      const x = getX(idx, steps.length);
-      const y = getY(s.cumulativeDue);
-      if (idx === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // Line 2: Projected Savings Balance (Gold/Champagne)
-    ctx.strokeStyle = '#C5A059';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    steps.forEach((s, idx) => {
-      const x = getX(idx, steps.length);
-      const y = getY(s.projectedBalance);
-      if (idx === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // Data points & markers
-    steps.forEach((s, idx) => {
-      const x = getX(idx, steps.length);
-      const y = getY(s.projectedBalance);
-
-      ctx.fillStyle = s.isDeficit ? '#C0392B' : '#C5A059';
+    // 3. Safety Cushion Reference Line
+    const cushionVal = state.safetyCushion || 1000;
+    if (cushionVal >= minVal && cushionVal <= maxVal) {
+      const cushionY = getY(cushionVal);
+      ctx.strokeStyle = 'rgba(197, 160, 89, 0.4)';
+      ctx.setLineDash([5, 5]);
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.moveTo(padLeft, cushionY);
+      ctx.lineTo(width - padRight, cushionY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = 'rgba(197, 160, 89, 0.85)';
+      ctx.font = '600 10px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Cushion: $${cushionVal.toLocaleString()}`, width - padRight, cushionY - 5);
+    }
+
+    // Baseline Y for area gradients
+    const baselineY = getY(Math.max(0, minVal));
+
+    // Helper for drawing smooth spline curve
+    function drawCurvePath(points) {
+      if (points.length === 0) return;
+      ctx.moveTo(points[0].x, points[0].y);
+      if (points.length === 1) return;
+      if (points.length === 2) {
+        ctx.lineTo(points[1].x, points[1].y);
+        return;
+      }
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = i > 0 ? points[i - 1] : points[i];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = i < points.length - 2 ? points[i + 2] : p2;
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+      }
+    }
+
+    const duePoints = steps.map((s, idx) => ({ x: getX(idx, steps.length), y: getY(s.cumulativeDue) }));
+    const balancePoints = steps.map((s, idx) => ({ x: getX(idx, steps.length), y: getY(s.projectedBalance) }));
+
+    // 4. Area Fill: Cumulative Payments Due (Soft Rose Gradient)
+    const roseGrad = ctx.createLinearGradient(0, padTop, 0, baselineY);
+    roseGrad.addColorStop(0, 'rgba(196, 121, 125, 0.22)');
+    roseGrad.addColorStop(1, 'rgba(196, 121, 125, 0.01)');
+    ctx.fillStyle = roseGrad;
+    ctx.beginPath();
+    drawCurvePath(duePoints);
+    ctx.lineTo(duePoints[duePoints.length - 1].x, baselineY);
+    ctx.lineTo(duePoints[0].x, baselineY);
+    ctx.closePath();
+    ctx.fill();
+
+    // 5. Area Fill: Projected Savings Balance (Soft Gold Gradient)
+    const goldGrad = ctx.createLinearGradient(0, padTop, 0, baselineY);
+    goldGrad.addColorStop(0, 'rgba(197, 160, 89, 0.25)');
+    goldGrad.addColorStop(1, 'rgba(197, 160, 89, 0.02)');
+    ctx.fillStyle = goldGrad;
+    ctx.beginPath();
+    drawCurvePath(balancePoints);
+    ctx.lineTo(balancePoints[balancePoints.length - 1].x, baselineY);
+    ctx.lineTo(balancePoints[0].x, baselineY);
+    ctx.closePath();
+    ctx.fill();
+
+    // 6. Stroke Line 1: Cumulative Due (Rose)
+    ctx.strokeStyle = isPreview ? 'rgba(196, 121, 125, 0.7)' : '#C4797D';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    if (isPreview) ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    drawCurvePath(duePoints);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 7. Stroke Line 2: Projected Savings Balance (Gold)
+    ctx.strokeStyle = isPreview ? 'rgba(197, 160, 89, 0.85)' : '#C5A059';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    drawCurvePath(balancePoints);
+    ctx.stroke();
+
+    // 8. Draw Points & X-Axis Labels
+    steps.forEach((s, idx) => {
+      const ptBalance = balancePoints[idx];
+      const ptDue = duePoints[idx];
+
+      // Due point node
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(ptDue.x, ptDue.y, 4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#FFFFFF';
+      ctx.strokeStyle = '#C4797D';
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // X-Axis date labels
+      // Balance point node
+      const pointColor = s.isDeficit ? '#C0392B' : '#C5A059';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(ptBalance.x, ptBalance.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = pointColor;
+      ctx.beginPath();
+      ctx.arc(ptBalance.x, ptBalance.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = pointColor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // X-Axis Date / Milestone Labels
       ctx.fillStyle = '#6E6862';
-      ctx.font = '10px Plus Jakarta Sans';
+      ctx.font = '600 10.5px Plus Jakarta Sans, sans-serif';
       ctx.textAlign = 'center';
-      if (idx === 0 || idx === steps.length - 1 || idx % Math.ceil(steps.length / 5) === 0) {
-        const parts = s.milestone.dueDate.split('-');
-        const dateLabel = parts.length === 3 ? `${parts[1]}/${parts[2]}` : s.milestone.dueDate;
-        ctx.fillText(dateLabel, x, height - padBottom + 18);
+      ctx.fillText(s.dateLabel, ptBalance.x, height - padBottom + 16);
+
+      // In preview mode or when few points, show milestone title lightly
+      if (isPreview && s.label) {
+        ctx.fillStyle = '#9E9790';
+        ctx.font = '500 9px Plus Jakarta Sans, sans-serif';
+        ctx.fillText(s.label, ptBalance.x, height - padBottom + 28);
       }
     });
+
+    // 9. If Preview Mode, overlay a graceful info pill badge
+    if (isPreview) {
+      const badgeW = Math.min(390, width - 40);
+      const badgeH = 26;
+      const badgeX = (width - badgeW) / 2;
+      const badgeY = padTop - 20;
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+      ctx.strokeStyle = 'rgba(197, 160, 89, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 13);
+      } else {
+        ctx.rect(badgeX, badgeY, badgeW, badgeH);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#8B6A2B';
+      ctx.font = '600 11px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('✨ Illustrative Cashflow Model • Add milestones to chart live balances', width / 2, badgeY + 17);
+    }
   }
 
   function renderCategoryDonutChart(data) {
@@ -1640,49 +1831,82 @@
 
     const centerX = width / 2;
     const centerY = height / 2;
-    const outerRadius = Math.min(centerX, centerY) - 10;
-    const innerRadius = outerRadius * 0.65;
+    const outerRadius = Math.min(centerX, centerY) - 8;
+    const innerRadius = outerRadius * 0.64;
 
     let total = 0;
     const slices = [];
     DEFAULT_CATEGORIES.forEach(cat => {
       const expenses = state.expenses.filter(e => e.categoryId === cat.id);
-      const catSum = expenses.reduce((s, e) => s + Number(e.actualCost || 0), 0);
+      // Use actual cost if entered, else estimated cost so the chart is useful right away
+      const catSum = expenses.reduce((s, e) => s + Number(e.actualCost || e.estimatedCost || 0), 0);
       if (catSum > 0) {
         slices.push({ cat, amount: catSum });
         total += catSum;
       }
     });
 
-    if (total === 0) {
-      ctx.fillStyle = '#989189';
-      ctx.font = '13px Plus Jakarta Sans';
-      ctx.textAlign = 'center';
-      ctx.fillText('No expenses allocated', centerX, centerY);
-      return;
-    }
+    const isBenchmark = slices.length === 0 || total === 0;
+    const chartSlices = isBenchmark
+      ? BENCHMARK_DISTRIBUTION.map(b => ({
+          color: b.color,
+          name: b.name,
+          ratio: b.pct / 100
+        }))
+      : slices.map(s => ({
+          color: s.cat.color,
+          name: s.cat.name,
+          ratio: s.amount / total
+        }));
 
     let startAngle = -Math.PI / 2;
-    slices.forEach(slice => {
-      const sliceAngle = (slice.amount / total) * Math.PI * 2;
-      ctx.fillStyle = slice.cat.color;
+    const gapAngle = 0.035; // clean 2-3px gap between slices
+
+    chartSlices.forEach(slice => {
+      const sliceAngle = slice.ratio * Math.PI * 2;
+      const actualSliceAngle = Math.max(0.01, sliceAngle - gapAngle);
+      const halfGap = gapAngle / 2;
+
+      ctx.fillStyle = slice.color;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, outerRadius, startAngle, startAngle + sliceAngle);
-      ctx.arc(centerX, centerY, innerRadius, startAngle + sliceAngle, startAngle, true);
+      ctx.arc(centerX, centerY, outerRadius, startAngle + halfGap, startAngle + halfGap + actualSliceAngle);
+      ctx.arc(centerX, centerY, innerRadius, startAngle + halfGap + actualSliceAngle, startAngle + halfGap, true);
       ctx.closePath();
       ctx.fill();
+
       startAngle += sliceAngle;
     });
 
     // Center hole text
-    ctx.fillStyle = '#242220';
-    ctx.font = 'bold 15px Plus Jakarta Sans';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(formatCurrency(total), centerX, centerY - 6);
-    ctx.fillStyle = '#6E6862';
-    ctx.font = '10px Plus Jakarta Sans';
-    ctx.fillText('Total Actual', centerX, centerY + 12);
+    if (isBenchmark) {
+      ctx.fillStyle = '#C5A059';
+      ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('RECOMMENDED', centerX, centerY - 14);
+
+      ctx.fillStyle = '#242220';
+      ctx.font = '700 15px Plus Jakarta Sans, sans-serif';
+      ctx.fillText('Ideal Split', centerX, centerY + 2);
+
+      ctx.fillStyle = '#8A847D';
+      ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
+      ctx.fillText('Industry Standards', centerX, centerY + 17);
+    } else {
+      ctx.fillStyle = '#8A847D';
+      ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('TOTAL ALLOCATED', centerX, centerY - 14);
+
+      ctx.fillStyle = '#242220';
+      ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
+      ctx.fillText(formatCurrency(total), centerX, centerY + 2);
+
+      ctx.fillStyle = '#6E6862';
+      ctx.font = '500 10.5px Plus Jakarta Sans, sans-serif';
+      ctx.fillText(`${slices.length} ${slices.length === 1 ? 'Category' : 'Categories'}`, centerX, centerY + 18);
+    }
   }
 
   // =========================================================================
@@ -1732,7 +1956,7 @@
     const dateVal = m.dueDate || state.weddingDate || '';
     row.innerHTML = `
       <input type="text" class="form-control m-title" placeholder="e.g. Full Payment or Deposit" value="${escapeHtml(m.title || 'Payment Due')}">
-      <input type="number" class="form-control m-amount" placeholder="Amount ($)" min="0" step="10" value="${amountVal}">
+      <input type="number" class="form-control m-amount" placeholder="Amount ($)" min="0" step="1" value="${amountVal}">
       <input type="date" class="form-control m-date" value="${dateVal}">
       <label style="font-size: 0.76rem; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap;">
         <input type="checkbox" class="m-paid" ${m.isPaid ? 'checked' : ''}> Paid
