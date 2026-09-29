@@ -1589,6 +1589,15 @@
     return { ctx, width: w, height: h };
   }
 
+  function getSimulatorMaxPace() {
+    // Fixed stable baseline: NEVER depends on activePace/simulatedPace to prevent infinite growth runaway loops
+    const planned = Number(state.plannedSavingsPerPaycheck) || 0;
+    if (planned > 1500) {
+      return Math.max(3000, Math.ceil((planned * 2) / 500) * 500);
+    }
+    return 3000;
+  }
+
   function renderCashflowChart(data) {
     const canvas = DOM.cashflowCanvas;
     if (!canvas || !canvas.parentElement) return;
@@ -1607,14 +1616,14 @@
       DOM.chartSimPaceDisplay.textContent = `${formatCurrency(activePace)} / ${cadence}`;
     }
     if (DOM.chartSimPaceSlider) {
-      const maxPace = Math.max(3000, Math.ceil((Math.max(activePace, state.plannedSavingsPerPaycheck) * 2.2) / 250) * 250);
+      const maxPace = getSimulatorMaxPace();
       if (DOM.chartSimPaceSlider.max !== String(maxPace)) {
         DOM.chartSimPaceSlider.max = maxPace;
         const maxBound = document.getElementById('sliderMaxBound');
         if (maxBound) maxBound.textContent = formatCurrency(maxPace);
       }
       if (!isDraggingSlider) {
-        DOM.chartSimPaceSlider.value = activePace;
+        DOM.chartSimPaceSlider.value = Math.min(activePace, maxPace);
       }
     }
     if (DOM.applySimPaceBtn) {
@@ -1669,22 +1678,23 @@
       const startSavings = Math.max(state.currentSavings || 0, Math.round(baseBudget * 0.15));
       const cushion = state.safetyCushion || 1000;
       const previewMilestones = [
-        { label: 'Venue Deposit', dateLabel: 'Deposit', duePct: 0.25, savingsPct: 0.35 },
-        { label: 'Photo/Video', dateLabel: '6 Mos', duePct: 0.45, savingsPct: 0.55 },
-        { label: 'Attire & Rings', dateLabel: '4 Mos', duePct: 0.65, savingsPct: 0.75 },
-        { label: 'Floral & Music', dateLabel: '2 Mos', duePct: 0.82, savingsPct: 0.90 },
-        { label: 'Final Balances', dateLabel: 'Wedding Day', duePct: 1.00, savingsPct: 1.05 }
+        { label: 'Venue Deposit', dateLabel: 'Deposit', duePct: 0.25, periods: 2 },
+        { label: 'Photo/Video', dateLabel: '6 Mos', duePct: 0.45, periods: 6 },
+        { label: 'Attire & Rings', dateLabel: '4 Mos', duePct: 0.65, periods: 10 },
+        { label: 'Floral & Music', dateLabel: '2 Mos', duePct: 0.82, periods: 14 },
+        { label: 'Final Balances', dateLabel: 'Wedding Day', duePct: 1.00, periods: 20 }
       ];
+      const effectivePace = activePace > 0 ? activePace : Math.round((baseBudget * 0.85) / 20);
       steps = previewMilestones.map(m => {
         const cumulativeDue = Math.round(baseBudget * m.duePct);
-        const cumSavings = Math.round(startSavings + (baseBudget * (m.savingsPct - 0.15)));
-        const projectedBalance = cumSavings - cumulativeDue + cushion;
+        const cumSavings = Math.round(startSavings + (effectivePace * m.periods));
+        const projectedBalance = cumSavings - cumulativeDue;
         return {
           label: m.label,
           dateLabel: m.dateLabel,
           cumulativeDue,
           projectedBalance,
-          isDeficit: false
+          isDeficit: projectedBalance < cushion
         };
       });
     } else {
@@ -2058,14 +2068,15 @@
 
     let steps = [];
     if (isPreview) {
-      const base = state.targetBudget > 0 ? state.targetBudget : 28000;
       const start = Math.max(state.currentSavings || 0, 5000);
+      const cushion = state.safetyCushion || 1000;
+      const effectivePace = activePace > 0 ? activePace : 500;
       steps = [
-        { label: 'Starting Pool', dateLabel: 'Start', balance: start, drop: 0, isDeficit: false },
-        { label: 'Venue Deposit', dateLabel: '9 Mos', balance: start + 2000 - 3500, drop: 3500, isDeficit: false },
-        { label: 'Photo/Video', dateLabel: '6 Mos', balance: start + 4500 - 6500, drop: 3000, isDeficit: false },
-        { label: 'Floral & Attire', dateLabel: '3 Mos', balance: start + 7500 - 9500, drop: 3000, isDeficit: false },
-        { label: 'Final Due', dateLabel: 'Wedding', balance: start + 11000 - 12000, drop: 2500, isDeficit: false }
+        { label: 'Starting Pool', dateLabel: 'Start', balance: start, drop: 0, isDeficit: start < cushion },
+        { label: 'Venue Deposit', dateLabel: '9 Mos', balance: start + (effectivePace * 2) - 3500, drop: 3500, isDeficit: (start + (effectivePace * 2) - 3500) < cushion },
+        { label: 'Photo/Video', dateLabel: '6 Mos', balance: start + (effectivePace * 6) - 6500, drop: 3000, isDeficit: (start + (effectivePace * 6) - 6500) < cushion },
+        { label: 'Floral & Attire', dateLabel: '3 Mos', balance: start + (effectivePace * 12) - 9500, drop: 3000, isDeficit: (start + (effectivePace * 12) - 9500) < cushion },
+        { label: 'Final Due', dateLabel: 'Wedding', balance: start + (effectivePace * 20) - 12000, drop: 2500, isDeficit: (start + (effectivePace * 20) - 12000) < cushion }
       ];
     } else {
       steps = realSteps.map((s, idx) => {
