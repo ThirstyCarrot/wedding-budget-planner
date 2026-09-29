@@ -22,6 +22,11 @@
   let activeTab = 'dashboard';
   let scheduleFilter = 'all-unpaid';
   let activeExpenseModalId = null;
+  let cashflowChartMode = 'trajectory'; // 'trajectory' | 'monthly' | 'steps'
+  let donutChartMode = 'actual'; // 'actual' | 'benchmark'
+  let simulatedPace = null;
+  let activeHoverPoint = null;
+  let chartInteractionPoints = [];
 
   // Standard Industry Wedding Budget Benchmark Distribution
   const BENCHMARK_DISTRIBUTION = [
@@ -131,10 +136,24 @@
     simStatusDetail: document.getElementById('simStatusDetail'),
     simBreakdownBody: document.getElementById('simBreakdownBody'),
 
-    // Canvases
+    // Canvases & Interactive Chart Controls
     cashflowCanvas: document.getElementById('cashflowCanvas'),
     categoryDonutCanvas: document.getElementById('categoryDonutCanvas'),
     chartStatusPill: document.getElementById('chartStatusPill'),
+    cashflowChartContainer: document.getElementById('cashflowChartContainer'),
+    cashflowViewModeGroup: document.getElementById('cashflowViewModeGroup'),
+    cashflowTooltip: document.getElementById('cashflowTooltip'),
+    chartSimPaceSlider: document.getElementById('chartSimPaceSlider'),
+    chartSimPaceDisplay: document.getElementById('chartSimPaceDisplay'),
+    applySimPaceBtn: document.getElementById('applySimPaceBtn'),
+    presetPaceMinus50: document.getElementById('presetPaceMinus50'),
+    presetPaceCurrent: document.getElementById('presetPaceCurrent'),
+    presetPacePlus50: document.getElementById('presetPacePlus50'),
+    presetPaceAuto: document.getElementById('presetPaceAuto'),
+    legendLabelSavings: document.getElementById('legendLabelSavings'),
+    legendLabelDue: document.getElementById('legendLabelDue'),
+    legendCushionItem: document.getElementById('legendCushionItem'),
+    donutViewModeGroup: document.getElementById('donutViewModeGroup'),
 
     // Modals
     expenseModal: document.getElementById('expenseModal'),
@@ -1403,7 +1422,7 @@
     if (!legendList) return;
     legendList.innerHTML = '';
     const hasExpenses = state.expenses.length > 0;
-    if (!hasExpenses) {
+    if (!hasExpenses || donutChartMode === 'benchmark') {
       let benchmarkHtml = `
         <div style="margin-bottom: 8px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gold-hover); display: flex; justify-content: space-between; align-items: center;">
           <span>Recommended Benchmarks</span>
@@ -1531,48 +1550,107 @@
   // =========================================================================
   // CANVAS CHARTS (HIGH-DPI)
   // =========================================================================
+  // =========================================================================
+  // CANVAS CHARTS (HIGH-DPI & INTERACTIVE)
+  // =========================================================================
   function renderCharts(data) {
+    if (!data) data = calculateFinancialAnalytics();
     renderCashflowChart(data);
     renderCategoryDonutChart(data);
   }
 
   function setupCanvasDPI(canvas) {
+    if (!canvas) return null;
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    // Strictly clamp dimensions to container width/height to prevent feedback loop growth
+    const parent = canvas.parentElement;
+    const w = Math.round(rect.width || (parent ? parent.clientWidth : 300));
+    const h = Math.round(rect.height || (parent ? parent.clientHeight : 280));
+    if (w <= 0 || h <= 0) return null;
+
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
     const ctx = canvas.getContext('2d');
+    if (ctx.resetTransform) {
+      ctx.resetTransform();
+    } else {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
     ctx.scale(dpr, dpr);
-    return { ctx, width: rect.width, height: rect.height };
+    return { ctx, width: w, height: h };
   }
 
   function renderCashflowChart(data) {
     const canvas = DOM.cashflowCanvas;
     if (!canvas || !canvas.parentElement) return;
 
-    const { ctx, width, height } = setupCanvasDPI(canvas);
+    const setup = setupCanvasDPI(canvas);
+    if (!setup) return;
+    const { ctx, width, height } = setup;
     ctx.clearRect(0, 0, width, height);
 
-    const padLeft = 65;
-    const padRight = 30;
-    const padTop = 28;
-    const padBottom = 40;
+    // Active pace (simulated pace if user is testing slider, else planned pace)
+    const activePace = simulatedPace !== null ? simulatedPace : state.plannedSavingsPerPaycheck;
+    const cadence = getCadenceName(state.paycheckCadence);
+
+    // Update Pace Simulator Toolbar
+    if (DOM.chartSimPaceDisplay) {
+      DOM.chartSimPaceDisplay.textContent = `${formatCurrency(activePace)} / ${cadence}`;
+    }
+    if (DOM.chartSimPaceSlider) {
+      DOM.chartSimPaceSlider.value = activePace;
+    }
+    if (DOM.applySimPaceBtn) {
+      DOM.applySimPaceBtn.style.display = (simulatedPace !== null && simulatedPace !== state.plannedSavingsPerPaycheck) ? 'inline-block' : 'none';
+    }
+
+    // Clear interaction points for hover detection
+    chartInteractionPoints = [];
+
+    // Dispatch to selected chart view mode
+    if (cashflowChartMode === 'monthly') {
+      renderMonthlyBarsChart(data, ctx, width, height, activePace);
+    } else if (cashflowChartMode === 'steps') {
+      renderStepChart(data, ctx, width, height, activePace);
+    } else {
+      renderTrajectoryChart(data, ctx, width, height, activePace);
+    }
+  }
+
+  // View 1: 📈 Trajectory Curve
+  function renderTrajectoryChart(data, ctx, width, height, activePace) {
+    const padLeft = 58;
+    const padRight = 24;
+    const padTop = 24;
+    const padBottom = 34;
     const chartW = width - padLeft - padRight;
     const chartH = height - padTop - padBottom;
 
-    const realSteps = data.simulation.timelineSteps;
+    // Recalculate simulation steps with activePace
+    const sim = simulateCashflow(data.milestones, data.currentSavings, activePace, data.cadenceDays, data.safetyCushion, state.weddingDate);
+    const realSteps = sim.timelineSteps;
     const isPreview = realSteps.length === 0;
 
-    // Build timeline points (either real or realistic pro-forma preview)
+    // Update chart status pill
+    if (DOM.chartStatusPill) {
+      if (isPreview) {
+        DOM.chartStatusPill.textContent = 'Pro-Forma Model';
+        DOM.chartStatusPill.className = 'badge-pill badge-upcoming';
+      } else if (sim.hasDeficit) {
+        DOM.chartStatusPill.textContent = 'Deficit Risk';
+        DOM.chartStatusPill.className = 'badge-pill badge-overdue';
+      } else {
+        DOM.chartStatusPill.textContent = 'On Track';
+        DOM.chartStatusPill.className = 'badge-pill badge-paid';
+      }
+    }
+
     let steps = [];
     if (isPreview) {
-      // Determine illustrative scale based on target budget or typical average
-      const baseBudget = state.targetBudget > 0 
-        ? state.targetBudget 
-        : (data.totalEstimated > 0 ? data.totalEstimated : 28000);
+      const baseBudget = state.targetBudget > 0 ? state.targetBudget : (data.totalEstimated > 0 ? data.totalEstimated : 28000);
       const startSavings = Math.max(state.currentSavings || 0, Math.round(baseBudget * 0.15));
       const cushion = state.safetyCushion || 1000;
-      
       const previewMilestones = [
         { label: 'Venue Deposit', dateLabel: 'Deposit', duePct: 0.25, savingsPct: 0.35 },
         { label: 'Photo/Video', dateLabel: '6 Mos', duePct: 0.45, savingsPct: 0.55 },
@@ -1580,8 +1658,7 @@
         { label: 'Floral & Music', dateLabel: '2 Mos', duePct: 0.82, savingsPct: 0.90 },
         { label: 'Final Balances', dateLabel: 'Wedding Day', duePct: 1.00, savingsPct: 1.05 }
       ];
-
-      steps = previewMilestones.map((m) => {
+      steps = previewMilestones.map(m => {
         const cumulativeDue = Math.round(baseBudget * m.duePct);
         const cumSavings = Math.round(startSavings + (baseBudget * (m.savingsPct - 0.15)));
         const projectedBalance = cumSavings - cumulativeDue + cushion;
@@ -1594,7 +1671,7 @@
         };
       });
     } else {
-      steps = realSteps.map((s) => {
+      steps = realSteps.map(s => {
         const parts = s.milestone.dueDate.split('-');
         const dateLabel = parts.length === 3 ? `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}` : s.milestone.dueDate;
         return {
@@ -1607,7 +1684,6 @@
       });
     }
 
-    // Determine scale
     let maxVal = Math.max(
       ...steps.map(s => Math.max(s.cumulativeDue || 0, s.projectedBalance || 0)),
       state.safetyCushion || 1000,
@@ -1616,23 +1692,21 @@
     let minVal = Math.min(0, ...steps.map(s => s.projectedBalance || 0));
     maxVal = Math.ceil((maxVal * 1.15) / 1000) * 1000;
     if (minVal < 0) minVal = Math.floor((minVal * 1.2) / 1000) * 1000;
-
     const valRange = maxVal - minVal || 1;
 
     function getY(val) {
       return padTop + chartH - ((val - minVal) / valRange) * chartH;
     }
-
     function getX(index, total) {
       if (total <= 1) return padLeft + chartW / 2;
       return padLeft + (index / (total - 1)) * chartW;
     }
 
-    // 1. Grid Lines & Left Axis Labels
+    // Grid Lines & Y-axis labels
     ctx.strokeStyle = 'rgba(60, 50, 40, 0.07)';
     ctx.lineWidth = 1;
     ctx.fillStyle = '#8A847D';
-    ctx.font = '500 11px Plus Jakarta Sans, sans-serif';
+    ctx.font = '500 10.5px Plus Jakarta Sans, sans-serif';
     ctx.textAlign = 'right';
 
     const gridSteps = 4;
@@ -1645,13 +1719,11 @@
       ctx.stroke();
 
       let label = '$' + Math.round(v).toLocaleString();
-      if (Math.abs(v) >= 10000) {
-        label = '$' + Math.round(v / 1000) + 'k';
-      }
-      ctx.fillText(label, padLeft - 8, y + 4);
+      if (Math.abs(v) >= 10000) label = '$' + Math.round(v / 1000) + 'k';
+      ctx.fillText(label, padLeft - 7, y + 4);
     }
 
-    // 2. Zero baseline if negative
+    // Zero baseline
     if (minVal < 0) {
       const zeroY = getY(0);
       ctx.strokeStyle = 'rgba(192, 57, 43, 0.35)';
@@ -1663,12 +1735,12 @@
       ctx.setLineDash([]);
     }
 
-    // 3. Safety Cushion Reference Line
+    // Safety Cushion Line
     const cushionVal = state.safetyCushion || 1000;
     if (cushionVal >= minVal && cushionVal <= maxVal) {
       const cushionY = getY(cushionVal);
-      ctx.strokeStyle = 'rgba(197, 160, 89, 0.4)';
-      ctx.setLineDash([5, 5]);
+      ctx.strokeStyle = 'rgba(197, 160, 89, 0.45)';
+      ctx.setLineDash([4, 4]);
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.moveTo(padLeft, cushionY);
@@ -1676,16 +1748,14 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = 'rgba(197, 160, 89, 0.85)';
+      ctx.fillStyle = 'rgba(197, 160, 89, 0.9)';
       ctx.font = '600 10px Plus Jakarta Sans, sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText(`Cushion: $${cushionVal.toLocaleString()}`, width - padRight, cushionY - 5);
+      ctx.fillText(`Cushion: $${cushionVal.toLocaleString()}`, width - padRight, cushionY - 4);
     }
 
-    // Baseline Y for area gradients
     const baselineY = getY(Math.max(0, minVal));
 
-    // Helper for drawing smooth spline curve
     function drawCurvePath(points) {
       if (points.length === 0) return;
       ctx.moveTo(points[0].x, points[0].y);
@@ -1710,9 +1780,9 @@
     const duePoints = steps.map((s, idx) => ({ x: getX(idx, steps.length), y: getY(s.cumulativeDue) }));
     const balancePoints = steps.map((s, idx) => ({ x: getX(idx, steps.length), y: getY(s.projectedBalance) }));
 
-    // 4. Area Fill: Cumulative Payments Due (Soft Rose Gradient)
+    // Area Fill 1: Cumulative Due (Soft Rose)
     const roseGrad = ctx.createLinearGradient(0, padTop, 0, baselineY);
-    roseGrad.addColorStop(0, 'rgba(196, 121, 125, 0.22)');
+    roseGrad.addColorStop(0, 'rgba(196, 121, 125, 0.20)');
     roseGrad.addColorStop(1, 'rgba(196, 121, 125, 0.01)');
     ctx.fillStyle = roseGrad;
     ctx.beginPath();
@@ -1722,9 +1792,9 @@
     ctx.closePath();
     ctx.fill();
 
-    // 5. Area Fill: Projected Savings Balance (Soft Gold Gradient)
+    // Area Fill 2: Projected Savings Balance (Soft Gold)
     const goldGrad = ctx.createLinearGradient(0, padTop, 0, baselineY);
-    goldGrad.addColorStop(0, 'rgba(197, 160, 89, 0.25)');
+    goldGrad.addColorStop(0, 'rgba(197, 160, 89, 0.24)');
     goldGrad.addColorStop(1, 'rgba(197, 160, 89, 0.02)');
     ctx.fillStyle = goldGrad;
     ctx.beginPath();
@@ -1734,9 +1804,9 @@
     ctx.closePath();
     ctx.fill();
 
-    // 6. Stroke Line 1: Cumulative Due (Rose)
-    ctx.strokeStyle = isPreview ? 'rgba(196, 121, 125, 0.7)' : '#C4797D';
-    ctx.lineWidth = 2.5;
+    // Stroke 1: Cumulative Due (Rose)
+    ctx.strokeStyle = '#C4797D';
+    ctx.lineWidth = 2.4;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     if (isPreview) ctx.setLineDash([5, 4]);
@@ -1745,21 +1815,21 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 7. Stroke Line 2: Projected Savings Balance (Gold)
-    ctx.strokeStyle = isPreview ? 'rgba(197, 160, 89, 0.85)' : '#C5A059';
-    ctx.lineWidth = 3;
+    // Stroke 2: Projected Savings (Gold)
+    ctx.strokeStyle = '#C5A059';
+    ctx.lineWidth = 2.8;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.beginPath();
     drawCurvePath(balancePoints);
     ctx.stroke();
 
-    // 8. Draw Points & X-Axis Labels
+    // Nodes & Labels
     steps.forEach((s, idx) => {
       const ptBalance = balancePoints[idx];
       const ptDue = duePoints[idx];
 
-      // Due point node
+      // Due node
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
       ctx.arc(ptDue.x, ptDue.y, 4, 0, Math.PI * 2);
@@ -1768,7 +1838,7 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Balance point node
+      // Balance node
       const pointColor = s.isDeficit ? '#C0392B' : '#C5A059';
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
@@ -1782,51 +1852,337 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // X-Axis Date / Milestone Labels
+      // X-Axis Date
       ctx.fillStyle = '#6E6862';
       ctx.font = '600 10.5px Plus Jakarta Sans, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(s.dateLabel, ptBalance.x, height - padBottom + 16);
 
-      // In preview mode or when few points, show milestone title lightly
-      if (isPreview && s.label) {
-        ctx.fillStyle = '#9E9790';
-        ctx.font = '500 9px Plus Jakarta Sans, sans-serif';
-        ctx.fillText(s.label, ptBalance.x, height - padBottom + 28);
-      }
+      // Save interaction point for hover tooltip
+      chartInteractionPoints.push({
+        x: ptBalance.x,
+        y: ptBalance.y,
+        title: s.label,
+        date: s.dateLabel,
+        balance: s.projectedBalance,
+        due: s.cumulativeDue,
+        balanceLabel: 'Projected Balance',
+        dueLabel: 'Cumulative Due',
+        isDeficit: s.isDeficit
+      });
     });
 
-    // 9. If Preview Mode, overlay a graceful info pill badge
-    if (isPreview) {
-      const badgeW = Math.min(390, width - 40);
-      const badgeH = 26;
-      const badgeX = (width - badgeW) / 2;
-      const badgeY = padTop - 20;
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-      ctx.strokeStyle = 'rgba(197, 160, 89, 0.35)';
-      ctx.lineWidth = 1;
+    // Draw active hover scrub line & glowing circle if hovering
+    if (activeHoverPoint) {
+      ctx.strokeStyle = 'rgba(60, 50, 40, 0.25)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 3]);
       ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 13);
-      } else {
-        ctx.rect(badgeX, badgeY, badgeW, badgeH);
-      }
-      ctx.fill();
+      ctx.moveTo(activeHoverPoint.x, padTop);
+      ctx.lineTo(activeHoverPoint.x, height - padBottom);
       ctx.stroke();
+      ctx.setLineDash([]);
 
-      ctx.fillStyle = '#8B6A2B';
-      ctx.font = '600 11px Plus Jakarta Sans, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('✨ Illustrative Cashflow Model • Add milestones to chart live balances', width / 2, badgeY + 17);
+      ctx.beginPath();
+      ctx.arc(activeHoverPoint.x, activeHoverPoint.y, 8, 0, Math.PI * 2);
+      ctx.strokeStyle = activeHoverPoint.isDeficit ? 'rgba(192, 57, 43, 0.45)' : 'rgba(197, 160, 89, 0.5)';
+      ctx.lineWidth = 4;
+      ctx.stroke();
     }
+
+    // Legend labels
+    if (DOM.legendLabelSavings) DOM.legendLabelSavings.textContent = 'Projected Savings Balance';
+    if (DOM.legendLabelDue) DOM.legendLabelDue.textContent = 'Cumulative Payments Due';
+    if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'inline-flex';
   }
 
+  // View 2: 📊 Monthly Cash Flow Bars
+  function renderMonthlyBarsChart(data, ctx, width, height, activePace) {
+    const padLeft = 58;
+    const padRight = 24;
+    const padTop = 26;
+    const padBottom = 34;
+    const chartW = width - padLeft - padRight;
+    const chartH = height - padTop - padBottom;
+
+    const now = new Date();
+    const months = [];
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const yearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+      months.push({ yearMonth, label: monthLabel, savings: 0, due: 0 });
+    }
+
+    const paychecksPerMonth = state.paycheckCadence === 'weekly' ? 4.33 : (state.paycheckCadence === 'bi-weekly' ? 2.16 : (state.paycheckCadence === 'semi-monthly' ? 2 : 1));
+    const monthlySavings = Math.round(activePace * paychecksPerMonth);
+
+    if (data.milestones && data.milestones.length > 0) {
+      months.forEach(m => {
+        m.savings = monthlySavings;
+        const matching = data.milestones.filter(item => !item.isPaid && item.dueDate && item.dueDate.startsWith(m.yearMonth));
+        m.due = matching.reduce((sum, item) => sum + item.amount, 0);
+      });
+    } else {
+      const previewDues = [Math.round(monthlySavings * 1.5), 0, Math.round(monthlySavings * 0.8), Math.round(monthlySavings * 1.3), 0, Math.round(monthlySavings * 1.8)];
+      months.forEach((m, idx) => {
+        m.savings = monthlySavings > 0 ? monthlySavings : 1400;
+        m.due = previewDues[idx] || 0;
+      });
+    }
+
+    let maxVal = Math.max(...months.map(m => Math.max(m.savings, m.due)), 1000);
+    maxVal = Math.ceil((maxVal * 1.25) / 500) * 500;
+
+    function getY(val) {
+      return padTop + chartH - (val / maxVal) * chartH;
+    }
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(60, 50, 40, 0.07)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#8A847D';
+    ctx.font = '500 10.5px Plus Jakarta Sans, sans-serif';
+    ctx.textAlign = 'right';
+
+    for (let i = 0; i <= 4; i++) {
+      const v = (maxVal / 4) * i;
+      const y = getY(v);
+      ctx.beginPath();
+      ctx.moveTo(padLeft, y);
+      ctx.lineTo(width - padRight, y);
+      ctx.stroke();
+
+      let label = '$' + Math.round(v).toLocaleString();
+      if (v >= 10000) label = '$' + Math.round(v / 1000) + 'k';
+      ctx.fillText(label, padLeft - 7, y + 4);
+    }
+
+    const baselineY = getY(0);
+    const groupW = chartW / months.length;
+    const barW = Math.max(12, Math.min(22, groupW * 0.30));
+
+    months.forEach((m, idx) => {
+      const groupCenterX = padLeft + (idx + 0.5) * groupW;
+      const xSavings = groupCenterX - barW - 2;
+      const xDue = groupCenterX + 2;
+
+      const ySavings = getY(m.savings);
+      const hSavings = baselineY - ySavings;
+
+      const yDue = getY(m.due);
+      const hDue = baselineY - yDue;
+
+      // Draw hover highlight background
+      if (activeHoverPoint && Math.abs(activeHoverPoint.x - groupCenterX) < groupW / 2) {
+        ctx.fillStyle = 'rgba(197, 160, 89, 0.08)';
+        ctx.fillRect(padLeft + idx * groupW + 3, padTop, groupW - 6, chartH);
+      }
+
+      // Savings Bar (Gold)
+      ctx.fillStyle = '#C5A059';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(xSavings, ySavings, barW, hSavings, [4, 4, 0, 0]);
+      else ctx.rect(xSavings, ySavings, barW, hSavings);
+      ctx.fill();
+
+      // Due Bar (Rose)
+      ctx.fillStyle = '#C4797D';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(xDue, yDue, barW, hDue, [4, 4, 0, 0]);
+      else ctx.rect(xDue, yDue, barW, hDue);
+      ctx.fill();
+
+      // Month Label
+      ctx.fillStyle = '#6E6862';
+      ctx.font = '600 10.5px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(m.label, groupCenterX, height - padBottom + 16);
+
+      // Net Pill above highest bar
+      const topY = Math.min(ySavings, yDue) - 6;
+      const net = m.savings - m.due;
+      ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+      ctx.fillStyle = net >= 0 ? '#2E7D32' : '#C0392B';
+      const netText = net >= 0 ? `+${formatCurrency(net)}` : `-${formatCurrency(Math.abs(net))}`;
+      ctx.fillText(netText, groupCenterX, topY);
+
+      chartInteractionPoints.push({
+        x: groupCenterX,
+        y: Math.min(ySavings, yDue),
+        title: `${m.label} Cash Flow`,
+        date: m.label,
+        balance: m.savings,
+        due: m.due,
+        balanceLabel: 'Savings Added',
+        dueLabel: 'Payments Due',
+        isDeficit: net < 0,
+        statusText: net >= 0 ? `Net Cash In: +${formatCurrency(net)}` : `Net Outflow: -${formatCurrency(Math.abs(net))}`
+      });
+    });
+
+    if (DOM.legendLabelSavings) DOM.legendLabelSavings.textContent = 'Savings Added That Month';
+    if (DOM.legendLabelDue) DOM.legendLabelDue.textContent = 'Payments Due That Month';
+    if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'none';
+  }
+
+  // View 3: 🪜 Milestone Steps
+  function renderStepChart(data, ctx, width, height, activePace) {
+    const padLeft = 58;
+    const padRight = 24;
+    const padTop = 24;
+    const padBottom = 34;
+    const chartW = width - padLeft - padRight;
+    const chartH = height - padTop - padBottom;
+
+    const sim = simulateCashflow(data.milestones, data.currentSavings, activePace, data.cadenceDays, data.safetyCushion, state.weddingDate);
+    const realSteps = sim.timelineSteps;
+    const isPreview = realSteps.length === 0;
+
+    let steps = [];
+    if (isPreview) {
+      const base = state.targetBudget > 0 ? state.targetBudget : 28000;
+      const start = Math.max(state.currentSavings || 0, 5000);
+      steps = [
+        { label: 'Starting Pool', dateLabel: 'Start', balance: start, drop: 0, isDeficit: false },
+        { label: 'Venue Deposit', dateLabel: '9 Mos', balance: start + 2000 - 3500, drop: 3500, isDeficit: false },
+        { label: 'Photo/Video', dateLabel: '6 Mos', balance: start + 4500 - 6500, drop: 3000, isDeficit: false },
+        { label: 'Floral & Attire', dateLabel: '3 Mos', balance: start + 7500 - 9500, drop: 3000, isDeficit: false },
+        { label: 'Final Due', dateLabel: 'Wedding', balance: start + 11000 - 12000, drop: 2500, isDeficit: false }
+      ];
+    } else {
+      steps = realSteps.map((s, idx) => {
+        const parts = s.milestone.dueDate.split('-');
+        const dateLabel = parts.length === 3 ? `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}` : s.milestone.dueDate;
+        return {
+          label: s.milestone.title,
+          dateLabel,
+          balance: s.projectedBalance,
+          drop: s.milestone.amount,
+          isDeficit: s.isDeficit
+        };
+      });
+    }
+
+    let maxVal = Math.max(...steps.map(s => s.balance), state.safetyCushion || 1000, 1000);
+    let minVal = Math.min(0, ...steps.map(s => s.balance));
+    maxVal = Math.ceil((maxVal * 1.15) / 1000) * 1000;
+    if (minVal < 0) minVal = Math.floor((minVal * 1.2) / 1000) * 1000;
+    const valRange = maxVal - minVal || 1;
+
+    function getY(val) {
+      return padTop + chartH - ((val - minVal) / valRange) * chartH;
+    }
+    function getX(index, total) {
+      if (total <= 1) return padLeft + chartW / 2;
+      return padLeft + (index / (total - 1)) * chartW;
+    }
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(60, 50, 40, 0.07)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#8A847D';
+    ctx.font = '500 10.5px Plus Jakarta Sans, sans-serif';
+    ctx.textAlign = 'right';
+
+    for (let i = 0; i <= 4; i++) {
+      const v = minVal + (valRange / 4) * i;
+      const y = getY(v);
+      ctx.beginPath();
+      ctx.moveTo(padLeft, y);
+      ctx.lineTo(width - padRight, y);
+      ctx.stroke();
+
+      let label = '$' + Math.round(v).toLocaleString();
+      if (Math.abs(v) >= 10000) label = '$' + Math.round(v / 1000) + 'k';
+      ctx.fillText(label, padLeft - 7, y + 4);
+    }
+
+    // Cushion Line
+    const cushionVal = state.safetyCushion || 1000;
+    if (cushionVal >= minVal && cushionVal <= maxVal) {
+      const cushionY = getY(cushionVal);
+      ctx.strokeStyle = 'rgba(197, 160, 89, 0.45)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(padLeft, cushionY);
+      ctx.lineTo(width - padRight, cushionY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Step Line
+    ctx.strokeStyle = '#C5A059';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+
+    steps.forEach((s, idx) => {
+      const x = getX(idx, steps.length);
+      const y = getY(s.balance);
+      if (idx === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, getY(steps[idx - 1].balance)); // horizontal step
+        ctx.lineTo(x, y); // vertical drop
+      }
+    });
+    ctx.stroke();
+
+    // Step Nodes & Drop labels
+    steps.forEach((s, idx) => {
+      const x = getX(idx, steps.length);
+      const y = getY(s.balance);
+
+      const color = s.isDeficit ? '#C0392B' : '#C5A059';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Drop tag
+      if (s.drop > 0) {
+        ctx.fillStyle = '#C4797D';
+        ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`-${formatCurrency(s.drop)}`, x, y - 9);
+      }
+
+      // X-Axis Date
+      ctx.fillStyle = '#6E6862';
+      ctx.font = '600 10.5px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(s.dateLabel, x, height - padBottom + 16);
+
+      chartInteractionPoints.push({
+        x,
+        y,
+        title: s.label,
+        date: s.dateLabel,
+        balance: s.balance,
+        due: s.drop,
+        balanceLabel: 'Post-Payment Cash',
+        dueLabel: 'Payment Deducted',
+        isDeficit: s.isDeficit
+      });
+    });
+
+    if (DOM.legendLabelSavings) DOM.legendLabelSavings.textContent = 'Account Cash Balance';
+    if (DOM.legendLabelDue) DOM.legendLabelDue.textContent = 'Milestone Payment Drop';
+    if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'inline-flex';
+  }
+
+  // Budget Allocation Donut Chart
   function renderCategoryDonutChart(data) {
     const canvas = DOM.categoryDonutCanvas;
     if (!canvas || !canvas.parentElement) return;
 
-    const { ctx, width, height } = setupCanvasDPI(canvas);
+    const setup = setupCanvasDPI(canvas);
+    if (!setup) return;
+    const { ctx, width, height } = setup;
     ctx.clearRect(0, 0, width, height);
 
     const centerX = width / 2;
@@ -1838,7 +2194,6 @@
     const slices = [];
     DEFAULT_CATEGORIES.forEach(cat => {
       const expenses = state.expenses.filter(e => e.categoryId === cat.id);
-      // Use actual cost if entered, else estimated cost so the chart is useful right away
       const catSum = expenses.reduce((s, e) => s + Number(e.actualCost || e.estimatedCost || 0), 0);
       if (catSum > 0) {
         slices.push({ cat, amount: catSum });
@@ -1846,8 +2201,8 @@
       }
     });
 
-    const isBenchmark = slices.length === 0 || total === 0;
-    const chartSlices = isBenchmark
+    const showBenchmark = donutChartMode === 'benchmark' || slices.length === 0 || total === 0;
+    const chartSlices = showBenchmark
       ? BENCHMARK_DISTRIBUTION.map(b => ({
           color: b.color,
           name: b.name,
@@ -1860,7 +2215,7 @@
         }));
 
     let startAngle = -Math.PI / 2;
-    const gapAngle = 0.035; // clean 2-3px gap between slices
+    const gapAngle = 0.035;
 
     chartSlices.forEach(slice => {
       const sliceAngle = slice.ratio * Math.PI * 2;
@@ -1878,7 +2233,7 @@
     });
 
     // Center hole text
-    if (isBenchmark) {
+    if (showBenchmark) {
       ctx.fillStyle = '#C5A059';
       ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
       ctx.textAlign = 'center';
@@ -1906,6 +2261,165 @@
       ctx.fillStyle = '#6E6862';
       ctx.font = '500 10.5px Plus Jakarta Sans, sans-serif';
       ctx.fillText(`${slices.length} ${slices.length === 1 ? 'Category' : 'Categories'}`, centerX, centerY + 18);
+    }
+  }
+
+  // Interactive Hover Scrubbing & Tooltip for Cashflow Chart
+  function setupChartInteractionListeners() {
+    const canvas = DOM.cashflowCanvas;
+    const tooltip = DOM.cashflowTooltip;
+    if (!canvas || !tooltip) return;
+
+    function handleMove(clientX, clientY) {
+      if (!chartInteractionPoints || chartInteractionPoints.length === 0) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = clientX - rect.left;
+
+      let closest = null;
+      let minDistance = Infinity;
+      chartInteractionPoints.forEach(pt => {
+        const dist = Math.abs(pt.x - mouseX);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closest = pt;
+        }
+      });
+
+      if (closest && minDistance < 55) {
+        activeHoverPoint = closest;
+        renderCashflowChart(calculateFinancialAnalytics());
+
+        tooltip.innerHTML = `
+          <strong>${escapeHtml(closest.title)}</strong>
+          <div class="tt-row">
+            <span>Date:</span>
+            <span>${closest.date}</span>
+          </div>
+          <div class="tt-row highlight">
+            <span>${closest.balanceLabel || 'Balance'}:</span>
+            <span style="color: ${closest.isDeficit ? '#FFAAAA' : '#EBD49B'};">${formatCurrency(closest.balance)}</span>
+          </div>
+          ${closest.due !== undefined ? `
+          <div class="tt-row">
+            <span>${closest.dueLabel || 'Due'}:</span>
+            <span>${formatCurrency(closest.due)}</span>
+          </div>` : ''}
+          <div class="tt-row" style="margin-top: 4px; font-size: 0.72rem; color: ${closest.isDeficit ? '#FF8888' : '#88DDAA'}; font-weight: 600;">
+            <span>${closest.statusText || (closest.isDeficit ? '⚠️ Below Safety Cushion' : '✅ Healthy Cushion')}</span>
+          </div>
+        `;
+        tooltip.style.left = `${Math.round(closest.x)}px`;
+        tooltip.style.top = `${Math.round(Math.max(40, closest.y - 10))}px`;
+        tooltip.style.display = 'block';
+      } else {
+        handleLeave();
+      }
+    }
+
+    function handleLeave() {
+      if (activeHoverPoint !== null) {
+        activeHoverPoint = null;
+        tooltip.style.display = 'none';
+        renderCashflowChart(calculateFinancialAnalytics());
+      }
+    }
+
+    canvas.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
+    canvas.addEventListener('mouseleave', handleLeave);
+    canvas.addEventListener('touchmove', e => {
+      if (e.touches.length > 0) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    canvas.addEventListener('touchend', handleLeave);
+  }
+
+  // Interactive View Modes & Dynamic Pace Toolbar Controls
+  function setupChartControlsListeners() {
+    // 1. Cashflow View Mode Toggles (Trajectory, Monthly, Steps)
+    if (DOM.cashflowViewModeGroup) {
+      DOM.cashflowViewModeGroup.addEventListener('click', e => {
+        const btn = e.target.closest('.btn-segmented');
+        if (!btn || !btn.dataset.view) return;
+        DOM.cashflowViewModeGroup.querySelectorAll('.btn-segmented').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        cashflowChartMode = btn.dataset.view;
+        renderCashflowChart(calculateFinancialAnalytics());
+      });
+    }
+
+    // 2. Budget Allocation Donut Toggle (Spend vs Benchmark)
+    if (DOM.donutViewModeGroup) {
+      DOM.donutViewModeGroup.addEventListener('click', e => {
+        const btn = e.target.closest('.btn-segmented');
+        if (!btn || !btn.dataset.donut) return;
+        DOM.donutViewModeGroup.querySelectorAll('.btn-segmented').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        donutChartMode = btn.dataset.donut;
+        const data = calculateFinancialAnalytics();
+        renderCategoryDonutChart(data);
+        renderBudgetSection(data);
+      });
+    }
+
+    // 3. Dynamic Pace Slider
+    if (DOM.chartSimPaceSlider) {
+      DOM.chartSimPaceSlider.addEventListener('input', () => {
+        simulatedPace = parseInt(DOM.chartSimPaceSlider.value, 10) || 0;
+        updatePresetButtonHighlight();
+        renderCashflowChart(calculateFinancialAnalytics());
+      });
+    }
+
+    // 4. Presets
+    if (DOM.presetPaceMinus50) {
+      DOM.presetPaceMinus50.addEventListener('click', () => {
+        const current = simulatedPace !== null ? simulatedPace : state.plannedSavingsPerPaycheck;
+        simulatedPace = Math.max(0, current - 50);
+        updatePresetButtonHighlight();
+        renderCashflowChart(calculateFinancialAnalytics());
+      });
+    }
+    if (DOM.presetPaceCurrent) {
+      DOM.presetPaceCurrent.addEventListener('click', () => {
+        simulatedPace = null;
+        updatePresetButtonHighlight();
+        renderCashflowChart(calculateFinancialAnalytics());
+      });
+    }
+    if (DOM.presetPacePlus50) {
+      DOM.presetPacePlus50.addEventListener('click', () => {
+        const current = simulatedPace !== null ? simulatedPace : state.plannedSavingsPerPaycheck;
+        simulatedPace = current + 50;
+        updatePresetButtonHighlight();
+        renderCashflowChart(calculateFinancialAnalytics());
+      });
+    }
+    if (DOM.presetPaceAuto) {
+      DOM.presetPaceAuto.addEventListener('click', () => {
+        const data = calculateFinancialAnalytics();
+        simulatedPace = data.simulation.recommendedPaycheckSavings || state.plannedSavingsPerPaycheck;
+        updatePresetButtonHighlight();
+        renderCashflowChart(data);
+      });
+    }
+
+    // 5. Apply / Save Pace button
+    if (DOM.applySimPaceBtn) {
+      DOM.applySimPaceBtn.addEventListener('click', () => {
+        if (simulatedPace !== null) {
+          state.plannedSavingsPerPaycheck = simulatedPace;
+          DOM.simPlannedSavings.value = simulatedPace;
+          simulatedPace = null;
+          saveState();
+          showToast(`Saved new savings pace: ${formatCurrency(state.plannedSavingsPerPaycheck)}!`, '💰');
+          renderAll();
+        }
+      });
+    }
+
+    function updatePresetButtonHighlight() {
+      if (DOM.presetPaceCurrent) {
+        DOM.presetPaceCurrent.classList.toggle('active', simulatedPace === null || simulatedPace === state.plannedSavingsPerPaycheck);
+      }
     }
   }
 
@@ -2425,6 +2939,10 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
         }
       });
     }
+
+    // Setup interactive chart tooltips and view toggles
+    setupChartInteractionListeners();
+    setupChartControlsListeners();
 
     // Window resize chart re-render
     window.addEventListener('resize', debounce(() => {

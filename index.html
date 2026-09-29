@@ -235,20 +235,51 @@
               <h2>Cashflow & Milestone Trajectory</h2>
               <p>Projected savings accumulation vs cumulative payment due dates over time</p>
             </div>
-            <span class="badge-pill badge-upcoming" id="chartStatusPill">On Track</span>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div class="segmented-control" id="cashflowViewModeGroup">
+                <button type="button" class="btn-segmented active" data-view="trajectory">📈 Trajectory</button>
+                <button type="button" class="btn-segmented" data-view="monthly">📊 Monthly</button>
+                <button type="button" class="btn-segmented" data-view="steps">🪜 Steps</button>
+              </div>
+              <span class="badge-pill badge-upcoming" id="chartStatusPill">On Track</span>
+            </div>
           </div>
 
-          <div class="chart-container">
-            <canvas id="cashflowCanvas"></canvas>
-          </div>
-          <div class="legend-item" style="justify-content: center; gap: 24px; margin-top: 10px;">
-            <div class="legend-left">
-              <span class="legend-color-dot" style="background: #C5A059;"></span>
-              <span>Projected Savings Balance</span>
+          <!-- Dynamic Live Pace Simulator Bar ("Changing Graph" feature) -->
+          <div class="chart-interactive-toolbar" id="chartInteractiveToolbar">
+            <div class="chart-sim-label">
+              <span>Dynamic Pace Simulator:</span>
+              <strong id="chartSimPaceDisplay">$0 / cadence</strong>
             </div>
-            <div class="legend-left">
+            <div class="chart-sim-controls">
+              <input type="range" id="chartSimPaceSlider" class="chart-pace-slider" min="0" max="3000" step="25" value="500" title="Slide to test how changing your savings pace alters your balance trajectory">
+              <div class="chart-sim-presets">
+                <button type="button" class="btn-sim-preset" id="presetPaceMinus50">-$50</button>
+                <button type="button" class="btn-sim-preset active" id="presetPaceCurrent">Current</button>
+                <button type="button" class="btn-sim-preset" id="presetPacePlus50">+$50</button>
+                <button type="button" class="btn-sim-preset" id="presetPaceAuto" title="Set to auto-balanced safe pace">⚡ Safe</button>
+                <button type="button" class="btn btn-secondary btn-xs" id="applySimPaceBtn" style="font-size: 0.72rem; padding: 2px 8px; display: none;">Save</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-container" id="cashflowChartContainer">
+            <canvas id="cashflowCanvas"></canvas>
+            <div class="chart-tooltip" id="cashflowTooltip" style="display: none;"></div>
+          </div>
+
+          <div class="chart-legend-row" id="cashflowLegendRow">
+            <div class="legend-item-pill">
+              <span class="legend-color-dot" style="background: #C5A059;"></span>
+              <span id="legendLabelSavings">Projected Savings Balance</span>
+            </div>
+            <div class="legend-item-pill">
               <span class="legend-color-dot" style="background: #C4797D;"></span>
-              <span>Cumulative Payments Due</span>
+              <span id="legendLabelDue">Cumulative Payments Due</span>
+            </div>
+            <div class="legend-item-pill" id="legendCushionItem">
+              <span class="legend-dash-dot" style="border-top: 2px dashed #C5A059;"></span>
+              <span>Safety Cushion</span>
             </div>
           </div>
         </div>
@@ -260,9 +291,13 @@
               <h2>Budget Allocation</h2>
               <p>Breakdown by wedding expense category</p>
             </div>
+            <div class="segmented-control" id="donutViewModeGroup">
+              <button type="button" class="btn-segmented active" data-donut="actual">Your Spend</button>
+              <button type="button" class="btn-segmented" data-donut="benchmark">Benchmark</button>
+            </div>
           </div>
 
-          <div class="chart-container" style="height: 240px;">
+          <div class="chart-container" style="height: 250px;">
             <canvas id="categoryDonutCanvas"></canvas>
           </div>
 
