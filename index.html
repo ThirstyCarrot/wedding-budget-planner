@@ -235,31 +235,40 @@
               <h2>Cashflow & Milestone Trajectory</h2>
               <p>Projected savings accumulation vs cumulative payment due dates over time</p>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <div class="panel-header-controls">
               <div class="segmented-control" id="cashflowViewModeGroup">
                 <button type="button" class="btn-segmented active" data-view="trajectory">📈 Trajectory</button>
                 <button type="button" class="btn-segmented" data-view="monthly">📊 Monthly</button>
                 <button type="button" class="btn-segmented" data-view="steps">🪜 Steps</button>
               </div>
-              <span class="badge-pill badge-upcoming" id="chartStatusPill">On Track</span>
+              <span class="badge-pill badge-upcoming chart-status-pill-fixed" id="chartStatusPill">On Track</span>
             </div>
           </div>
 
-          <!-- Dynamic Live Pace Simulator Bar ("Changing Graph" feature) -->
+          <!-- Dynamic Live Pace Simulator Bar (Zero-Layout-Shift Fixed Architecture) -->
           <div class="chart-interactive-toolbar" id="chartInteractiveToolbar">
-            <div class="chart-sim-label">
-              <span>Dynamic Pace Simulator:</span>
-              <strong id="chartSimPaceDisplay">$0 / cadence</strong>
-            </div>
-            <div class="chart-sim-controls">
-              <input type="range" id="chartSimPaceSlider" class="chart-pace-slider" min="0" max="3000" step="25" value="500" title="Slide to test how changing your savings pace alters your balance trajectory">
-              <div class="chart-sim-presets">
-                <button type="button" class="btn-sim-preset" id="presetPaceMinus50">-$50</button>
-                <button type="button" class="btn-sim-preset active" id="presetPaceCurrent">Current</button>
-                <button type="button" class="btn-sim-preset" id="presetPacePlus50">+$50</button>
-                <button type="button" class="btn-sim-preset" id="presetPaceAuto" title="Set to auto-balanced safe pace">⚡ Safe</button>
-                <button type="button" class="btn btn-secondary btn-xs" id="applySimPaceBtn" style="font-size: 0.72rem; padding: 2px 8px; display: none;">Save</button>
+            <!-- Row 1: Label, Current Active Value, and Presets -->
+            <div class="chart-toolbar-row">
+              <div class="chart-sim-label">
+                <span class="chart-sim-title">Dynamic Pace Simulator:</span>
+                <span class="chart-sim-badge" id="chartSimPaceDisplay">$0 / cadence</span>
               </div>
+              <div class="chart-sim-presets">
+                <button type="button" class="btn-sim-preset" id="presetPaceMinus50" title="Decrease pace by $50">-$50</button>
+                <button type="button" class="btn-sim-preset active" id="presetPaceCurrent" title="Reset to planned savings rate">Current</button>
+                <button type="button" class="btn-sim-preset" id="presetPacePlus50" title="Increase pace by $50">+$50</button>
+                <button type="button" class="btn-sim-preset" id="presetPaceAuto" title="Set to auto-balanced safe pace">⚡ Safe</button>
+                <button type="button" class="btn-sim-save" id="applySimPaceBtn" title="Permanently apply this simulated rate as your planned savings pace">💾 Save Pace</button>
+              </div>
+            </div>
+
+            <!-- Row 2: Dedicated Full-Width Slider Track -->
+            <div class="chart-slider-track-row">
+              <span class="slider-boundary-label" id="sliderMinBound">$0</span>
+              <div class="slider-wrapper">
+                <input type="range" id="chartSimPaceSlider" class="chart-pace-slider" min="0" max="3000" step="25" value="500" title="Drag to test how changing your savings pace alters your balance trajectory in real-time">
+              </div>
+              <span class="slider-boundary-label" id="sliderMaxBound">$3,000</span>
             </div>
           </div>
 

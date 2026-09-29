@@ -25,6 +25,8 @@
   let cashflowChartMode = 'trajectory'; // 'trajectory' | 'monthly' | 'steps'
   let donutChartMode = 'actual'; // 'actual' | 'benchmark'
   let simulatedPace = null;
+  let isDraggingSlider = false;
+  let rafChartId = null;
   let activeHoverPoint = null;
   let chartInteractionPoints = [];
 
@@ -1566,11 +1568,17 @@
     // Strictly clamp dimensions to container width/height to prevent feedback loop growth
     const parent = canvas.parentElement;
     const w = Math.round(rect.width || (parent ? parent.clientWidth : 300));
-    const h = Math.round(rect.height || (parent ? parent.clientHeight : 280));
+    const h = Math.round(rect.height || (parent ? parent.clientHeight : 290));
     if (w <= 0 || h <= 0) return null;
 
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
+    const targetW = Math.round(w * dpr);
+    const targetH = Math.round(h * dpr);
+    // Only resize canvas backing buffer if dimensions actually change to prevent layout thrashing
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+
     const ctx = canvas.getContext('2d');
     if (ctx.resetTransform) {
       ctx.resetTransform();
@@ -1599,10 +1607,19 @@
       DOM.chartSimPaceDisplay.textContent = `${formatCurrency(activePace)} / ${cadence}`;
     }
     if (DOM.chartSimPaceSlider) {
-      DOM.chartSimPaceSlider.value = activePace;
+      const maxPace = Math.max(3000, Math.ceil((Math.max(activePace, state.plannedSavingsPerPaycheck) * 2.2) / 250) * 250);
+      if (DOM.chartSimPaceSlider.max !== String(maxPace)) {
+        DOM.chartSimPaceSlider.max = maxPace;
+        const maxBound = document.getElementById('sliderMaxBound');
+        if (maxBound) maxBound.textContent = formatCurrency(maxPace);
+      }
+      if (!isDraggingSlider) {
+        DOM.chartSimPaceSlider.value = activePace;
+      }
     }
     if (DOM.applySimPaceBtn) {
-      DOM.applySimPaceBtn.style.display = (simulatedPace !== null && simulatedPace !== state.plannedSavingsPerPaycheck) ? 'inline-block' : 'none';
+      const isDifferent = (simulatedPace !== null && simulatedPace !== state.plannedSavingsPerPaycheck);
+      DOM.applySimPaceBtn.classList.toggle('visible', isDifferent);
     }
 
     // Clear interaction points for hover detection
@@ -2360,12 +2377,31 @@
       });
     }
 
-    // 3. Dynamic Pace Slider
+    // 3. Dynamic Pace Slider (Zero-jitter drag tracking + smooth RAF throttle)
     if (DOM.chartSimPaceSlider) {
+      DOM.chartSimPaceSlider.addEventListener('mousedown', () => { isDraggingSlider = true; });
+      DOM.chartSimPaceSlider.addEventListener('touchstart', () => { isDraggingSlider = true; }, { passive: true });
+      window.addEventListener('mouseup', () => { isDraggingSlider = false; });
+      window.addEventListener('touchend', () => { isDraggingSlider = false; });
+
       DOM.chartSimPaceSlider.addEventListener('input', () => {
         simulatedPace = parseInt(DOM.chartSimPaceSlider.value, 10) || 0;
         updatePresetButtonHighlight();
-        renderCashflowChart(calculateFinancialAnalytics());
+
+        // Immediate visual update of text label & save button without layout shift
+        if (DOM.chartSimPaceDisplay) {
+          const cadence = getCadenceName(state.paycheckCadence);
+          DOM.chartSimPaceDisplay.textContent = `${formatCurrency(simulatedPace)} / ${cadence}`;
+        }
+        if (DOM.applySimPaceBtn) {
+          DOM.applySimPaceBtn.classList.toggle('visible', simulatedPace !== state.plannedSavingsPerPaycheck);
+        }
+
+        // Throttle canvas draw to requestAnimationFrame for silky 60fps rendering without micro-stutters
+        if (rafChartId) cancelAnimationFrame(rafChartId);
+        rafChartId = requestAnimationFrame(() => {
+          renderCashflowChart(calculateFinancialAnalytics());
+        });
       });
     }
 
@@ -2375,6 +2411,7 @@
         const current = simulatedPace !== null ? simulatedPace : state.plannedSavingsPerPaycheck;
         simulatedPace = Math.max(0, current - 50);
         updatePresetButtonHighlight();
+        if (DOM.chartSimPaceSlider) DOM.chartSimPaceSlider.value = simulatedPace;
         renderCashflowChart(calculateFinancialAnalytics());
       });
     }
@@ -2382,6 +2419,7 @@
       DOM.presetPaceCurrent.addEventListener('click', () => {
         simulatedPace = null;
         updatePresetButtonHighlight();
+        if (DOM.chartSimPaceSlider) DOM.chartSimPaceSlider.value = state.plannedSavingsPerPaycheck;
         renderCashflowChart(calculateFinancialAnalytics());
       });
     }
@@ -2390,6 +2428,7 @@
         const current = simulatedPace !== null ? simulatedPace : state.plannedSavingsPerPaycheck;
         simulatedPace = current + 50;
         updatePresetButtonHighlight();
+        if (DOM.chartSimPaceSlider) DOM.chartSimPaceSlider.value = simulatedPace;
         renderCashflowChart(calculateFinancialAnalytics());
       });
     }
@@ -2398,6 +2437,7 @@
         const data = calculateFinancialAnalytics();
         simulatedPace = data.simulation.recommendedPaycheckSavings || state.plannedSavingsPerPaycheck;
         updatePresetButtonHighlight();
+        if (DOM.chartSimPaceSlider) DOM.chartSimPaceSlider.value = simulatedPace;
         renderCashflowChart(data);
       });
     }
