@@ -18,10 +18,6 @@
   <!-- Accessible Skip-to-Content Link (WCAG 2.4.1) -->
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
-  <!-- Ambient background glow -->
-  <div class="bg-ambient-orb orb-1"></div>
-  <div class="bg-ambient-orb orb-2"></div>
-
   <div class="app-container">
     <!-- Top Header & Hero -->
     <header class="header-hero">
@@ -104,6 +100,41 @@
         <strong id="currentCadenceLabel">Bi-Weekly ($0)</strong>
       </div>
     </nav>
+
+    <!-- Welcome Setup Banner (Quick 2-question setup when wedding date is not yet set) -->
+    <section class="welcome-setup-card" id="welcomeSetupBanner" style="display: none;" aria-label="Welcome Setup">
+      <div class="welcome-setup-header">
+        <div class="welcome-setup-title-group">
+          <span class="welcome-setup-icon">💍</span>
+          <div>
+            <h3 class="welcome-setup-title">Let's personalize your wedding countdown & savings pace</h3>
+            <p class="welcome-setup-subtitle">Two quick questions to calculate how much to save every paycheck:</p>
+          </div>
+        </div>
+      </div>
+      <form id="welcomeSetupForm" class="welcome-setup-form">
+        <div class="welcome-fields-row">
+          <div class="welcome-field">
+            <label for="welcomeWeddingDate">When is your wedding date?</label>
+            <input type="date" id="welcomeWeddingDate" class="form-control" required>
+          </div>
+          <div class="welcome-field">
+            <label for="welcomePaycheckCadence">How often do you save / get paid?</label>
+            <select id="welcomePaycheckCadence" class="form-control">
+              <option value="weekly">Weekly</option>
+              <option value="biweekly" selected>Bi-Weekly (Every 2 Weeks)</option>
+              <option value="semimonthly">Semi-Monthly (Twice a Month)</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          <div class="welcome-field-action">
+            <button type="submit" class="btn btn-primary" id="saveWelcomeSetupBtn">
+              Save & Start Planning ✨
+            </button>
+          </div>
+        </div>
+      </form>
+    </section>
 
     <!-- Dynamic Crunch Alert Banner -->
     <section class="crunch-banner" id="crunchAlertBanner" aria-live="polite">

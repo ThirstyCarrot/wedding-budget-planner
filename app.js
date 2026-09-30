@@ -85,6 +85,12 @@
     },
     unpaidMilestonesCount: document.getElementById('unpaidMilestonesCount'),
 
+    // Welcome Setup Banner
+    welcomeSetupBanner: document.getElementById('welcomeSetupBanner'),
+    welcomeSetupForm: document.getElementById('welcomeSetupForm'),
+    welcomeWeddingDate: document.getElementById('welcomeWeddingDate'),
+    welcomePaycheckCadence: document.getElementById('welcomePaycheckCadence'),
+
     // Crunch Banner
     crunchAlertBanner: document.getElementById('crunchAlertBanner'),
     crunchBannerIcon: document.getElementById('crunchBannerIcon'),
@@ -1029,6 +1035,32 @@
     const next = data.nextUpcomingMilestone;
     const cadence = getCadenceName(state.paycheckCadence);
 
+    // If wedding date is not set yet, prioritize the Welcome Setup Banner for seamless 2-question onboarding
+    if (!state.weddingDate) {
+      if (DOM.welcomeSetupBanner) {
+        DOM.welcomeSetupBanner.style.display = 'block';
+        if (DOM.welcomePaycheckCadence) {
+          DOM.welcomePaycheckCadence.value = state.paycheckCadence || 'biweekly';
+        }
+      }
+      if (banner) {
+        banner.style.display = 'none';
+      }
+      if (DOM.chartStatusPill) {
+        DOM.chartStatusPill.textContent = 'Set Date to Begin';
+        DOM.chartStatusPill.className = 'badge-pill badge-upcoming';
+      }
+      return;
+    }
+
+    // Wedding date is set: hide welcome card and display the active crunch banner
+    if (DOM.welcomeSetupBanner) {
+      DOM.welcomeSetupBanner.style.display = 'none';
+    }
+    if (banner) {
+      banner.style.display = 'grid';
+    }
+
     if (data.milestones.length === 0) {
       banner.className = 'crunch-banner';
       banner.style.borderLeftColor = 'var(--accent-primary)';
@@ -1646,9 +1678,6 @@
     tbody.appendChild(fragment);
   }
 
-  // =========================================================================
-  // CANVAS CHARTS (HIGH-DPI)
-  // =========================================================================
   // =========================================================================
   // CANVAS CHARTS (HIGH-DPI & INTERACTIVE)
   // =========================================================================
@@ -3210,6 +3239,24 @@
         renderFullSchedule(calculateFinancialAnalytics());
       });
     });
+
+    // Welcome Setup Form Submission
+    if (DOM.welcomeSetupForm) {
+      DOM.welcomeSetupForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const dateVal = DOM.welcomeWeddingDate.value;
+        const cadenceVal = DOM.welcomePaycheckCadence.value;
+        if (!dateVal) {
+          showToast('Please select your wedding date', '⚠️');
+          return;
+        }
+        state.weddingDate = dateVal;
+        state.paycheckCadence = cadenceVal;
+        saveState();
+        showToast('Wedding date set! Countdown and savings pace calculated.', '✨');
+        renderAll();
+      });
+    }
 
     // Modal Triggers
     DOM.openAddExpenseBtn.addEventListener('click', () => openExpenseModal());

@@ -101,11 +101,6 @@ body {
   overflow-x: hidden;
 }
 
-/* Background Atmosphere Elements - Removed for Clean Purposeful Aesthetic */
-.bg-ambient-orb {
-  display: none !important;
-}
-
 /* Container */
 .app-container {
   max-width: 1280px;
@@ -361,6 +356,95 @@ body {
 .tab-btn.active .badge-pill {
   background: var(--accent-subtle);
   color: var(--accent-primary);
+}
+
+/* Welcome Setup Onboarding Card (Shown when wedding date is not yet set) */
+.welcome-setup-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-sm);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.welcome-setup-header {
+  margin-bottom: 16px;
+}
+
+.welcome-setup-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.welcome-setup-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.welcome-setup-title {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+  font-weight: 600;
+}
+
+.welcome-setup-subtitle {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+
+.welcome-fields-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 16px;
+  align-items: flex-end;
+  background: var(--bg-subtle);
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.welcome-field label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.welcome-field .form-control {
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  height: 40px;
+}
+
+.welcome-field-action button {
+  height: 40px;
+  white-space: nowrap;
+  padding: 0 20px;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .welcome-fields-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .welcome-field-action button {
+    width: 100%;
+  }
 }
 
 /* Core Savings Alert Crunch Banner - Clean 1px Card */
