@@ -26,7 +26,6 @@
   let scheduleFilter = 'all-unpaid';
   let activeExpenseModalId = null;
   let cashflowChartMode = 'trajectory'; // 'trajectory' | 'monthly' | 'steps'
-  let donutChartMode = 'actual'; // 'actual' | 'benchmark'
   let simulatedPace = null;
   let isDraggingSlider = false;
   let rafChartId = null;
@@ -164,7 +163,6 @@
     legendLabelSavings: document.getElementById('legendLabelSavings'),
     legendLabelDue: document.getElementById('legendLabelDue'),
     legendCushionItem: document.getElementById('legendCushionItem'),
-    donutViewModeGroup: document.getElementById('donutViewModeGroup'),
 
     // Modals
     expenseModal: document.getElementById('expenseModal'),
@@ -2314,16 +2312,13 @@
       }
     });
 
-    const isBenchmarkMode = donutChartMode === 'benchmark';
     const hasExpenses = slices.length > 0 && total > 0;
-    const budgetBase = (state.hasTargetBudget && state.targetBudget > 0) ? state.targetBudget : total;
 
-    if (isBenchmarkMode) {
-      // Benchmark Mode: show recommended % distribution
-      const chartSlices = BENCHMARK_DISTRIBUTION.map(b => ({
-        color: b.color,
-        name: b.name,
-        ratio: b.pct / 100
+    if (hasExpenses) {
+      const chartSlices = slices.map(s => ({
+        color: s.cat.color,
+        name: s.cat.name,
+        ratio: s.amount / total
       }));
 
       let startAngle = -Math.PI / 2;
@@ -2344,131 +2339,56 @@
         startAngle += sliceAngle;
       });
 
-      // Center hole text for benchmark
-      ctx.fillStyle = '#C5A059';
+      // Center hole text with total spend
+      ctx.fillStyle = '#8A847D';
       ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(budgetBase > 0 ? 'TARGET BUDGET' : 'RECOMMENDED', centerX, centerY - 14);
+      ctx.fillText('TOTAL ALLOCATED', centerX, centerY - 14);
 
       ctx.fillStyle = '#242220';
       ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
-      ctx.fillText(budgetBase > 0 ? formatCurrency(budgetBase) : 'Ideal Split', centerX, centerY + 2);
+      ctx.fillText(formatCurrency(total), centerX, centerY + 2);
+
+      ctx.fillStyle = '#6E6862';
+      ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
+      if (state.hasTargetBudget && state.targetBudget > 0) {
+        const pct = Math.round((total / state.targetBudget) * 100);
+        ctx.fillText(`${pct}% of ${formatCurrency(state.targetBudget)}`, centerX, centerY + 18);
+      } else {
+        ctx.fillText(`${slices.length} ${slices.length === 1 ? 'Category' : 'Categories'}`, centerX, centerY + 18);
+      }
+    } else {
+      // Zero expenses logged: draw clean placeholder ring
+      ctx.strokeStyle = '#E8E5E1';
+      ctx.lineWidth = outerRadius - innerRadius;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, (outerRadius + innerRadius) / 2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#8A847D';
+      ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('YOUR SPEND', centerX, centerY - 14);
+
+      ctx.fillStyle = '#242220';
+      ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
+      ctx.fillText('$0', centerX, centerY + 2);
 
       ctx.fillStyle = '#8A847D';
       ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
-      ctx.fillText(budgetBase > 0 ? 'Benchmark Target' : 'Industry Standards', centerX, centerY + 18);
-    } else {
-      // Actual Spend Mode
-      if (hasExpenses) {
-        const chartSlices = slices.map(s => ({
-          color: s.cat.color,
-          name: s.cat.name,
-          ratio: s.amount / total
-        }));
-
-        let startAngle = -Math.PI / 2;
-        const gapAngle = 0.035;
-
-        chartSlices.forEach(slice => {
-          const sliceAngle = slice.ratio * Math.PI * 2;
-          const actualSliceAngle = Math.max(0.01, sliceAngle - gapAngle);
-          const halfGap = gapAngle / 2;
-
-          ctx.fillStyle = slice.color;
-          ctx.beginPath();
-          ctx.arc(centerX, centerY, outerRadius, startAngle + halfGap, startAngle + halfGap + actualSliceAngle);
-          ctx.arc(centerX, centerY, innerRadius, startAngle + halfGap + actualSliceAngle, startAngle + halfGap, true);
-          ctx.closePath();
-          ctx.fill();
-
-          startAngle += sliceAngle;
-        });
-
-        // Center hole text with total spend
-        ctx.fillStyle = '#8A847D';
-        ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('TOTAL ALLOCATED', centerX, centerY - 14);
-
-        ctx.fillStyle = '#242220';
-        ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
-        ctx.fillText(formatCurrency(total), centerX, centerY + 2);
-
-        ctx.fillStyle = '#6E6862';
-        ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
-        if (state.hasTargetBudget && state.targetBudget > 0) {
-          const pct = Math.round((total / state.targetBudget) * 100);
-          ctx.fillText(`${pct}% of ${formatCurrency(state.targetBudget)}`, centerX, centerY + 18);
-        } else {
-          ctx.fillText(`${slices.length} ${slices.length === 1 ? 'Category' : 'Categories'}`, centerX, centerY + 18);
-        }
-      } else {
-        // Zero expenses logged: draw clean placeholder ring
-        ctx.strokeStyle = '#E8E5E1';
-        ctx.lineWidth = outerRadius - innerRadius;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, (outerRadius + innerRadius) / 2, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.fillStyle = '#8A847D';
-        ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('YOUR SPEND', centerX, centerY - 14);
-
-        ctx.fillStyle = '#242220';
-        ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
-        ctx.fillText('$0', centerX, centerY + 2);
-
-        ctx.fillStyle = '#8A847D';
-        ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
-        ctx.fillText('No expenses yet', centerX, centerY + 18);
-      }
+      ctx.fillText('No expenses yet', centerX, centerY + 18);
     }
 
     // Always render category legend list underneath donut chart!
-    renderCategoryLegendList(data, total, slices, budgetBase);
+    renderCategoryLegendList(data, total, slices);
   }
 
-  function renderCategoryLegendList(data, total, slices, budgetBase) {
+  function renderCategoryLegendList(data, total, slices) {
     const legendList = DOM.categoryLegendList;
     if (!legendList) return;
     legendList.innerHTML = '';
-
-    const isBenchmarkMode = donutChartMode === 'benchmark';
-
-    if (isBenchmarkMode) {
-      let benchmarkHtml = `
-        <div style="margin-bottom: 8px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gold-hover); display: flex; justify-content: space-between; align-items: center;">
-          <span>Recommended Benchmarks</span>
-          <span style="font-weight: 500; font-size: 0.72rem; color: var(--text-light);">${budgetBase > 0 ? 'Target: ' + formatCurrency(budgetBase) : 'Industry %'}</span>
-        </div>
-      `;
-
-      BENCHMARK_DISTRIBUTION.forEach(b => {
-        const dollars = budgetBase > 0 ? formatCurrency(Math.round(budgetBase * (b.pct / 100))) : null;
-        benchmarkHtml += `
-          <div class="legend-item" style="padding: 6px 8px;">
-            <div class="legend-left" style="gap: 8px;">
-              <span class="legend-color-dot" style="background: ${b.color}; width: 10px; height: 10px;"></span>
-              <span style="font-size: 0.82rem;">${b.icon} ${b.name}</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <div style="width: 55px; height: 5px; background: rgba(0,0,0,0.06); border-radius: 4px; overflow: hidden;">
-                <div style="width: ${b.pct * 2}%; height: 100%; background: ${b.color}; border-radius: 4px;"></div>
-              </div>
-              <span style="font-weight: 700; font-size: 0.82rem; min-width: 45px; text-align: right;">
-                ${dollars ? dollars + ' ' : ''}(${b.pct}%)
-              </span>
-            </div>
-          </div>
-        `;
-      });
-      legendList.innerHTML = benchmarkHtml;
-      return;
-    }
 
     // Actual Spend Mode
     if (!slices || slices.length === 0 || total === 0) {
@@ -2531,6 +2451,7 @@
 
     legendList.appendChild(fragment);
   }
+
 
   // Interactive Hover Scrubbing & Tooltip for Cashflow Chart
   function setupChartInteractionListeners() {
@@ -2634,18 +2555,6 @@
       });
     }
 
-    // 2. Budget Allocation Donut Toggle (Spend vs Benchmark)
-    if (DOM.donutViewModeGroup) {
-      DOM.donutViewModeGroup.addEventListener('click', e => {
-        const btn = e.target.closest('.btn-segmented');
-        if (!btn || !btn.dataset.donut) return;
-        DOM.donutViewModeGroup.querySelectorAll('.btn-segmented').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        donutChartMode = btn.dataset.donut;
-        const data = calculateFinancialAnalytics();
-        renderCategoryDonutChart(data);
-      });
-    }
 
     // 3. Dynamic Pace Slider (Zero-jitter drag tracking + smooth RAF throttle)
     if (DOM.chartSimPaceSlider) {

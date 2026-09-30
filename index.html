@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=2.2">
+  <link rel="stylesheet" href="styles.css?v=2.3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%3E<text y=%2226%22 font-size=%2226%22>💍</text></svg>">
 </head>
 <body>
@@ -307,10 +307,7 @@
               <h2>Budget Allocation</h2>
               <p>Breakdown by wedding expense category</p>
             </div>
-            <div class="segmented-control" id="donutViewModeGroup">
-              <button type="button" class="btn-segmented active" data-donut="actual">Your Spend</button>
-              <button type="button" class="btn-segmented" data-donut="benchmark">Benchmark</button>
-            </div>
+            <span class="badge-pill" id="allocationHeaderBadge" style="background: var(--gold-subtle); color: var(--gold-hover); border: 1px solid var(--gold-border);">Your Spend</span>
           </div>
 
           <div class="chart-container" style="height: 250px;">
@@ -927,7 +924,7 @@
 
   <!-- Scripts (non-blocking defer) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-  <script src="sample-data.js?v=2.2" defer></script>
-  <script src="app.js?v=2.2" defer></script>
+  <script src="sample-data.js?v=2.3" defer></script>
+  <script src="app.js?v=2.3" defer></script>
 </body>
 </html>
