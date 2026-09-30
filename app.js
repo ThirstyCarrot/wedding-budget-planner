@@ -1027,16 +1027,16 @@
       banner.className = 'crunch-banner';
       banner.style.borderLeftColor = 'var(--accent-primary)';
       DOM.crunchBannerIcon.textContent = '💍';
-      DOM.crunchBannerTitle.textContent = 'Welcome to Your Wedding Budget Planner';
+      DOM.crunchBannerTitle.textContent = 'Welcome to Your Wedding Planner';
       DOM.crunchBannerText.innerHTML = `
-        Your planner is ready as a clean blank slate! Click <strong>+ Add Expense</strong> to start adding estimated costs and payment milestones, 
-        or open <button type="button" class="btn-link-action" id="bannerOpenSettingsBtn">Settings</button> to customize your wedding date and savings frequency.
+        Your planner is ready as a clean slate! Click <strong>+ Add Expense</strong> to start adding vendor estimates, 
+        or open <button type="button" class="btn-link-action" id="bannerOpenSettingsBtn">Settings</button> to set your wedding date and budget goal.
       `;
       DOM.crunchNextAmount.textContent = '$0';
-      DOM.crunchPaceLabel.textContent = 'Next Milestone';
+      DOM.crunchPaceLabel.textContent = 'Next Payment Due';
       DOM.crunchNextPace.textContent = 'None yet';
       DOM.crunchNextPace.className = 'crunch-stat-value';
-      DOM.chartStatusPill.textContent = 'Blank Slate';
+      DOM.chartStatusPill.textContent = 'Ready to Start';
       DOM.chartStatusPill.className = 'badge-pill badge-upcoming';
 
       const bannerSettingsBtn = document.getElementById('bannerOpenSettingsBtn');
@@ -1073,7 +1073,7 @@
         </div>
       `;
       DOM.crunchNextAmount.textContent = formatCurrency(next ? next.amount : 0);
-      DOM.crunchPaceLabel.textContent = `Safe Pace Needed`;
+      DOM.crunchPaceLabel.textContent = `Recommended Pace`;
       DOM.crunchNextPace.textContent = `${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}`;
       DOM.crunchNextPace.className = 'crunch-stat-value highlight';
       DOM.chartStatusPill.textContent = 'Deficit Risk';
@@ -1111,7 +1111,7 @@
       }
 
       DOM.crunchNextAmount.textContent = formatCurrency(next ? next.amount : 0);
-      DOM.crunchPaceLabel.textContent = `Your Pace`;
+      DOM.crunchPaceLabel.textContent = `Current Pace`;
       DOM.crunchNextPace.textContent = `${formatCurrency(state.plannedSavingsPerPaycheck)}/${cadence}`;
       DOM.crunchNextPace.className = 'crunch-stat-value';
       DOM.chartStatusPill.textContent = 'On Track';
@@ -1120,28 +1120,29 @@
   }
 
   function renderKpiCards(data) {
-    // 1. Estimated Total vs Target Budget
+    // 1. Total Wedding Budget (Target Goal vs Planned/Estimated)
     if (state.hasTargetBudget && data.targetBudget > 0) {
-      if (DOM.kpiBudgetTitle) DOM.kpiBudgetTitle.textContent = 'Budget Goal';
+      if (DOM.kpiBudgetTitle) DOM.kpiBudgetTitle.textContent = 'Total Budget Goal';
       if (DOM.kpiBudgetIcon) DOM.kpiBudgetIcon.textContent = '🎯';
       DOM.kpiTargetBudget.textContent = formatCurrency(data.targetBudget);
       const budgetDiff = data.totalEstimated - data.targetBudget;
-      if (budgetDiff > 0) {
-        DOM.kpiBudgetDiff.innerHTML = `<span style="color: var(--danger-primary);">$${budgetDiff.toLocaleString()} over goal</span>`;
-      } else if (budgetDiff < 0) {
-        DOM.kpiBudgetDiff.innerHTML = `<span style="color: var(--sage-primary);">$${Math.abs(budgetDiff).toLocaleString()} under goal</span>`;
-      } else {
-        DOM.kpiBudgetDiff.textContent = 'Exactly on budget goal';
-      }
       const budgetPct = Math.min(100, Math.round((data.totalEstimated / data.targetBudget) * 100));
-      DOM.kpiBudgetBar.style.width = `${budgetPct}%`;
+
+      if (budgetDiff > 0) {
+        DOM.kpiBudgetDiff.innerHTML = `<span>${formatCurrency(data.totalEstimated)} planned</span> · <span style="color: var(--danger-primary); font-weight: 600;">$${budgetDiff.toLocaleString()} over goal</span>`;
+      } else if (budgetDiff < 0) {
+        DOM.kpiBudgetDiff.innerHTML = `<span>${formatCurrency(data.totalEstimated)} planned</span> · <span style="color: var(--sage-primary); font-weight: 600;">$${Math.abs(budgetDiff).toLocaleString()} under goal</span>`;
+      } else {
+        DOM.kpiBudgetDiff.textContent = `${formatCurrency(data.totalEstimated)} planned (Exactly on goal)`;
+      }
+      if (DOM.kpiBudgetBar) DOM.kpiBudgetBar.style.width = `${budgetPct}%`;
     } else {
       if (DOM.kpiBudgetTitle) DOM.kpiBudgetTitle.textContent = 'Total Estimated Cost';
       if (DOM.kpiBudgetIcon) DOM.kpiBudgetIcon.textContent = '📊';
       DOM.kpiTargetBudget.textContent = formatCurrency(data.totalEstimated);
       const itemsLabel = state.expenses.length === 1 ? '1 item' : `${state.expenses.length} items`;
-      DOM.kpiBudgetDiff.innerHTML = `<span style="color: var(--text-muted);">Across ${itemsLabel}</span> <button type="button" class="btn-link-action" id="kpiSetBudgetBtn" style="margin-left: auto;">Set budget goal →</button>`;
-      DOM.kpiBudgetBar.style.width = state.expenses.length > 0 ? '100%' : '0%';
+      DOM.kpiBudgetDiff.innerHTML = `<span style="color: var(--text-muted);">Estimated across ${itemsLabel}</span> <button type="button" class="btn-link-action" id="kpiSetBudgetBtn" style="margin-left: auto;">Set budget goal →</button>`;
+      if (DOM.kpiBudgetBar) DOM.kpiBudgetBar.style.width = state.expenses.length > 0 ? '100%' : '0%';
 
       const setGoalBtn = document.getElementById('kpiSetBudgetBtn');
       if (setGoalBtn) {
@@ -1152,36 +1153,42 @@
       }
     }
 
-    // 2. Actual Total
-    DOM.kpiActualCost.textContent = formatCurrency(data.totalActual);
-    DOM.kpiAllocatedMeta.textContent = `Estimated: ${formatCurrency(data.totalEstimated)}`;
-    DOM.kpiActualBar.style.width = data.totalActual > 0 ? '100%' : '0%';
-
-    // 3. Paid So Far
+    // 2. Paid So Far
     DOM.kpiPaidSoFar.textContent = formatCurrency(data.totalPaid);
-    const paidPct = data.totalActual > 0 ? Math.min(100, Math.round((data.totalPaid / data.totalActual) * 100)) : 0;
-    DOM.kpiPaidPct.textContent = `${paidPct}% of wedding costs paid`;
-    DOM.kpiPaidBar.style.width = `${paidPct}%`;
+    const paidPct = data.totalActual > 0 ? Math.min(100, Math.round((data.totalPaid / data.totalActual) * 100)) : (data.totalEstimated > 0 ? Math.min(100, Math.round((data.totalPaid / data.totalEstimated) * 100)) : 0);
+    const bookedLabel = data.totalActual > 0 ? ` (${formatCurrency(data.totalActual)} booked total)` : '';
+    DOM.kpiPaidPct.textContent = `${paidPct}% paid${bookedLabel}`;
+    if (DOM.kpiPaidBar) DOM.kpiPaidBar.style.width = `${paidPct}%`;
 
-    // 4. Remaining Balance Due
+    // 3. Remaining to Pay & Savings Coverage
     DOM.kpiRemainingDue.textContent = formatCurrency(data.totalRemainingDue);
-    DOM.kpiUpcomingCount.textContent = `${data.unpaid.length} payments upcoming`;
-    const remainPct = data.totalActual > 0 ? Math.min(100, Math.round((data.totalRemainingDue / data.totalActual) * 100)) : 0;
-    DOM.kpiRemainingBar.style.width = `${remainPct}%`;
+    const upcomingPaymentsText = `${data.unpaid.length} payment${data.unpaid.length === 1 ? '' : 's'} upcoming`;
+    const savingsEl = document.getElementById('kpiSavingsSummary');
 
-    // 5. Current Savings Pool
-    DOM.kpiCurrentSavings.textContent = formatCurrency(data.currentSavings);
     if (data.totalRemainingDue === 0) {
-      DOM.kpiSavingsGap.innerHTML = `<span style="color: var(--text-muted);">$0 balance to cover</span>`;
-      DOM.kpiSavingsCoverageBar.style.width = '0%';
-    } else if (data.netGapToWedding <= 0) {
-      DOM.kpiSavingsGap.innerHTML = `<span style="color: var(--sage-primary);">100% of remaining bills covered!</span>`;
-      DOM.kpiSavingsCoverageBar.style.width = '100%';
+      if (DOM.kpiUpcomingCount) DOM.kpiUpcomingCount.textContent = 'All payments complete!';
+      if (savingsEl) savingsEl.textContent = '';
+      if (DOM.kpiRemainingBar) {
+        DOM.kpiRemainingBar.style.width = '100%';
+        DOM.kpiRemainingBar.className = 'kpi-progress-bar success';
+      }
     } else {
-      DOM.kpiSavingsGap.textContent = `Net savings to go: ${formatCurrency(data.netGapToWedding)}`;
-      const coveragePct = data.totalRemainingDue > 0 ? Math.min(100, Math.round((data.currentSavings / data.totalRemainingDue) * 100)) : 0;
-      DOM.kpiSavingsCoverageBar.style.width = `${coveragePct}%`;
+      if (DOM.kpiUpcomingCount) DOM.kpiUpcomingCount.textContent = upcomingPaymentsText;
+      const coveragePct = Math.min(100, Math.round((data.currentSavings / data.totalRemainingDue) * 100));
+      if (data.netGapToWedding <= 0) {
+        if (savingsEl) savingsEl.innerHTML = `<span style="color: var(--sage-primary); font-weight: 600;">100% covered by savings</span>`;
+      } else {
+        if (savingsEl) savingsEl.textContent = `${formatCurrency(data.currentSavings)} saved (${coveragePct}% covered)`;
+      }
+      if (DOM.kpiRemainingBar) {
+        DOM.kpiRemainingBar.style.width = `${coveragePct}%`;
+        DOM.kpiRemainingBar.className = coveragePct >= 100 ? 'kpi-progress-bar success' : 'kpi-progress-bar rose';
+      }
     }
+
+    // Keep hidden elements updated for backward compatibility
+    if (DOM.kpiActualCost) DOM.kpiActualCost.textContent = formatCurrency(data.totalActual);
+    if (DOM.kpiCurrentSavings) DOM.kpiCurrentSavings.textContent = formatCurrency(data.currentSavings);
   }
 
   function renderVelocitySection(data) {
@@ -1198,9 +1205,9 @@
 
     if (!state.weddingDate && data.totalEstimated === 0) {
       DOM.velocityAdviceText.innerHTML = `
-        Your planner is currently a blank slate. Start by setting your wedding date in 
+        Start by setting your wedding date in 
         <button type="button" class="btn-link-action" id="velOpenSettingsBtn">Settings</button> 
-        and clicking <strong>+ Add Expense</strong> above.
+        and clicking <strong>+ Add Expense</strong> above to calculate your personalized savings pace.
       `;
       const btn = document.getElementById('velOpenSettingsBtn');
       if (btn) btn.onclick = openSettingsModal;
@@ -1211,7 +1218,7 @@
       DOM.velocityAdviceText.innerHTML = `
         You have <strong>${formatCurrency(data.totalEstimated)}</strong> in estimated expenses. 
         Set your wedding date in <button type="button" class="btn-link-action" id="velOpenSettingsBtn">Settings</button> 
-        to calculate required daily and paycheck savings targets.
+        to calculate how much to save each paycheck.
       `;
       const btn = document.getElementById('velOpenSettingsBtn');
       if (btn) btn.onclick = openSettingsModal;
@@ -1221,7 +1228,7 @@
     if (state.weddingDate && data.totalEstimated === 0) {
       DOM.velocityAdviceText.innerHTML = `
         Your wedding is scheduled for <strong>${formatDate(state.weddingDate)}</strong> (${data.daysToWedding} days away). 
-        Click <strong>+ Add Expense</strong> to begin adding items and calculating your required savings pace.
+        Click <strong>+ Add Expense</strong> to begin adding items and calculating your savings pace.
       `;
       return;
     }
@@ -1234,9 +1241,9 @@
     }
 
     DOM.velocityAdviceText.innerHTML = `
-      To cover your <strong>${formatCurrency(data.netGapToWedding)}</strong> net balance 
-      over the remaining <strong>${data.daysToWedding} days</strong> (${data.paychecksToWedding.toFixed(1)} ${getCadenceName(state.paycheckCadence).toLowerCase()} paychecks),
-      you must save <strong>${formatCurrency(data.velocity.perPaycheck)}</strong> per cadence.
+      To cover your remaining <strong>${formatCurrency(data.netGapToWedding)}</strong> 
+      over the next <strong>${data.daysToWedding} days</strong> (${data.paychecksToWedding.toFixed(1)} ${getCadenceName(state.paycheckCadence).toLowerCase()} paychecks),
+      set aside <strong>${formatCurrency(data.velocity.perPaycheck)}</strong> per paycheck.
     `;
   }
 
@@ -1250,7 +1257,7 @@
           <span style="font-size: 2.2rem; display: block; margin-bottom: 8px;">📋</span>
           <p style="font-size: 0.95rem; margin-bottom: 14px;">No upcoming payments scheduled yet.</p>
           <button class="btn btn-secondary btn-sm" onclick="document.getElementById('openAddExpenseBtn').click()">
-            <span>+</span> Add Expense & Milestones
+            <span>+</span> Add Your First Expense
           </button>
         </div>
       `;

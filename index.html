@@ -85,22 +85,22 @@
     <nav class="nav-tabs-wrapper" aria-label="Planner Views">
       <div class="nav-tabs" role="tablist">
         <button class="tab-btn active" role="tab" aria-selected="true" data-tab="dashboard">
-          <span>📊</span> Dashboard & Roadmap
+          <span>📊</span> Overview
         </button>
         <button class="tab-btn" role="tab" aria-selected="false" data-tab="schedule">
-          <span>📅</span> Payment Due Dates
+          <span>📅</span> Payment Schedule
           <span class="badge-pill" id="unpaidMilestonesCount">0</span>
         </button>
         <button class="tab-btn" role="tab" aria-selected="false" data-tab="budget">
           <span>📋</span> Budget & Expenses
         </button>
         <button class="tab-btn" role="tab" aria-selected="false" data-tab="simulator">
-          <span>💡</span> Paycheck & Cashflow Simulator
+          <span>💡</span> Savings Simulator
         </button>
       </div>
 
       <div class="tab-meta-status" id="headerCadenceIndicator">
-        <span class="rate-sub">Savings Cadence:</span>
+        <span class="rate-sub">Saving Every:</span>
         <strong id="currentCadenceLabel">Bi-Weekly ($0)</strong>
       </div>
     </nav>
@@ -120,77 +120,62 @@
           <div class="crunch-stat-value" id="crunchNextAmount">$0</div>
         </div>
         <div>
-          <div class="crunch-stat-label" id="crunchPaceLabel">Pace Needed</div>
+          <div class="crunch-stat-label" id="crunchPaceLabel">Recommended Pace</div>
           <div class="crunch-stat-value highlight" id="crunchNextPace">$0/paycheck</div>
         </div>
       </div>
     </section>
 
-    <!-- Top KPI Cards -->
-    <section class="kpi-grid" aria-label="Key Performance Indicators">
-      <!-- Estimated Total or Target Budget -->
+    <!-- Top KPI Cards: 3 Core Questions -->
+    <section class="kpi-grid" aria-label="Key Budget Metrics">
+      <!-- 1. Total Wedding Budget (Target vs Planned) -->
       <div class="kpi-card" id="kpiBudgetCard">
         <div class="kpi-header">
-          <span class="kpi-title" id="kpiBudgetTitle">Total Estimated Cost</span>
-          <span class="kpi-icon" id="kpiBudgetIcon">📊</span>
+          <span class="kpi-title" id="kpiBudgetTitle">Total Wedding Budget</span>
+          <span class="kpi-icon" id="kpiBudgetIcon">🎯</span>
         </div>
         <div class="kpi-main-val" id="kpiTargetBudget">$0</div>
-        <div class="kpi-meta" id="kpiBudgetDiff">Sum of your estimated items</div>
+        <div class="kpi-meta" id="kpiBudgetDiff">Planned: $0 of $0 goal</div>
         <div class="kpi-progress">
           <div class="kpi-progress-bar" id="kpiBudgetBar" style="width: 0%;"></div>
         </div>
+        <!-- Hidden elements for data bindings -->
+        <span id="kpiActualCost" style="display: none;">$0</span>
+        <span id="kpiAllocatedMeta" style="display: none;"></span>
+        <span id="kpiActualBar" style="display: none;"></span>
       </div>
 
-      <!-- Contracted / Actual Cost -->
-      <div class="kpi-card">
+      <!-- 2. Paid So Far -->
+      <div class="kpi-card" id="kpiPaidCard">
         <div class="kpi-header">
-          <span class="kpi-title">Actual Total</span>
-          <span class="kpi-icon">📝</span>
-        </div>
-        <div class="kpi-main-val" id="kpiActualCost">$0</div>
-        <div class="kpi-meta" id="kpiAllocatedMeta">Across 0 items</div>
-        <div class="kpi-progress">
-          <div class="kpi-progress-bar success" id="kpiActualBar" style="width: 0%;"></div>
-        </div>
-      </div>
-
-      <!-- Paid So Far -->
-      <div class="kpi-card">
-        <div class="kpi-header">
-          <span class="kpi-title">Paid to Date</span>
+          <span class="kpi-title">Paid So Far</span>
           <span class="kpi-icon">✅</span>
         </div>
         <div class="kpi-main-val" id="kpiPaidSoFar">$0</div>
-        <div class="kpi-meta" id="kpiPaidPct">0% of wedding paid</div>
+        <div class="kpi-meta" id="kpiPaidPct">0% of wedding costs paid</div>
         <div class="kpi-progress">
           <div class="kpi-progress-bar success" id="kpiPaidBar" style="width: 0%;"></div>
         </div>
       </div>
 
-      <!-- Remaining Balance Due -->
-      <div class="kpi-card">
+      <!-- 3. Remaining to Pay & Savings Coverage -->
+      <div class="kpi-card" id="kpiRemainingCard">
         <div class="kpi-header">
           <span class="kpi-title">Remaining to Pay</span>
           <span class="kpi-icon">⏳</span>
         </div>
         <div class="kpi-main-val" id="kpiRemainingDue">$0</div>
-        <div class="kpi-meta" id="kpiUpcomingCount">0 payments remaining</div>
+        <div class="kpi-meta" id="kpiRemainingMeta">
+          <span id="kpiUpcomingCount">0 payments upcoming</span>
+          <span id="kpiSavingsSummary" style="margin-left: auto;"></span>
+        </div>
         <div class="kpi-progress">
           <div class="kpi-progress-bar rose" id="kpiRemainingBar" style="width: 0%;"></div>
         </div>
-      </div>
-
-      <!-- Current Savings & Gap -->
-      <div class="kpi-card">
-        <div class="kpi-header">
-          <span class="kpi-title">Current Savings Pool</span>
-          <span class="kpi-icon">🏦</span>
-        </div>
-        <div class="kpi-main-val" id="kpiCurrentSavings">$0</div>
-        <div class="kpi-meta" id="kpiSavingsGap">$0 to save</div>
-        <div class="kpi-progress">
-          <div class="kpi-progress-bar" id="kpiSavingsCoverageBar" style="width: 0%;"></div>
-        </div>
+        <!-- Hidden elements for backward-compatible bindings -->
+        <span id="kpiCurrentSavings" style="display: none;">$0</span>
+        <span id="kpiSavingsGap" style="display: none;"></span>
+        <span id="kpiSavingsCoverageBar" style="display: none;"></span>
       </div>
     </section>
 
@@ -202,32 +187,32 @@
       <div class="panel-card velocity-calculator-card">
         <div class="panel-header">
           <div class="panel-title-group">
-            <h2>Required Savings Velocity</h2>
-            <p>How much you need to set aside to cover all wedding costs comfortably by your wedding day:</p>
+            <h2>Recommended Savings Pace</h2>
+            <p>How much to set aside from each paycheck or month to cover all wedding costs by your big day:</p>
           </div>
           <button class="btn btn-secondary btn-sm" id="jumpToSimulatorBtn">
-            Adjust Savings Plan ↗
+            Customize Savings Plan ↗
           </button>
         </div>
 
         <div class="velocity-rates-grid">
           <div class="rate-box" id="rateBoxDay">
-            <div class="rate-label">Per Day</div>
+            <div class="rate-label">Daily</div>
             <div class="rate-value" id="ratePerDay">$0</div>
-            <div class="rate-sub">Every single day</div>
+            <div class="rate-sub">Estimated per day</div>
           </div>
           <div class="rate-box" id="rateBoxWeek">
-            <div class="rate-label">Per Week</div>
+            <div class="rate-label">Weekly</div>
             <div class="rate-value" id="ratePerWeek">$0</div>
             <div class="rate-sub">Every 7 days</div>
           </div>
           <div class="rate-box active-cadence" id="rateBoxPaycheck">
-            <div class="rate-label">Per Paycheck (Bi-Weekly)</div>
+            <div class="rate-label">Per Paycheck</div>
             <div class="rate-value" id="ratePerPaycheck">$0</div>
-            <div class="rate-sub">Your primary cadence</div>
+            <div class="rate-sub">Based on your pay schedule</div>
           </div>
           <div class="rate-box" id="rateBoxMonth">
-            <div class="rate-label">Per Month</div>
+            <div class="rate-label">Monthly</div>
             <div class="rate-value" id="ratePerMonth">$0</div>
             <div class="rate-sub">Monthly transfer</div>
           </div>
@@ -244,14 +229,14 @@
         <div class="panel-card">
           <div class="panel-header">
             <div class="panel-title-group">
-              <h2>Cashflow & Milestone Trajectory</h2>
-              <p>Projected savings accumulation vs cumulative payment due dates over time</p>
+              <h2>Savings vs. Payment Deadlines</h2>
+              <p>Track your projected savings growth against upcoming payment deadlines</p>
             </div>
             <div class="panel-header-controls">
               <div class="segmented-control" id="cashflowViewModeGroup">
-                <button type="button" class="btn-segmented active" data-view="trajectory">📈 Trajectory</button>
+                <button type="button" class="btn-segmented active" data-view="trajectory">📈 Timeline</button>
                 <button type="button" class="btn-segmented" data-view="monthly">📊 Monthly</button>
-                <button type="button" class="btn-segmented" data-view="steps">🪜 Steps</button>
+                <button type="button" class="btn-segmented" data-view="steps">🪜 Milestones</button>
               </div>
               <span class="badge-pill badge-upcoming chart-status-pill-fixed" id="chartStatusPill">On Track</span>
             </div>
@@ -262,7 +247,7 @@
             <!-- Row 1: Label, Current Active Value, and Presets -->
             <div class="chart-toolbar-row">
               <div class="chart-sim-label">
-                <span class="chart-sim-title">Dynamic Pace Simulator:</span>
+                <span class="chart-sim-title">Test a Savings Pace:</span>
                 <span class="chart-sim-badge" id="chartSimPaceDisplay">$0 / cadence</span>
               </div>
               <div class="chart-sim-presets">
@@ -278,7 +263,7 @@
             <div class="chart-slider-track-row">
               <span class="slider-boundary-label" id="sliderMinBound">$0</span>
               <div class="slider-wrapper">
-                <input type="range" id="chartSimPaceSlider" class="chart-pace-slider" min="0" max="3000" step="25" value="500" title="Drag to test how changing your savings pace alters your balance trajectory in real-time">
+                <input type="range" id="chartSimPaceSlider" class="chart-pace-slider" min="0" max="3000" step="25" value="500" title="Drag to see how adjusting your savings pace affects your balances before each payment">
               </div>
               <span class="slider-boundary-label" id="sliderMaxBound">$3,000</span>
             </div>
@@ -292,15 +277,15 @@
           <div class="chart-legend-row" id="cashflowLegendRow">
             <div class="legend-item-pill">
               <span class="legend-color-dot" style="background: #9A3412;"></span>
-              <span id="legendLabelSavings">Projected Savings Balance</span>
+              <span id="legendLabelSavings">Projected Savings</span>
             </div>
             <div class="legend-item-pill">
               <span class="legend-color-dot" style="background: #64748B;"></span>
-              <span id="legendLabelDue">Cumulative Payments Due</span>
+              <span id="legendLabelDue">Total Payments Due</span>
             </div>
             <div class="legend-item-pill" id="legendCushionItem">
               <span class="legend-dash-dot" style="border-top: 2px dashed #9A3412;"></span>
-              <span>Safety Cushion</span>
+              <span>Emergency Buffer</span>
             </div>
           </div>
         </div>
@@ -309,8 +294,8 @@
         <div class="panel-card">
           <div class="panel-header">
             <div class="panel-title-group">
-              <h2>Budget Allocation</h2>
-              <p>Breakdown by wedding expense category</p>
+              <h2>Spending by Category</h2>
+              <p>How your budget is distributed across vendors</p>
             </div>
             <button class="btn btn-secondary btn-sm" id="viewAllExpensesBtn">
               View All Expenses →
@@ -332,11 +317,11 @@
       <div class="panel-card" style="margin-top: 24px;">
         <div class="panel-header">
           <div class="panel-title-group">
-            <h2>Next Upcoming Payments Due</h2>
-            <p>Immediate deadlines requiring your attention</p>
+            <h2>Upcoming Payments</h2>
+            <p>Immediate payment deadlines requiring attention</p>
           </div>
           <button class="btn btn-secondary btn-sm" id="viewAllScheduleBtn">
-            View All Due Dates (Calendar) →
+            View Full Payment Schedule →
           </button>
         </div>
 
@@ -353,11 +338,11 @@
       <div class="panel-card">
         <div class="panel-header">
           <div class="panel-title-group">
-            <h2>Payment Due Date Timeline</h2>
-            <p>Every deposit, interim payment, and final balance sorted chronologically with required savings velocity</p>
+            <h2>Payment Schedule</h2>
+            <p>Every deposit and final balance in order of due date, with the savings pace needed for each</p>
           </div>
           <button class="btn btn-primary btn-sm" id="addExpenseFromScheduleBtn">
-            + Add Payment Milestone
+            + Add Payment
           </button>
         </div>
 
@@ -418,9 +403,9 @@
           </div>
           <div class="totals-banner-divider"></div>
           <div class="totals-banner-item">
-            <div class="totals-banner-label">Total Actual / Contracted</div>
+            <div class="totals-banner-label">Total Booked Costs</div>
             <div class="totals-banner-val" id="summaryTotalActual">$0</div>
-            <div class="totals-banner-sub" id="summaryPaidMeta">Total booked vendors</div>
+            <div class="totals-banner-sub" id="summaryPaidMeta">Agreed contract totals</div>
           </div>
           <div class="totals-banner-divider"></div>
           <div class="totals-banner-item">
@@ -448,8 +433,8 @@
       <div class="panel-card">
         <div class="panel-header">
           <div class="panel-title-group">
-            <h2>Paycheck & Cashflow Simulator</h2>
-            <p>Stress-test your savings pace: simulate every paycheck and verify you will never run short on a payment due date</p>
+            <h2>Savings & Payment Simulator</h2>
+            <p>Test different savings amounts to make sure you have enough in the bank when vendor bills arrive</p>
           </div>
           <button class="btn btn-primary btn-sm" id="autoSolvePaceBtn">
             ⚡ Auto-Balance Savings Pace
@@ -460,10 +445,10 @@
           <div class="form-group">
             <label for="simCurrentSavings">
               <span class="label-text-with-tooltip" data-tooltip-id="tt-current-savings" tabindex="0">
-                Current Wedding Savings in Bank
+                Current Wedding Savings
                 <span class="info-badge" aria-label="Info about Current Wedding Savings">ℹ️</span>
               </span>
-              <span class="field-hint">Starting pool</span>
+              <span class="field-hint">Starting money in bank</span>
             </label>
             <input type="number" id="simCurrentSavings" class="form-control" value="0" min="0" step="1">
           </div>
@@ -498,8 +483,8 @@
           <div class="form-group">
             <label for="simSafetyCushion">
               <span class="label-text-with-tooltip" data-tooltip-id="tt-safety-cushion" tabindex="0">
-                Safety Cushion Buffer
-                <span class="info-badge" aria-label="Info about Safety Cushion Buffer">ℹ️</span>
+                Emergency Buffer
+                <span class="info-badge" aria-label="Info about Emergency Buffer">ℹ️</span>
               </span>
               <span class="field-hint">Minimum cash reserve</span>
             </label>
@@ -519,7 +504,7 @@
             </div>
           </div>
 
-          <h4 style="font-family: var(--font-serif); font-size: 1.25rem; margin-bottom: 12px;">Milestone Cash Balance Forecast</h4>
+          <h4 style="font-family: var(--font-serif); font-size: 1.25rem; margin-bottom: 12px;">Payment Schedule Balance Forecast</h4>
           <div style="overflow-x: auto;">
             <table class="sim-breakdown-table" id="simBreakdownTable">
               <thead>
