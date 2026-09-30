@@ -31,6 +31,8 @@
   let rafChartId = null;
   let activeHoverPoint = null;
   let chartInteractionPoints = [];
+  let donutSliceHitAreas = [];
+  let hoveredDonutSliceIndex = null;
 
   // EternalAI Hub State
   let activeAiTab = 'audit'; // 'audit' | 'chat' | 'settings'
@@ -163,6 +165,8 @@
     legendLabelSavings: document.getElementById('legendLabelSavings'),
     legendLabelDue: document.getElementById('legendLabelDue'),
     legendCushionItem: document.getElementById('legendCushionItem'),
+    donutTooltip: document.getElementById('donutTooltip'),
+    viewAllExpensesBtn: document.getElementById('viewAllExpensesBtn'),
 
     // Modals
     expenseModal: document.getElementById('expenseModal'),
@@ -2298,7 +2302,7 @@
 
     const centerX = width / 2;
     const centerY = height / 2;
-    const outerRadius = Math.min(centerX, centerY) - 8;
+    const outerRadius = Math.min(centerX, centerY) - 10;
     const innerRadius = outerRadius * 0.64;
 
     let total = 0;
@@ -2307,56 +2311,108 @@
       const expenses = (state.expenses || []).filter(e => e.categoryId === cat.id);
       const catSum = expenses.reduce((s, e) => s + Number(e.actualCost || e.estimatedCost || 0), 0);
       if (catSum > 0) {
-        slices.push({ cat, amount: catSum });
+        slices.push({ cat, amount: catSum, expenses });
         total += catSum;
       }
     });
 
     const hasExpenses = slices.length > 0 && total > 0;
 
+    // Reset hit areas
+    donutSliceHitAreas = [];
+
     if (hasExpenses) {
-      const chartSlices = slices.map(s => ({
-        color: s.cat.color,
-        name: s.cat.name,
-        ratio: s.amount / total
-      }));
+      let runningAngle = -Math.PI / 2;
+      const gapAngle = slices.length > 1 ? 0.035 : 0;
 
-      let startAngle = -Math.PI / 2;
-      const gapAngle = 0.035;
+      slices.forEach((s, idx) => {
+        const sliceAngle = (s.amount / total) * Math.PI * 2;
+        donutSliceHitAreas.push({
+          index: idx,
+          cat: s.cat,
+          amount: s.amount,
+          ratio: s.amount / total,
+          expenses: s.expenses,
+          startAngle: runningAngle,
+          endAngle: runningAngle + sliceAngle,
+          gapAngle,
+          innerRadius,
+          outerRadius,
+          centerX,
+          centerY
+        });
+        runningAngle += sliceAngle;
+      });
 
-      chartSlices.forEach(slice => {
-        const sliceAngle = slice.ratio * Math.PI * 2;
-        const actualSliceAngle = Math.max(0.01, sliceAngle - gapAngle);
-        const halfGap = gapAngle / 2;
+      const activeHit = (hoveredDonutSliceIndex !== null && donutSliceHitAreas[hoveredDonutSliceIndex])
+        ? donutSliceHitAreas[hoveredDonutSliceIndex]
+        : null;
 
-        ctx.fillStyle = slice.color;
+      donutSliceHitAreas.forEach(slice => {
+        const isHovered = activeHit && activeHit.index === slice.index;
+        const curOuter = isHovered ? outerRadius + 6 : outerRadius;
+        const curInner = isHovered ? innerRadius - 2 : innerRadius;
+        const actualSliceAngle = Math.max(0.01, (slice.endAngle - slice.startAngle) - slice.gapAngle);
+        const halfGap = slice.gapAngle / 2;
+
+        ctx.save();
+        if (activeHit && !isHovered) {
+          ctx.globalAlpha = 0.42; // Dim other slices
+        } else {
+          ctx.globalAlpha = 1.0;
+        }
+
+        ctx.fillStyle = slice.cat.color;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, outerRadius, startAngle + halfGap, startAngle + halfGap + actualSliceAngle);
-        ctx.arc(centerX, centerY, innerRadius, startAngle + halfGap + actualSliceAngle, startAngle + halfGap, true);
+        ctx.arc(centerX, centerY, curOuter, slice.startAngle + halfGap, slice.startAngle + halfGap + actualSliceAngle);
+        ctx.arc(centerX, centerY, curInner, slice.startAngle + halfGap + actualSliceAngle, slice.startAngle + halfGap, true);
         ctx.closePath();
         ctx.fill();
 
-        startAngle += sliceAngle;
+        if (isHovered) {
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        }
+        ctx.restore();
       });
 
-      // Center hole text with total spend
-      ctx.fillStyle = '#8A847D';
-      ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('TOTAL ALLOCATED', centerX, centerY - 14);
+      // Center hole text
+      if (activeHit) {
+        ctx.fillStyle = activeHit.cat.color;
+        ctx.font = '700 9.5px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(activeHit.cat.name.toUpperCase(), centerX, centerY - 14);
 
-      ctx.fillStyle = '#242220';
-      ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
-      ctx.fillText(formatCurrency(total), centerX, centerY + 2);
+        ctx.fillStyle = '#242220';
+        ctx.font = '800 17px Plus Jakarta Sans, sans-serif';
+        ctx.fillText(formatCurrency(activeHit.amount), centerX, centerY + 2);
 
-      ctx.fillStyle = '#6E6862';
-      ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
-      if (state.hasTargetBudget && state.targetBudget > 0) {
-        const pct = Math.round((total / state.targetBudget) * 100);
-        ctx.fillText(`${pct}% of ${formatCurrency(state.targetBudget)}`, centerX, centerY + 18);
+        ctx.fillStyle = '#6E6862';
+        ctx.font = '600 10px Plus Jakarta Sans, sans-serif';
+        const pct = Math.round((activeHit.amount / total) * 100);
+        const count = (activeHit.expenses || []).length;
+        ctx.fillText(`${pct}% • ${count} ${count === 1 ? 'item' : 'items'}`, centerX, centerY + 18);
       } else {
-        ctx.fillText(`${slices.length} ${slices.length === 1 ? 'Category' : 'Categories'}`, centerX, centerY + 18);
+        ctx.fillStyle = '#8A847D';
+        ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('TOTAL ALLOCATED', centerX, centerY - 14);
+
+        ctx.fillStyle = '#242220';
+        ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
+        ctx.fillText(formatCurrency(total), centerX, centerY + 2);
+
+        ctx.fillStyle = '#6E6862';
+        ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
+        if (state.hasTargetBudget && state.targetBudget > 0) {
+          const pct = Math.round((total / state.targetBudget) * 100);
+          ctx.fillText(`${pct}% of ${formatCurrency(state.targetBudget)}`, centerX, centerY + 18);
+        } else {
+          ctx.fillText(`${slices.length} ${slices.length === 1 ? 'Category' : 'Categories'}`, centerX, centerY + 18);
+        }
       }
     } else {
       // Zero expenses logged: draw clean placeholder ring
@@ -2370,7 +2426,7 @@
       ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('YOUR SPEND', centerX, centerY - 14);
+      ctx.fillText('TOTAL ALLOCATED', centerX, centerY - 14);
 
       ctx.fillStyle = '#242220';
       ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
@@ -2415,6 +2471,40 @@
       const pct = Math.round((item.amount / total) * 100);
       const div = document.createElement('div');
       div.className = 'legend-item';
+      div.dataset.categoryId = item.cat.id;
+      div.style.cursor = 'pointer';
+
+      // Synchronize legend hover with chart
+      div.addEventListener('mouseenter', () => {
+        const hitIdx = donutSliceHitAreas.findIndex(h => h.cat.id === item.cat.id);
+        if (hitIdx !== -1) {
+          hoveredDonutSliceIndex = hitIdx;
+          renderCategoryDonutChart(calculateFinancialAnalytics());
+          div.classList.add('active-donut-hover');
+          if (DOM.donutTooltip && donutSliceHitAreas[hitIdx]) {
+            const hit = donutSliceHitAreas[hitIdx];
+            const canvas = DOM.categoryDonutCanvas;
+            if (canvas) {
+              const rect = canvas.getBoundingClientRect();
+              const midAngle = (hit.startAngle + hit.endAngle) / 2;
+              const midR = (hit.innerRadius + hit.outerRadius) / 2;
+              const mx = hit.centerX + Math.cos(midAngle) * midR;
+              const my = hit.centerY + Math.sin(midAngle) * midR;
+              showDonutTooltip(DOM.donutTooltip, hit, mx, my, rect.width, rect.height);
+            }
+          }
+        }
+      });
+
+      div.addEventListener('mouseleave', () => {
+        if (hoveredDonutSliceIndex !== null) {
+          hoveredDonutSliceIndex = null;
+          div.classList.remove('active-donut-hover');
+          if (DOM.donutTooltip) DOM.donutTooltip.style.display = 'none';
+          renderCategoryDonutChart(calculateFinancialAnalytics());
+        }
+      });
+
       div.innerHTML = `
         <div class="legend-left">
           <span class="legend-color-dot" style="background: ${item.cat.color};"></span>
@@ -2451,6 +2541,204 @@
 
     legendList.appendChild(fragment);
   }
+
+  // Interactive Hover & Item Breakdown Tooltip for Donut Chart
+  function setupDonutChartInteractionListeners() {
+    const canvas = DOM.categoryDonutCanvas;
+    const tooltip = DOM.donutTooltip;
+    if (!canvas || !tooltip) return;
+
+    function handleDonutMove(clientX, clientY) {
+      if (!donutSliceHitAreas || donutSliceHitAreas.length === 0) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = clientX - rect.left;
+      const mouseY = clientY - rect.top;
+
+      const hit = findDonutSliceAtPoint(mouseX, mouseY);
+
+      if (hit) {
+        canvas.style.cursor = 'pointer';
+        if (hoveredDonutSliceIndex === hit.index) {
+          updateDonutTooltipPosition(tooltip, mouseX, mouseY, rect.width, rect.height);
+          return;
+        }
+        hoveredDonutSliceIndex = hit.index;
+        renderCategoryDonutChart(calculateFinancialAnalytics());
+        showDonutTooltip(tooltip, hit, mouseX, mouseY, rect.width, rect.height);
+        highlightLegendItem(hit.cat.id);
+      } else {
+        handleDonutLeave();
+      }
+    }
+
+    function handleDonutLeave() {
+      if (hoveredDonutSliceIndex !== null) {
+        hoveredDonutSliceIndex = null;
+        canvas.style.cursor = 'default';
+        tooltip.style.display = 'none';
+        renderCategoryDonutChart(calculateFinancialAnalytics());
+        clearLegendHighlights();
+      }
+    }
+
+    let donutRafId = null;
+    canvas.addEventListener('mousemove', e => {
+      if (donutRafId) cancelAnimationFrame(donutRafId);
+      const cx = e.clientX;
+      const cy = e.clientY;
+      donutRafId = requestAnimationFrame(() => handleDonutMove(cx, cy));
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      if (donutRafId) cancelAnimationFrame(donutRafId);
+      handleDonutLeave();
+    });
+
+    canvas.addEventListener('touchstart', e => {
+      if (e.touches.length > 0) {
+        const cx = e.touches[0].clientX;
+        const cy = e.touches[0].clientY;
+        handleDonutMove(cx, cy);
+      }
+    }, { passive: true });
+
+    canvas.addEventListener('touchmove', e => {
+      if (e.touches.length > 0) {
+        if (donutRafId) cancelAnimationFrame(donutRafId);
+        const cx = e.touches[0].clientX;
+        const cy = e.touches[0].clientY;
+        donutRafId = requestAnimationFrame(() => handleDonutMove(cx, cy));
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchstart', e => {
+      if (!canvas.contains(e.target) && !tooltip.contains(e.target)) {
+        handleDonutLeave();
+      }
+    }, { passive: true });
+  }
+
+  function findDonutSliceAtPoint(mouseX, mouseY) {
+    if (!donutSliceHitAreas || donutSliceHitAreas.length === 0) return null;
+    const first = donutSliceHitAreas[0];
+    const dx = mouseX - first.centerX;
+    const dy = mouseY - first.centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Expand boundary slightly for natural hover comfort
+    if (dist < (first.innerRadius - 8) || dist > (first.outerRadius + 14)) {
+      return null;
+    }
+
+    if (donutSliceHitAreas.length === 1) {
+      return donutSliceHitAreas[0];
+    }
+
+    // Angle of mouse pointer relative to center
+    const angle = Math.atan2(dy, dx);
+    // Normalize to 12 o'clock (-Math.PI / 2):
+    let normAngle = angle - (-Math.PI / 2);
+    while (normAngle < 0) normAngle += Math.PI * 2;
+    while (normAngle >= Math.PI * 2) normAngle -= Math.PI * 2;
+
+    for (let i = 0; i < donutSliceHitAreas.length; i++) {
+      const slice = donutSliceHitAreas[i];
+      let sStart = slice.startAngle - (-Math.PI / 2);
+      while (sStart < 0) sStart += Math.PI * 2;
+      while (sStart >= Math.PI * 2) sStart -= Math.PI * 2;
+
+      let sEnd = sStart + (slice.ratio * Math.PI * 2);
+
+      if (sEnd > Math.PI * 2) {
+        if (normAngle >= sStart || normAngle <= (sEnd - Math.PI * 2)) {
+          return slice;
+        }
+      } else {
+        if (normAngle >= sStart && normAngle < sEnd) {
+          return slice;
+        }
+      }
+    }
+    return null;
+  }
+
+  function showDonutTooltip(tooltip, slice, mouseX, mouseY, containerW, containerH) {
+    const total = donutSliceHitAreas.reduce((s, a) => s + a.amount, 0);
+    const pct = total > 0 ? Math.round((slice.amount / total) * 100) : 0;
+    const items = slice.expenses || [];
+
+    const itemsHtml = items.map(exp => {
+      const cost = Number(exp.actualCost || exp.estimatedCost || 0);
+      const paid = (exp.milestones || []).filter(m => m.isPaid).reduce((s, m) => s + m.amount, 0);
+      const isPaid = paid >= cost && cost > 0;
+      return `
+        <div class="donut-tt-item-row">
+          <div class="donut-tt-item-left">
+            <span class="donut-tt-item-name" title="${escapeHtml(exp.name)}">${escapeHtml(exp.name)}</span>
+            ${exp.vendor ? `<span class="donut-tt-item-vendor">${escapeHtml(exp.vendor)}</span>` : ''}
+          </div>
+          <div class="donut-tt-item-right">
+            <span class="donut-tt-item-price">${formatCurrency(cost)}</span>
+            ${isPaid 
+              ? '<span class="donut-tt-status-pill paid">Paid</span>' 
+              : (paid > 0 ? `<span class="donut-tt-status-pill unpaid">${formatCurrency(paid)} pd</span>` : '')
+            }
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    tooltip.innerHTML = `
+      <div class="donut-tt-header">
+        <span class="donut-tt-dot" style="background: ${slice.cat.color};"></span>
+        <span class="donut-tt-title">${slice.cat.icon} ${escapeHtml(slice.cat.name)}</span>
+        <span class="donut-tt-total">${formatCurrency(slice.amount)}</span>
+      </div>
+      <div class="donut-tt-sub">
+        <span>${pct}% of allocated spend</span>
+        <span>${items.length} ${items.length === 1 ? 'item' : 'items'}</span>
+      </div>
+      <div class="donut-tt-items-list">
+        ${itemsHtml || '<div style="color: #9E968E; font-size: 0.75rem;">No items found</div>'}
+      </div>
+    `;
+
+    tooltip.style.display = 'block';
+    updateDonutTooltipPosition(tooltip, mouseX, mouseY, containerW, containerH);
+  }
+
+  function updateDonutTooltipPosition(tooltip, mouseX, mouseY, containerW, containerH) {
+    const isTopHalf = mouseY < 115;
+    const clampedX = Math.max(130, Math.min(containerW - 130, mouseX));
+    tooltip.style.left = `${Math.round(clampedX)}px`;
+
+    if (isTopHalf) {
+      tooltip.style.top = `${Math.round(mouseY + 16)}px`;
+      tooltip.style.transform = 'translate(-50%, 0)';
+    } else {
+      tooltip.style.top = `${Math.round(mouseY - 12)}px`;
+      tooltip.style.transform = 'translate(-50%, -100%)';
+    }
+  }
+
+  function highlightLegendItem(categoryId) {
+    if (!DOM.categoryLegendList) return;
+    DOM.categoryLegendList.querySelectorAll('.legend-item').forEach(el => {
+      if (el.dataset.categoryId === categoryId) {
+        el.classList.add('active-donut-hover');
+      } else {
+        el.classList.remove('active-donut-hover');
+      }
+    });
+  }
+
+  function clearLegendHighlights() {
+    if (!DOM.categoryLegendList) return;
+    DOM.categoryLegendList.querySelectorAll('.legend-item').forEach(el => {
+      el.classList.remove('active-donut-hover');
+    });
+  }
+
 
 
   // Interactive Hover Scrubbing & Tooltip for Cashflow Chart
@@ -2971,6 +3259,9 @@
     DOM.printReportBtn.addEventListener('click', () => window.print());
     DOM.jumpToSimulatorBtn.addEventListener('click', () => switchTab('simulator'));
     DOM.viewAllScheduleBtn.addEventListener('click', () => switchTab('schedule'));
+    if (DOM.viewAllExpensesBtn) {
+      DOM.viewAllExpensesBtn.addEventListener('click', () => switchTab('budget'));
+    }
 
     // Auto-solve pace button
     DOM.autoSolvePaceBtn.addEventListener('click', () => {
@@ -3233,6 +3524,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     // Setup interactive chart tooltips and view toggles
     setupChartInteractionListeners();
     setupChartControlsListeners();
+    setupDonutChartInteractionListeners();
 
     // Window resize chart re-render
     window.addEventListener('resize', debounce(() => {
