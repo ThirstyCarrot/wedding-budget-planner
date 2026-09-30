@@ -1,0 +1,30 @@
+# ==============================================================================
+# security.txt - RFC 9116 Compliant Vulnerability Disclosure Policy
+# Specification: https://www.rfc-editor.org/rfc/rfc9116
+# ==============================================================================
+
+# Contact email for security researchers (REQUIRED)
+Contact: mailto:security@eternalplan.app
+Contact: https://eternalplan.app/security/report
+
+# Expiration Date in RFC 3339 UTC format (REQUIRED by RFC 9116)
+# Note: Maintain this date within a 1-year rolling horizon.
+Expires: 2027-12-31T23:59:59.000Z
+
+# Canonical URI location of this file (RECOMMENDED)
+Canonical: https://eternalplan.app/.well-known/security.txt
+
+# Encryption key for encrypted vulnerability reports (OpenPGP key link)
+Encryption: https://eternalplan.app/pgp-key.txt
+
+# Responsible Disclosure & Bug Bounty Policy
+Policy: https://eternalplan.app/security-policy
+
+# Researcher Hall of Fame / Acknowledgments
+Acknowledgments: https://eternalplan.app/security/hall-of-fame
+
+# Preferred Communication Languages
+Preferred-Languages: en
+
+# Security Engineering Careers
+Hiring: https://eternalplan.app/careers#security

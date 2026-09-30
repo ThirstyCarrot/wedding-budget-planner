@@ -1,0 +1,63 @@
+# ==============================================================================
+# robots.txt - Standard Web Robots Directives
+# Specification: https://www.rfc-editor.org/rfc/rfc9309.html
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. PRODUCTION RULES (Default Crawler Directives)
+# ------------------------------------------------------------------------------
+User-agent: *
+Allow: /
+Allow: /privacy-policy
+Allow: /terms-of-service
+Allow: /cookie-policy
+Allow: /sitemap.xml
+
+# Restrict sensitive application endpoints, user data, and APIs
+Disallow: /api/
+Disallow: /admin/
+Disallow: /account/
+Disallow: /dsar
+Disallow: /auth/
+Disallow: /supabase_schema.sql
+Disallow: /backup/
+Disallow: /temp/
+
+# Crawl Delay (Optional: polite crawling for high-load instances)
+# Crawl-delay: 2
+
+# ------------------------------------------------------------------------------
+# 2. AI CRAWLER GOVERNANCE (Optional: adjust according to data use policy)
+# ------------------------------------------------------------------------------
+# Disallow: / if you wish to block scraping for model training
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: Anthropic-AI
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+# ------------------------------------------------------------------------------
+# 3. CANONICAL SITEMAP REFERENCE
+# ------------------------------------------------------------------------------
+# REPLACE "https://eternalplan.app" with your verified production domain
+Sitemap: https://eternalplan.app/sitemap.xml
+
+# ==============================================================================
+# STAGING / PREVIEW NOTE:
+# For non-production/staging environments, serve the following instead:
+#   User-agent: *
+#   Disallow: /
+# Along with HTTP Header: 'X-Robots-Tag: noindex, nofollow, noarchive'
+# ==============================================================================

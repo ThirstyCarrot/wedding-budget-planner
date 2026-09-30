@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "EternalPlan - Wedding Budget & Due-Date Savings Planner",
+  "short_name": "EternalPlan",
+  "description": "Plan your wedding budget, track vendor milestone deadlines, and model real-time paycheck savings trajectories.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FCFAF7",
+  "theme_color": "#B38A58",
+  "categories": [
+    "finance",
+    "lifestyle",
+    "productivity"
+  ],
+  "lang": "en-US",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "View Budget",
+      "short_name": "Budget",
+      "description": "Jump directly to wedding expense allocations",
+      "url": "/#budget",
+      "icons": [{ "src": "/icons/budget-shortcut.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Payment Schedule",
+      "short_name": "Calendar",
+      "description": "View upcoming payment milestone due dates",
+      "url": "/#schedule",
+      "icons": [{ "src": "/icons/calendar-shortcut.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

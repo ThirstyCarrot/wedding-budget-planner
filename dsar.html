@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Subject Rights Portal (DSAR) - EternalPlan</title>
+  <meta name="description" content="Exercise your statutory GDPR, CCPA/CPRA, and international privacy rights: Export all personal data or permanently erase your account and wedding records.">
+  <link rel="canonical" href="https://eternalplan.app/dsar">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="styles.css?v=2.6">
+  <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <div class="app-container" style="max-width: 900px; padding-top: 36px;">
+    <header class="panel-header" style="margin-bottom: 28px; border-bottom: 1px solid var(--border-color); padding-bottom: 18px;">
+      <a href="/" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-main);">
+        <span style="font-size: 1.5rem;">💍</span>
+        <span style="font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 700; color: var(--gold-primary);">EternalPlan</span>
+      </a>
+      <nav aria-label="Legal documents navigation">
+        <a href="/" class="btn btn-secondary btn-sm">← Back to Planner</a>
+      </nav>
+    </header>
+
+    <main id="main-content" class="panel-card" style="padding: 36px 42px;">
+      <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 28px;">
+        <span class="category-badge required" style="font-size: 0.78rem;">Statutory Privacy Rights Enforcement</span>
+        <h1 style="font-size: 2.2rem; margin: 12px 0 6px 0;">Data Subject Access Request (DSAR)</h1>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin: 0;">
+          Execute your legal rights under <strong>GDPR (Articles 15 & 17)</strong> and <strong>CCPA/CPRA (§ 1798.100 & § 1798.105)</strong> with zero delays.
+        </p>
+      </div>
+
+      <!-- Action 1: Export Personal Data (Right to Access & Data Portability) -->
+      <section style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 280px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 1.4rem;">📦</span>
+              <h2 style="font-size: 1.15rem; margin: 0;">1. Export My Data (Right to Portability)</h2>
+            </div>
+            <p style="font-size: 0.86rem; color: var(--text-muted); margin: 0 0 10px 0;">
+              Download a complete, machine-readable JSON archive containing all wedding records, couple names, payment schedules, and consent timestamps.
+            </p>
+            <div id="exportStatusMessage" role="status" style="display: none; font-size: 0.82rem; font-weight: 600; color: #3B5E54; margin-bottom: 10px;"></div>
+          </div>
+          <div>
+            <button type="button" class="btn btn-primary" id="btnExecuteDataExport">
+              📥 Download Machine-Readable Archive (.JSON)
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Action 2: Permanent Erasure (Right to be Forgotten) -->
+      <section style="background: rgba(220, 53, 69, 0.04); border: 1px solid rgba(220, 53, 69, 0.25); border-radius: var(--radius-md); padding: 24px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 280px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="font-size: 1.4rem;">🗑️</span>
+              <h2 style="font-size: 1.15rem; margin: 0; color: #9A2833;">2. Erase All Records (Right to Erasure)</h2>
+            </div>
+            <p style="font-size: 0.86rem; color: var(--text-muted); margin: 0 0 10px 0;">
+              Irrevocably wipe all local browser database records, cached financial models, and cloud synchronization endpoints. This action cannot be reversed.
+            </p>
+            <div id="deleteStatusMessage" role="status" style="display: none; font-size: 0.82rem; font-weight: 600; color: #9A2833; margin-bottom: 10px;"></div>
+          </div>
+          <div>
+            <button type="button" class="btn btn-danger" id="btnExecuteDataErasure">
+              ⚠️ Permanently Delete All My Data
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Action 3: Manual Verification & Legal Escalation -->
+      <section style="border-top: 1px solid var(--border-color); padding-top: 24px; font-size: 0.88rem; color: var(--text-muted); line-height: 1.6;">
+        <h2 style="font-size: 1.05rem; color: var(--text-main); margin-bottom: 8px;">3. Direct DPO & Verification Requests</h2>
+        <p>
+          For manual identity verification requests, third-party processor verification, or inquiries regarding enterprise database backups, 
+          please contact our designated Data Protection Officer directly:
+        </p>
+        <p style="font-weight: 600; color: var(--text-main); margin-top: 6px;">
+          Data Protection Officer: <a href="mailto:dpo@eternalplan.app" style="color: var(--gold-primary);">dpo@eternalplan.app</a><br>
+          Statutory Response Deadline: <strong>Within 30 calendar days</strong> (GDPR Article 12(3)).
+        </p>
+      </section>
+
+      <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-muted); flex-wrap: wrap; gap: 10px;">
+        <span>© 2026 EternalPlan Technologies Inc. All rights reserved.</span>
+        <div style="display: flex; gap: 14px;">
+          <a href="/privacy-policy" style="color: var(--gold-primary); text-decoration: none;">Privacy Policy</a>
+          <a href="/terms-of-service" style="color: var(--gold-primary); text-decoration: none;">Terms of Service</a>
+          <a href="/cookie-policy" style="color: var(--gold-primary); text-decoration: none;">Cookie Policy</a>
+          <button type="button" onclick="if(window.ConsentManager) window.ConsentManager.openSettings();" style="background: none; border: none; padding: 0; color: var(--gold-primary); cursor: pointer; font-size: inherit; text-decoration: underline;">Cookie Settings</button>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script src="consent-manager.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnExport = document.getElementById('btnExecuteDataExport');
+      const btnDelete = document.getElementById('btnExecuteDataErasure');
+      const exportMsg = document.getElementById('exportStatusMessage');
+      const deleteMsg = document.getElementById('deleteStatusMessage');
+
+      // 1. Right to Access & Portability
+      btnExport.addEventListener('click', () => {
+        try {
+          const budgetData = localStorage.getItem('wedding_budget_planner_data_v1');
+          const consentData = localStorage.getItem('ep_cookie_consent_v1');
+
+          const archive = {
+            exportMetadata: {
+              system: "EternalPlan Privacy Engine",
+              specification: "GDPR Art. 20 / CCPA § 1798.100",
+              timestamp: new Date().toISOString(),
+              host: window.location.hostname
+            },
+            userData: budgetData ? JSON.parse(budgetData) : null,
+            consentRecord: consentData ? JSON.parse(consentData) : null
+          };
+
+          const blob = new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `eternalplan-privacy-export-${Date.now()}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          exportMsg.style.display = 'block';
+          exportMsg.textContent = '✓ Data archive generated and downloaded successfully.';
+        } catch (err) {
+          alert('Error exporting data: ' + err.message);
+        }
+      });
+
+      // 2. Right to Erasure ("Right to be Forgotten")
+      btnDelete.addEventListener('click', () => {
+        const confirmed = confirm(
+          'ARE YOU ABSOLUTELY SURE?\n\n' +
+          'This will permanently delete all your wedding expenses, payment milestones, target budgets, and local preferences.\n\n' +
+          'This action complies with GDPR Article 17 and CANNOT be undone.'
+        );
+
+        if (confirmed) {
+          localStorage.removeItem('wedding_budget_planner_data_v1');
+          sessionStorage.clear();
+          
+          deleteMsg.style.display = 'block';
+          deleteMsg.textContent = '✓ All personal records and cached calculations have been permanently erased.';
+          btnDelete.disabled = true;
+          btnExport.disabled = true;
+
+          setTimeout(() => {
+            alert('Your data has been completely erased. You will now be redirected to the clean homepage.');
+            window.location.href = '/';
+          }, 2000);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

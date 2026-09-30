@@ -1,0 +1,36 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": [
+          "TEAMID1234.app.eternalplan.ios"
+        ],
+        "components": [
+          {
+            "/": "/dashboard/*",
+            "comment": "Matches dashboard trajectories and budget items"
+          },
+          {
+            "/": "/privacy-policy",
+            "exclude": true,
+            "comment": "Keep legal documents within the browser"
+          },
+          {
+            "/": "/terms-of-service",
+            "exclude": true
+          },
+          {
+            "/": "/cookie-policy",
+            "exclude": true
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "TEAMID1234.app.eternalplan.ios"
+    ]
+  }
+}

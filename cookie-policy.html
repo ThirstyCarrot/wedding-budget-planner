@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cookie Policy - EternalPlan</title>
+  <meta name="description" content="EternalPlan Cookie Policy - Itemized cookie table, local storage declarations, purpose specifications, and granular opt-out management under ePrivacy and GDPR.">
+  <link rel="canonical" href="https://eternalplan.app/cookie-policy">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="styles.css?v=2.6">
+  <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <div class="app-container" style="max-width: 900px; padding-top: 36px;">
+    <header class="panel-header" style="margin-bottom: 28px; border-bottom: 1px solid var(--border-color); padding-bottom: 18px;">
+      <a href="/" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-main);">
+        <span style="font-size: 1.5rem;">💍</span>
+        <span style="font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 700; color: var(--gold-primary);">EternalPlan</span>
+      </a>
+      <nav aria-label="Legal documents navigation">
+        <a href="/" class="btn btn-secondary btn-sm">← Back to Planner</a>
+      </nav>
+    </header>
+
+    <main id="main-content" class="panel-card" style="padding: 36px 42px;">
+      <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 28px;">
+        <span class="category-badge required" style="font-size: 0.78rem;">ePrivacy Directive & GDPR Transparency</span>
+        <h1 style="font-size: 2.2rem; margin: 12px 0 6px 0;">Cookie & Storage Policy</h1>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin: 0;">
+          <strong>Effective Date:</strong> September 30, 2026 • <strong>Version:</strong> 2.0 • <strong>Enforcement:</strong> Prior-Consent Opt-In
+        </p>
+      </div>
+
+      <article class="legal-article" style="font-size: 0.92rem; line-height: 1.7; color: var(--text-main);">
+        <section>
+          <h2>1. Overview of Cookies & Local Storage</h2>
+          <p>
+            In compliance with the European Union ePrivacy Directive (Directive 2002/58/EC as amended) and GDPR Article 5(3), 
+            we inform you of our use of digital storage technologies. We utilize both traditional HTTP cookies and modern HTML5 
+            <code>localStorage</code> to deliver offline planning resilience and state recovery.
+          </p>
+          <div style="margin: 14px 0;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="if(window.ConsentManager) window.ConsentManager.openSettings();">
+              ⚙️ Open Cookie Preferences Modal
+            </button>
+          </div>
+        </section>
+
+        <section style="margin-top: 28px;">
+          <h2>2. Itemized Cookie & Storage Specification</h2>
+          <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.84rem;">
+            <thead>
+              <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color); text-align: left;">
+                <th style="padding: 10px;">Name / Key</th>
+                <th style="padding: 10px;">Provider</th>
+                <th style="padding: 10px;">Purpose</th>
+                <th style="padding: 10px;">Category</th>
+                <th style="padding: 10px;">Lifespan</th>
+                <th style="padding: 10px;">Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 10px; font-family: monospace; font-weight: 700;">ep_cookie_consent_v1</td>
+                <td style="padding: 10px;">EternalPlan (First-Party)</td>
+                <td style="padding: 10px;">Stores user's granular consent choices and timestamp.</td>
+                <td style="padding: 10px;"><span class="category-badge required">Strictly Necessary</span></td>
+                <td style="padding: 10px;">12 Months</td>
+                <td style="padding: 10px;">LocalStorage</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 10px; font-family: monospace; font-weight: 700;">wedding_budget_planner_data_v1</td>
+                <td style="padding: 10px;">EternalPlan (First-Party)</td>
+                <td style="padding: 10px;">Offline backup of budget calculations, items, and milestones.</td>
+                <td style="padding: 10px;"><span class="category-badge required">Strictly Necessary</span></td>
+                <td style="padding: 10px;">Persistent (User Cleared)</td>
+                <td style="padding: 10px;">LocalStorage</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 10px; font-family: monospace; font-weight: 700;">sb-*-auth-token</td>
+                <td style="padding: 10px;">Supabase (First-Party/Sub-processor)</td>
+                <td style="padding: 10px;">Cryptographic session token for authenticated cloud sync.</td>
+                <td style="padding: 10px;"><span class="category-badge required">Strictly Necessary</span></td>
+                <td style="padding: 10px;">Session / 7 Days</td>
+                <td style="padding: 10px;">LocalStorage</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 10px; font-family: monospace; font-weight: 700;">_ga, _gid</td>
+                <td style="padding: 10px;">Google Analytics (Optional)</td>
+                <td style="padding: 10px;">Aggregated usage telemetry. Blocked until explicit consent.</td>
+                <td style="padding: 10px;"><span class="category-badge optional">Analytics</span></td>
+                <td style="padding: 10px;">2 Years / 24 Hours</td>
+                <td style="padding: 10px;">HTTP Cookie</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section style="margin-top: 28px;">
+          <h2>3. Browser-Level Controls</h2>
+          <p>You can also configure your web browser to reject or delete cookies entirely:</p>
+          <ul>
+            <li><strong>Google Chrome:</strong> Settings → Privacy & Security → Third-party cookies</li>
+            <li><strong>Apple Safari:</strong> Preferences → Privacy → Manage Website Data</li>
+            <li><strong>Mozilla Firefox:</strong> Settings → Privacy & Security → Enhanced Tracking Protection</li>
+            <li><strong>Microsoft Edge:</strong> Settings → Cookies and site permissions</li>
+          </ul>
+        </section>
+      </article>
+
+      <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-muted); flex-wrap: wrap; gap: 10px;">
+        <span>© 2026 EternalPlan Technologies Inc. All rights reserved.</span>
+        <div style="display: flex; gap: 14px;">
+          <a href="/privacy-policy" style="color: var(--gold-primary); text-decoration: none;">Privacy Policy</a>
+          <a href="/terms-of-service" style="color: var(--gold-primary); text-decoration: none;">Terms of Service</a>
+          <a href="/dsar" style="color: var(--gold-primary); text-decoration: none;">DSAR Portal</a>
+          <button type="button" onclick="if(window.ConsentManager) window.ConsentManager.openSettings();" style="background: none; border: none; padding: 0; color: var(--gold-primary); cursor: pointer; font-size: inherit; text-decoration: underline;">Cookie Settings</button>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script src="consent-manager.js" defer></script>
+</body>
+</html>
