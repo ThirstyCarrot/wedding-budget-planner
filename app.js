@@ -178,9 +178,15 @@
     expenseVendor: document.getElementById('expenseVendor'),
     expenseEstimatedCost: document.getElementById('expenseEstimatedCost'),
     expenseActualCost: document.getElementById('expenseActualCost'),
+    expenseScheduleCard: document.getElementById('expenseScheduleCard'),
+    expenseScheduleHeader: document.getElementById('expenseScheduleHeader'),
+    expenseScheduleToggle: document.getElementById('expenseScheduleToggle'),
+    expenseScheduleSubtext: document.getElementById('expenseScheduleSubtext'),
+    expenseScheduleBody: document.getElementById('expenseScheduleBody'),
     modalMilestonesContainer: document.getElementById('modalMilestonesContainer'),
     addMilestoneRowBtn: document.getElementById('addMilestoneRowBtn'),
     autoFillMilestoneBtn: document.getElementById('autoFillMilestoneBtn'),
+    expenseAdvancedDetails: document.getElementById('expenseAdvancedDetails'),
     expenseNotes: document.getElementById('expenseNotes'),
     closeExpenseModalBtn: document.getElementById('closeExpenseModalBtn'),
     cancelExpenseModalBtn: document.getElementById('cancelExpenseModalBtn'),
@@ -2965,7 +2971,25 @@
     `).join('');
   }
 
-  function openExpenseModal(expenseToEdit = null) {
+  function setScheduleToggleState(isOpen, count = 1) {
+    if (!DOM.expenseScheduleToggle || !DOM.expenseScheduleBody) return;
+    DOM.expenseScheduleToggle.checked = isOpen;
+    DOM.expenseScheduleBody.style.display = isOpen ? 'block' : 'none';
+    if (DOM.expenseScheduleHeader) {
+      DOM.expenseScheduleHeader.setAttribute('aria-expanded', String(isOpen));
+    }
+    if (DOM.expenseScheduleSubtext) {
+      if (isOpen) {
+        DOM.expenseScheduleSubtext.textContent = count > 1 
+          ? `${count} payment deadlines configured` 
+          : 'Custom deposit deadlines and final balance due dates';
+      } else {
+        DOM.expenseScheduleSubtext.textContent = 'Single payment on wedding day (default)';
+      }
+    }
+  }
+
+  function openExpenseModal(expenseToEdit = null, forceOpenSchedule = false) {
     DOM.modalMilestonesContainer.innerHTML = '';
 
     if (expenseToEdit) {
@@ -2978,19 +3002,39 @@
       DOM.expenseActualCost.value = expenseToEdit.actualCost || 0;
       DOM.expenseNotes.value = expenseToEdit.notes || '';
 
-      if (expenseToEdit.milestones && expenseToEdit.milestones.length > 0) {
-        expenseToEdit.milestones.forEach(m => addMilestoneInputRow(m));
+      if (DOM.expenseAdvancedDetails) {
+        DOM.expenseAdvancedDetails.open = Boolean(expenseToEdit.vendor || expenseToEdit.notes);
+      }
+
+      const milestones = expenseToEdit.milestones || [];
+      if (milestones.length > 0) {
+        milestones.forEach(m => addMilestoneInputRow(m));
       } else {
         addMilestoneInputRow({ title: 'Full Payment on Wedding Day', amount: expenseToEdit.actualCost || expenseToEdit.estimatedCost, dueDate: state.weddingDate, isPaid: false });
       }
+
+      // Check if this expense has custom milestones (multiple, non-wedding date, or custom title/paid)
+      const isCustomSchedule = milestones.length > 1 || (milestones.length === 1 && (
+        (milestones[0].dueDate && state.weddingDate && milestones[0].dueDate !== state.weddingDate) ||
+        (milestones[0].title && !milestones[0].title.toLowerCase().includes('wedding day')) ||
+        Boolean(milestones[0].isPaid)
+      ));
+
+      setScheduleToggleState(isCustomSchedule || forceOpenSchedule, milestones.length);
     } else {
       DOM.modalTitle.textContent = 'Add Wedding Expense';
       DOM.editExpenseId.value = '';
       DOM.expenseForm.reset();
       DOM.expenseEstimatedCost.value = '';
       DOM.expenseActualCost.value = '';
-      // Pre-add 1 convenient default payment milestone due on wedding day
+      if (DOM.expenseAdvancedDetails) {
+        DOM.expenseAdvancedDetails.open = false;
+      }
+
+      // Pre-add 1 default payment row in case user toggles it open
       addMilestoneInputRow({ title: 'Full Payment on Wedding Day', amount: '', dueDate: state.weddingDate, isPaid: false });
+
+      setScheduleToggleState(forceOpenSchedule, 1);
     }
 
     DOM.expenseModal.showModal();
@@ -3002,20 +3046,29 @@
     const amountVal = (m.amount !== undefined && m.amount !== null && m.amount !== 0) ? m.amount : '';
     const dateVal = m.dueDate || state.weddingDate || '';
     row.innerHTML = `
-      <input type="text" class="form-control m-title" placeholder="e.g. Full Payment or Deposit" value="${escapeHtml(m.title || 'Payment Due')}">
+      <input type="text" class="form-control m-title" placeholder="e.g. Deposit or Final Balance" value="${escapeHtml(m.title || 'Payment Due')}">
       <input type="number" class="form-control m-amount" placeholder="Amount ($)" min="0" step="1" value="${amountVal}">
       <input type="date" class="form-control m-date" value="${dateVal}">
       <label style="font-size: 0.76rem; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap;">
         <input type="checkbox" class="m-paid" ${m.isPaid ? 'checked' : ''}> Paid
       </label>
-      <button type="button" class="btn btn-text btn-sm remove-m-row-btn" style="color: var(--danger-primary);" title="Remove milestone">✕</button>
+      <button type="button" class="btn btn-text btn-sm remove-m-row-btn" style="color: var(--danger-primary);" title="Remove payment date">✕</button>
     `;
 
     row.querySelector('.remove-m-row-btn').addEventListener('click', () => {
       row.remove();
+      const currentCount = DOM.modalMilestonesContainer.querySelectorAll('.milestone-input-row').length;
+      if (DOM.expenseScheduleToggle && DOM.expenseScheduleToggle.checked) {
+        setScheduleToggleState(true, currentCount);
+      }
     });
 
     DOM.modalMilestonesContainer.appendChild(row);
+
+    const currentCount = DOM.modalMilestonesContainer.querySelectorAll('.milestone-input-row').length;
+    if (DOM.expenseScheduleToggle && DOM.expenseScheduleToggle.checked) {
+      setScheduleToggleState(true, currentCount);
+    }
   }
 
   function handleSaveExpense(e) {
@@ -3033,34 +3086,38 @@
     }
     const notes = DOM.expenseNotes.value.trim();
 
-    // Harvest milestones
-    const rows = DOM.modalMilestonesContainer.querySelectorAll('.milestone-input-row');
+    // Check if custom schedule toggle is active
+    const isCustomSchedule = DOM.expenseScheduleToggle ? DOM.expenseScheduleToggle.checked : true;
     const milestones = [];
 
-    rows.forEach((row, idx) => {
-      const title = row.querySelector('.m-title').value.trim() || `Milestone ${idx + 1}`;
-      let amount = Number(row.querySelector('.m-amount').value) || 0;
-      let dueDate = row.querySelector('.m-date').value || state.weddingDate;
-      const isPaid = row.querySelector('.m-paid').checked;
+    if (isCustomSchedule) {
+      // Harvest milestones from container
+      const rows = DOM.modalMilestonesContainer.querySelectorAll('.milestone-input-row');
+      rows.forEach((row, idx) => {
+        const title = row.querySelector('.m-title').value.trim() || `Payment ${idx + 1}`;
+        let amount = Number(row.querySelector('.m-amount').value) || 0;
+        let dueDate = row.querySelector('.m-date').value || state.weddingDate;
+        const isPaid = row.querySelector('.m-paid').checked;
 
-      // If user kept a single milestone row but left amount blank, auto-assign full cost
-      if (rows.length === 1 && amount <= 0) {
-        amount = actualCost;
-      }
+        // If user kept a single milestone row but left amount blank, auto-assign full cost
+        if (rows.length === 1 && amount <= 0) {
+          amount = actualCost;
+        }
 
-      if (amount > 0) {
-        milestones.push({
-          id: `m-${id}-${idx}-${Date.now()}`,
-          title,
-          amount,
-          dueDate,
-          isPaid,
-          paidDate: isPaid ? (new Date().toISOString().split('T')[0]) : null
-        });
-      }
-    });
+        if (amount > 0) {
+          milestones.push({
+            id: `m-${id}-${idx}-${Date.now()}`,
+            title,
+            amount,
+            dueDate,
+            isPaid,
+            paidDate: isPaid ? (new Date().toISOString().split('T')[0]) : null
+          });
+        }
+      });
+    }
 
-    // If no milestone rows were created or all were empty, auto-create a single milestone due on wedding date
+    // If custom schedule was OFF, or no valid milestone rows were entered, auto-create a single milestone due on wedding date
     if (milestones.length === 0 && actualCost > 0) {
       milestones.push({
         id: `m-${id}-0-${Date.now()}`,
@@ -3156,12 +3213,39 @@
 
     // Modal Triggers
     DOM.openAddExpenseBtn.addEventListener('click', () => openExpenseModal());
-    DOM.addExpenseFromScheduleBtn.addEventListener('click', () => openExpenseModal());
+    DOM.addExpenseFromScheduleBtn.addEventListener('click', () => openExpenseModal(null, true));
     DOM.addExpenseFromBudgetBtn.addEventListener('click', () => openExpenseModal());
     DOM.closeExpenseModalBtn.addEventListener('click', () => DOM.expenseModal.close());
     DOM.cancelExpenseModalBtn.addEventListener('click', () => DOM.expenseModal.close());
     DOM.addMilestoneRowBtn.addEventListener('click', () => addMilestoneInputRow());
     DOM.expenseForm.addEventListener('submit', handleSaveExpense);
+
+    // Two-Tier Schedule Toggle Handlers
+    if (DOM.expenseScheduleToggle) {
+      DOM.expenseScheduleToggle.addEventListener('change', () => {
+        setScheduleToggleState(DOM.expenseScheduleToggle.checked);
+      });
+    }
+
+    if (DOM.expenseScheduleHeader) {
+      DOM.expenseScheduleHeader.addEventListener('click', (e) => {
+        if (e.target.closest('.switch-toggle')) return;
+        if (DOM.expenseScheduleToggle) {
+          DOM.expenseScheduleToggle.checked = !DOM.expenseScheduleToggle.checked;
+          setScheduleToggleState(DOM.expenseScheduleToggle.checked);
+        }
+      });
+
+      DOM.expenseScheduleHeader.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (DOM.expenseScheduleToggle) {
+            DOM.expenseScheduleToggle.checked = !DOM.expenseScheduleToggle.checked;
+            setScheduleToggleState(DOM.expenseScheduleToggle.checked);
+          }
+        }
+      });
+    }
 
     // EternalAI Hub Modal Triggers
     if (DOM.openAiHubBtn) {

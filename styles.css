@@ -1746,6 +1746,115 @@ dialog[open]::backdrop {
   border-top: 1px solid var(--border-color);
 }
 
+/* Two-Tier Expense Modal Layout */
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 600px) {
+  .form-row-2col {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.tier-toggle-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  margin-top: 16px;
+  overflow: hidden;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.tier-toggle-card:hover {
+  border-color: #CBD5E1;
+}
+
+.tier-toggle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--bg-subtle);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast);
+}
+
+.tier-toggle-header:hover {
+  background: #F4EFEA;
+}
+
+.tier-toggle-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tier-toggle-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.tier-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tier-toggle-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tier-toggle-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.tier-collapsible-body {
+  padding: 14px;
+  background: #FFFFFF;
+  border-top: 1px solid var(--border-color);
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.expense-advanced-details {
+  margin-top: 14px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  background: #FAF8F5;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.expense-advanced-details[open] {
+  background: #FFFFFF;
+  border-style: solid;
+  border-color: var(--border-color);
+}
+
+.expense-advanced-summary {
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+  outline: none;
+}
+
+.expense-advanced-summary:hover {
+  color: var(--accent-primary);
+}
+
+.expense-advanced-body {
+  padding-top: 6px;
+}
+
 /* Dynamic Milestone Sub-rows in Modal */
 .modal-milestones-box {
   background: var(--bg-subtle);

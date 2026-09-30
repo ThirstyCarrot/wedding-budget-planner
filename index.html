@@ -553,61 +553,91 @@
     <form id="expenseForm">
       <input type="hidden" id="editExpenseId" value="">
       <div class="modal-body">
-        <div class="form-group">
-          <label for="expenseCategory">Category</label>
-          <select id="expenseCategory" class="form-control" required>
-            <!-- Categories injected by JS -->
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="expenseName">Expense / Item Name</label>
-          <input type="text" id="expenseName" class="form-control" placeholder="e.g. 8-Hour Photography Package" required>
-        </div>
-
-        <div class="form-group">
-          <label for="expenseVendor">Vendor / Provider (Optional)</label>
-          <input type="text" id="expenseVendor" class="form-control" placeholder="e.g. Luminary Visuals Studio">
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-          <div class="form-group">
-            <label for="expenseEstimatedCost">
-              <span>Estimated Cost ($)</span>
-              <span class="field-hint" style="color: var(--gold-hover); font-weight: 600;">Core Estimate</span>
-            </label>
-            <input type="number" id="expenseEstimatedCost" class="form-control" min="0" step="1" placeholder="e.g. 2500" required>
-          </div>
-          <div class="form-group">
-            <label for="expenseActualCost">
-              <span>Actual / Contracted ($)</span>
-              <span class="field-hint">(Optional)</span>
-            </label>
-            <input type="number" id="expenseActualCost" class="form-control" min="0" step="1" placeholder="Defaults to estimate">
-          </div>
-        </div>
-
-        <!-- Milestones Breakdown Box -->
-        <div class="modal-milestones-box">
-          <div class="milestone-header-line">
-            <label style="font-weight: 700; font-size: 0.88rem;">Payment Milestones & Due Dates</label>
-            <div style="display: flex; gap: 6px;">
-              <button type="button" class="btn btn-secondary btn-sm" id="autoFillMilestoneBtn" title="Set single payment for full cost">⚡ Pay on Wedding Day</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="addMilestoneRowBtn">+ Add Milestone</button>
+        <!-- TIER 1: QUICK ADD (THE ESSENTIALS) -->
+        <div class="modal-quick-tier">
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label for="expenseCategory">Category</label>
+              <select id="expenseCategory" class="form-control" required>
+                <!-- Categories injected by JS -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="expenseName">Item or Vendor Name</label>
+              <input type="text" id="expenseName" class="form-control" placeholder="e.g. Photographer, Florist, DJ" required>
             </div>
           </div>
-          <p class="field-hint" style="margin-bottom: 10px;">
-            Break this cost into deposit and balance due dates (or set a single payment due date):
-          </p>
-          <div id="modalMilestonesContainer">
-            <!-- Dynamic milestone rows injected here -->
+
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label for="expenseEstimatedCost">
+                <span>Estimated Cost ($)</span>
+                <span class="field-hint" style="color: var(--accent-primary); font-weight: 600;">Planned Budget</span>
+              </label>
+              <input type="number" id="expenseEstimatedCost" class="form-control" min="0" step="1" placeholder="e.g. 2500" required>
+            </div>
+            <div class="form-group">
+              <label for="expenseActualCost">
+                <span>Booked / Final Price ($)</span>
+                <span class="field-hint">Optional</span>
+              </label>
+              <input type="number" id="expenseActualCost" class="form-control" min="0" step="1" placeholder="Defaults to estimate">
+            </div>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="expenseNotes">Notes / Inclusions</label>
-          <textarea id="expenseNotes" class="form-control" rows="2" placeholder="Contract details, inclusions, cancellation terms..."></textarea>
+        <!-- TIER 2A: CUSTOM PAYMENT SCHEDULE TOGGLE & BUILDER -->
+        <div class="tier-toggle-card" id="expenseScheduleCard">
+          <div class="tier-toggle-header" id="expenseScheduleHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="expenseScheduleBody">
+            <div class="tier-toggle-info">
+              <span class="tier-toggle-icon">📅</span>
+              <div class="tier-toggle-text">
+                <span class="tier-toggle-title">Custom Payment Dates & Deposits</span>
+                <span class="tier-toggle-sub" id="expenseScheduleSubtext">Single payment on wedding day (default)</span>
+              </div>
+            </div>
+            <label class="switch-toggle" title="Toggle custom payment dates" onclick="event.stopPropagation();">
+              <input type="checkbox" id="expenseScheduleToggle" aria-label="Enable custom payment schedule">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <!-- Collapsible Milestones Container -->
+          <div class="tier-collapsible-body" id="expenseScheduleBody" style="display: none;">
+            <div class="modal-milestones-box">
+              <div class="milestone-header-line">
+                <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">Deposit & Balance Schedule</span>
+                <div style="display: flex; gap: 6px;">
+                  <button type="button" class="btn btn-secondary btn-sm" id="autoFillMilestoneBtn" title="Set single payment for full cost">⚡ Pay on Wedding Day</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="addMilestoneRowBtn">+ Add Payment Date</button>
+                </div>
+              </div>
+              <p class="field-hint" style="margin-bottom: 10px;">
+                Split this item into deposit installments and final balance deadlines:
+              </p>
+              <div id="modalMilestonesContainer">
+                <!-- Dynamic milestone rows injected here -->
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- TIER 2B: OPTIONAL VENDOR & NOTES DISCLOSURE -->
+        <details class="expense-advanced-details" id="expenseAdvancedDetails">
+          <summary class="expense-advanced-summary">
+            <span>📝 Vendor Name & Notes (Optional)</span>
+          </summary>
+          <div class="expense-advanced-body">
+            <div class="form-group" style="margin-top: 12px;">
+              <label for="expenseVendor">Vendor / Provider Company</label>
+              <input type="text" id="expenseVendor" class="form-control" placeholder="e.g. Luminary Visuals Studio">
+            </div>
+            <div class="form-group">
+              <label for="expenseNotes">Notes / Contract Details</label>
+              <textarea id="expenseNotes" class="form-control" rows="2" placeholder="Inclusions, package tier, cancellation terms..."></textarea>
+            </div>
+          </div>
+        </details>
       </div>
 
       <div class="modal-footer">
