@@ -743,6 +743,11 @@ body {
   transition: cursor 0.15s ease;
 }
 
+.donut-breakdown-tooltip,
+.donut-breakdown-tooltip * {
+  pointer-events: none !important;
+}
+
 .donut-breakdown-tooltip {
   position: absolute;
   pointer-events: none;
@@ -758,7 +763,8 @@ body {
   min-width: 230px;
   max-width: 320px;
   white-space: normal;
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  transition: opacity 0.08s ease;
+  will-change: transform, left, top;
 }
 
 .donut-tt-header {

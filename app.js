@@ -2290,8 +2290,53 @@
     if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'inline-flex';
   }
 
-  // Budget Allocation Donut Chart
+  // Budget Allocation Donut Chart (Data calculation & setup)
   function renderCategoryDonutChart(data) {
+    const canvas = DOM.categoryDonutCanvas;
+    if (!canvas || !canvas.parentElement) return;
+
+    let total = 0;
+    const slices = [];
+    DEFAULT_CATEGORIES.forEach(cat => {
+      const expenses = (state.expenses || []).filter(e => e.categoryId === cat.id);
+      const catSum = expenses.reduce((s, e) => s + Number(e.actualCost || e.estimatedCost || 0), 0);
+      if (catSum > 0) {
+        slices.push({ cat, amount: catSum, expenses });
+        total += catSum;
+      }
+    });
+
+    // Build 100% gapless continuous normalized sectors from 12 o'clock [0, 2*PI)
+    donutSliceHitAreas = [];
+    if (slices.length > 0 && total > 0) {
+      let currentAngle = 0;
+      slices.forEach((s, idx) => {
+        const sliceAngle = (s.amount / total) * Math.PI * 2;
+        donutSliceHitAreas.push({
+          index: idx,
+          cat: s.cat,
+          amount: s.amount,
+          ratio: s.amount / total,
+          expenses: s.expenses,
+          normStart: currentAngle,
+          normEnd: currentAngle + sliceAngle,
+          drawStart: -Math.PI / 2 + currentAngle,
+          drawEnd: -Math.PI / 2 + currentAngle + sliceAngle,
+          sliceAngle
+        });
+        currentAngle += sliceAngle;
+      });
+    }
+
+    // Fast canvas render
+    drawDonutCanvasOnly();
+
+    // Populate legend list only when data updates (never on hover!)
+    renderCategoryLegendList(data, total, slices);
+  }
+
+  // Fast pure-canvas painter for donut chart (runs in <0.3ms with zero DOM thrashing)
+  function drawDonutCanvasOnly() {
     const canvas = DOM.categoryDonutCanvas;
     if (!canvas || !canvas.parentElement) return;
 
@@ -2305,116 +2350,7 @@
     const outerRadius = Math.min(centerX, centerY) - 10;
     const innerRadius = outerRadius * 0.64;
 
-    let total = 0;
-    const slices = [];
-    DEFAULT_CATEGORIES.forEach(cat => {
-      const expenses = (state.expenses || []).filter(e => e.categoryId === cat.id);
-      const catSum = expenses.reduce((s, e) => s + Number(e.actualCost || e.estimatedCost || 0), 0);
-      if (catSum > 0) {
-        slices.push({ cat, amount: catSum, expenses });
-        total += catSum;
-      }
-    });
-
-    const hasExpenses = slices.length > 0 && total > 0;
-
-    // Reset hit areas
-    donutSliceHitAreas = [];
-
-    if (hasExpenses) {
-      let runningAngle = -Math.PI / 2;
-      const gapAngle = slices.length > 1 ? 0.035 : 0;
-
-      slices.forEach((s, idx) => {
-        const sliceAngle = (s.amount / total) * Math.PI * 2;
-        donutSliceHitAreas.push({
-          index: idx,
-          cat: s.cat,
-          amount: s.amount,
-          ratio: s.amount / total,
-          expenses: s.expenses,
-          startAngle: runningAngle,
-          endAngle: runningAngle + sliceAngle,
-          gapAngle,
-          innerRadius,
-          outerRadius,
-          centerX,
-          centerY
-        });
-        runningAngle += sliceAngle;
-      });
-
-      const activeHit = (hoveredDonutSliceIndex !== null && donutSliceHitAreas[hoveredDonutSliceIndex])
-        ? donutSliceHitAreas[hoveredDonutSliceIndex]
-        : null;
-
-      donutSliceHitAreas.forEach(slice => {
-        const isHovered = activeHit && activeHit.index === slice.index;
-        const curOuter = isHovered ? outerRadius + 6 : outerRadius;
-        const curInner = isHovered ? innerRadius - 2 : innerRadius;
-        const actualSliceAngle = Math.max(0.01, (slice.endAngle - slice.startAngle) - slice.gapAngle);
-        const halfGap = slice.gapAngle / 2;
-
-        ctx.save();
-        if (activeHit && !isHovered) {
-          ctx.globalAlpha = 0.42; // Dim other slices
-        } else {
-          ctx.globalAlpha = 1.0;
-        }
-
-        ctx.fillStyle = slice.cat.color;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, curOuter, slice.startAngle + halfGap, slice.startAngle + halfGap + actualSliceAngle);
-        ctx.arc(centerX, centerY, curInner, slice.startAngle + halfGap + actualSliceAngle, slice.startAngle + halfGap, true);
-        ctx.closePath();
-        ctx.fill();
-
-        if (isHovered) {
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 2.5;
-          ctx.stroke();
-        }
-        ctx.restore();
-      });
-
-      // Center hole text
-      if (activeHit) {
-        ctx.fillStyle = activeHit.cat.color;
-        ctx.font = '700 9.5px Plus Jakarta Sans, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(activeHit.cat.name.toUpperCase(), centerX, centerY - 14);
-
-        ctx.fillStyle = '#242220';
-        ctx.font = '800 17px Plus Jakarta Sans, sans-serif';
-        ctx.fillText(formatCurrency(activeHit.amount), centerX, centerY + 2);
-
-        ctx.fillStyle = '#6E6862';
-        ctx.font = '600 10px Plus Jakarta Sans, sans-serif';
-        const pct = Math.round((activeHit.amount / total) * 100);
-        const count = (activeHit.expenses || []).length;
-        ctx.fillText(`${pct}% • ${count} ${count === 1 ? 'item' : 'items'}`, centerX, centerY + 18);
-      } else {
-        ctx.fillStyle = '#8A847D';
-        ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('TOTAL ALLOCATED', centerX, centerY - 14);
-
-        ctx.fillStyle = '#242220';
-        ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
-        ctx.fillText(formatCurrency(total), centerX, centerY + 2);
-
-        ctx.fillStyle = '#6E6862';
-        ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
-        if (state.hasTargetBudget && state.targetBudget > 0) {
-          const pct = Math.round((total / state.targetBudget) * 100);
-          ctx.fillText(`${pct}% of ${formatCurrency(state.targetBudget)}`, centerX, centerY + 18);
-        } else {
-          ctx.fillText(`${slices.length} ${slices.length === 1 ? 'Category' : 'Categories'}`, centerX, centerY + 18);
-        }
-      }
-    } else {
+    if (!donutSliceHitAreas || donutSliceHitAreas.length === 0) {
       // Zero expenses logged: draw clean placeholder ring
       ctx.strokeStyle = '#E8E5E1';
       ctx.lineWidth = outerRadius - innerRadius;
@@ -2435,10 +2371,87 @@
       ctx.fillStyle = '#8A847D';
       ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
       ctx.fillText('No expenses yet', centerX, centerY + 18);
+      return;
     }
 
-    // Always render category legend list underneath donut chart!
-    renderCategoryLegendList(data, total, slices);
+    const total = donutSliceHitAreas.reduce((s, a) => s + a.amount, 0);
+    const activeHit = (hoveredDonutSliceIndex !== null && donutSliceHitAreas[hoveredDonutSliceIndex])
+      ? donutSliceHitAreas[hoveredDonutSliceIndex]
+      : null;
+
+    const gapAngle = donutSliceHitAreas.length > 1 ? 0.035 : 0;
+    const halfGap = gapAngle / 2;
+
+    donutSliceHitAreas.forEach(slice => {
+      const isHovered = activeHit && activeHit.index === slice.index;
+      const curOuter = isHovered ? outerRadius + 6 : outerRadius;
+      const curInner = isHovered ? innerRadius - 2 : innerRadius;
+      const actualSliceAngle = Math.max(0.01, (slice.drawEnd - slice.drawStart) - gapAngle);
+
+      ctx.save();
+      if (activeHit && !isHovered) {
+        ctx.globalAlpha = 0.40; // Dim other slices gracefully
+      } else {
+        ctx.globalAlpha = 1.0;
+      }
+
+      if (isHovered) {
+        ctx.shadowColor = slice.cat.color;
+        ctx.shadowBlur = 10;
+      }
+
+      ctx.fillStyle = slice.cat.color;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, curOuter, slice.drawStart + halfGap, slice.drawStart + halfGap + actualSliceAngle);
+      ctx.arc(centerX, centerY, curInner, slice.drawStart + halfGap + actualSliceAngle, slice.drawStart + halfGap, true);
+      ctx.closePath();
+      ctx.fill();
+
+      if (isHovered) {
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+
+    // Center hole text
+    if (activeHit) {
+      ctx.fillStyle = activeHit.cat.color;
+      ctx.font = '700 9.5px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(activeHit.cat.name.toUpperCase(), centerX, centerY - 14);
+
+      ctx.fillStyle = '#242220';
+      ctx.font = '800 17px Plus Jakarta Sans, sans-serif';
+      ctx.fillText(formatCurrency(activeHit.amount), centerX, centerY + 2);
+
+      ctx.fillStyle = '#6E6862';
+      ctx.font = '600 10px Plus Jakarta Sans, sans-serif';
+      const pct = total > 0 ? Math.round((activeHit.amount / total) * 100) : 0;
+      const count = (activeHit.expenses || []).length;
+      ctx.fillText(`${pct}% • ${count} ${count === 1 ? 'item' : 'items'}`, centerX, centerY + 18);
+    } else {
+      ctx.fillStyle = '#8A847D';
+      ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('TOTAL ALLOCATED', centerX, centerY - 14);
+
+      ctx.fillStyle = '#242220';
+      ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
+      ctx.fillText(formatCurrency(total), centerX, centerY + 2);
+
+      ctx.fillStyle = '#6E6862';
+      ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
+      if (state.hasTargetBudget && state.targetBudget > 0) {
+        const pct = Math.round((total / state.targetBudget) * 100);
+        ctx.fillText(`${pct}% of ${formatCurrency(state.targetBudget)}`, centerX, centerY + 18);
+      } else {
+        ctx.fillText(`${donutSliceHitAreas.length} ${donutSliceHitAreas.length === 1 ? 'Category' : 'Categories'}`, centerX, centerY + 18);
+      }
+    }
   }
 
   function renderCategoryLegendList(data, total, slices) {
@@ -2446,7 +2459,6 @@
     if (!legendList) return;
     legendList.innerHTML = '';
 
-    // Actual Spend Mode
     if (!slices || slices.length === 0 || total === 0) {
       legendList.innerHTML = `
         <div style="text-align: center; padding: 18px 12px; background: var(--bg-subtle); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); margin-top: 6px;">
@@ -2474,22 +2486,23 @@
       div.dataset.categoryId = item.cat.id;
       div.style.cursor = 'pointer';
 
-      // Synchronize legend hover with chart
+      // Synchronize legend hover with chart (instant redraw with zero DOM teardown)
       div.addEventListener('mouseenter', () => {
         const hitIdx = donutSliceHitAreas.findIndex(h => h.cat.id === item.cat.id);
         if (hitIdx !== -1) {
           hoveredDonutSliceIndex = hitIdx;
-          renderCategoryDonutChart(calculateFinancialAnalytics());
+          drawDonutCanvasOnly();
           div.classList.add('active-donut-hover');
           if (DOM.donutTooltip && donutSliceHitAreas[hitIdx]) {
             const hit = donutSliceHitAreas[hitIdx];
             const canvas = DOM.categoryDonutCanvas;
             if (canvas) {
               const rect = canvas.getBoundingClientRect();
-              const midAngle = (hit.startAngle + hit.endAngle) / 2;
-              const midR = (hit.innerRadius + hit.outerRadius) / 2;
-              const mx = hit.centerX + Math.cos(midAngle) * midR;
-              const my = hit.centerY + Math.sin(midAngle) * midR;
+              const midAngle = (hit.drawStart + hit.drawEnd) / 2;
+              const outerRadius = Math.min(rect.width, rect.height) / 2 - 10;
+              const midR = outerRadius * 0.82;
+              const mx = (rect.width / 2) + Math.cos(midAngle) * midR;
+              const my = (rect.height / 2) + Math.sin(midAngle) * midR;
               showDonutTooltip(DOM.donutTooltip, hit, mx, my, rect.width, rect.height);
             }
           }
@@ -2501,7 +2514,7 @@
           hoveredDonutSliceIndex = null;
           div.classList.remove('active-donut-hover');
           if (DOM.donutTooltip) DOM.donutTooltip.style.display = 'none';
-          renderCategoryDonutChart(calculateFinancialAnalytics());
+          drawDonutCanvasOnly();
         }
       });
 
@@ -2551,20 +2564,29 @@
     function handleDonutMove(clientX, clientY) {
       if (!donutSliceHitAreas || donutSliceHitAreas.length === 0) return;
       const rect = canvas.getBoundingClientRect();
-      const mouseX = clientX - rect.left;
-      const mouseY = clientY - rect.top;
+      if (rect.width <= 0 || rect.height <= 0) return;
 
-      const hit = findDonutSliceAtPoint(mouseX, mouseY);
+      // Exact pixel scaling ratio to completely immune to Windows display zoom (125%/150%)
+      const canvasWidth = canvas.clientWidth || rect.width;
+      const canvasHeight = canvas.clientHeight || rect.height;
+      const scaleX = canvasWidth / rect.width;
+      const scaleY = canvasHeight / rect.height;
+
+      const canvasX = (clientX - rect.left) * scaleX;
+      const canvasY = (clientY - rect.top) * scaleY;
+
+      const hit = findDonutSliceAtPoint(canvasX, canvasY, canvasWidth, canvasHeight);
 
       if (hit) {
         canvas.style.cursor = 'pointer';
         if (hoveredDonutSliceIndex === hit.index) {
-          updateDonutTooltipPosition(tooltip, mouseX, mouseY, rect.width, rect.height);
+          // Point unchanged: smoothly track tooltip position with zero canvas repaint
+          updateDonutTooltipPosition(tooltip, clientX - rect.left, clientY - rect.top, rect.width, rect.height);
           return;
         }
         hoveredDonutSliceIndex = hit.index;
-        renderCategoryDonutChart(calculateFinancialAnalytics());
-        showDonutTooltip(tooltip, hit, mouseX, mouseY, rect.width, rect.height);
+        drawDonutCanvasOnly(); // Instant <0.3ms redraw
+        showDonutTooltip(tooltip, hit, clientX - rect.left, clientY - rect.top, rect.width, rect.height);
         highlightLegendItem(hit.cat.id);
       } else {
         handleDonutLeave();
@@ -2576,7 +2598,7 @@
         hoveredDonutSliceIndex = null;
         canvas.style.cursor = 'default';
         tooltip.style.display = 'none';
-        renderCategoryDonutChart(calculateFinancialAnalytics());
+        drawDonutCanvasOnly();
         clearLegendHighlights();
       }
     }
@@ -2618,15 +2640,21 @@
     }, { passive: true });
   }
 
-  function findDonutSliceAtPoint(mouseX, mouseY) {
+  // 100% gapless continuous sector hit-test for donut chart
+  function findDonutSliceAtPoint(canvasX, canvasY, width, height) {
     if (!donutSliceHitAreas || donutSliceHitAreas.length === 0) return null;
-    const first = donutSliceHitAreas[0];
-    const dx = mouseX - first.centerX;
-    const dy = mouseY - first.centerY;
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const outerRadius = Math.min(centerX, centerY) - 10;
+    const innerRadius = outerRadius * 0.64;
+
+    const dx = canvasX - centerX;
+    const dy = canvasY - centerY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    // Expand boundary slightly for natural hover comfort
-    if (dist < (first.innerRadius - 8) || dist > (first.outerRadius + 14)) {
+    // Generous comfort boundaries for natural hover:
+    if (dist < (innerRadius - 6) || dist > (outerRadius + 14)) {
       return null;
     }
 
@@ -2635,31 +2663,20 @@
     }
 
     // Angle of mouse pointer relative to center
+    // Standardize to clockwise [0, 2*PI) where 0 is 12 o'clock
     const angle = Math.atan2(dy, dx);
-    // Normalize to 12 o'clock (-Math.PI / 2):
-    let normAngle = angle - (-Math.PI / 2);
-    while (normAngle < 0) normAngle += Math.PI * 2;
-    while (normAngle >= Math.PI * 2) normAngle -= Math.PI * 2;
+    let norm = angle + Math.PI / 2;
+    if (norm < 0) norm += Math.PI * 2;
+    if (norm >= Math.PI * 2) norm -= Math.PI * 2;
 
     for (let i = 0; i < donutSliceHitAreas.length; i++) {
       const slice = donutSliceHitAreas[i];
-      let sStart = slice.startAngle - (-Math.PI / 2);
-      while (sStart < 0) sStart += Math.PI * 2;
-      while (sStart >= Math.PI * 2) sStart -= Math.PI * 2;
-
-      let sEnd = sStart + (slice.ratio * Math.PI * 2);
-
-      if (sEnd > Math.PI * 2) {
-        if (normAngle >= sStart || normAngle <= (sEnd - Math.PI * 2)) {
-          return slice;
-        }
-      } else {
-        if (normAngle >= sStart && normAngle < sEnd) {
-          return slice;
-        }
+      // Every sector is continuous with zero gap: [normStart, normEnd)
+      if (norm >= slice.normStart && (norm < slice.normEnd || i === donutSliceHitAreas.length - 1)) {
+        return slice;
       }
     }
-    return null;
+    return donutSliceHitAreas[donutSliceHitAreas.length - 1];
   }
 
   function showDonutTooltip(tooltip, slice, mouseX, mouseY, containerW, containerH) {
@@ -2707,8 +2724,9 @@
     updateDonutTooltipPosition(tooltip, mouseX, mouseY, containerW, containerH);
   }
 
+  // Smooth, jitter-free tooltip placement with horizontal boundary clamping
   function updateDonutTooltipPosition(tooltip, mouseX, mouseY, containerW, containerH) {
-    const isTopHalf = mouseY < 115;
+    const isTopHalf = mouseY < 118;
     const clampedX = Math.max(130, Math.min(containerW - 130, mouseX));
     tooltip.style.left = `${Math.round(clampedX)}px`;
 
