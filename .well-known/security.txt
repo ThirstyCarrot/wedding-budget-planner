@@ -26,5 +26,5 @@ Acknowledgments: https://eternalplan.app/security/hall-of-fame
 # Preferred Communication Languages
 Preferred-Languages: en
 
-# Security Engineering Careers
-Hiring: https://eternalplan.app/careers#security
+# Project Nature:
+# EternalPlan is an independent personal hobby project created for fun, not for monetary value or commercial enterprise.
