@@ -61,6 +61,9 @@
         <button class="btn btn-primary" id="openAddExpenseBtn">
           <span>+</span> Add Expense
         </button>
+        <button class="btn btn-ai" id="openAiHubBtn" title="EternalAI Financial Advisor & Hidden Cost Scanner">
+          <span class="ai-sparkle-icon">✨</span> EternalAI Hub
+        </button>
         <button class="btn btn-secondary" id="openSettingsBtn" title="Wedding Settings & Budget">
           ⚙️ Settings
         </button>
@@ -388,6 +391,17 @@
               + Add Expense
             </button>
           </div>
+        </div>
+
+        <!-- AI Audit Callout Banner -->
+        <div class="ai-audit-callout-banner" id="aiAuditCalloutBanner">
+          <div class="ai-callout-left">
+            <span class="ai-sparkle-badge">✨ EternalAI Audit</span>
+            <span>Unsure if you forgot something? Scan your budget for overlooked costs like service fees, alterations, and tips.</span>
+          </div>
+          <button type="button" class="btn btn-ai btn-sm" id="launchAuditFromBudgetBtn">
+            🔍 Audit for Hidden Costs
+          </button>
         </div>
 
         <!-- Real-time Estimated Expenses Summary Banner -->
@@ -770,6 +784,137 @@
             ⚠️ Start From Scratch
           </button>
         </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- =========================================================================
+       MODAL: ETERNALAI HUB (ADVISOR & HIDDEN COST SCANNER)
+       ========================================================================= -->
+  <dialog id="aiModal" class="ai-modal" aria-labelledby="aiModalTitle">
+    <div class="modal-header ai-modal-header">
+      <div class="ai-header-brand">
+        <div class="ai-brand-badge">✨</div>
+        <div>
+          <h3 id="aiModalTitle">EternalPlan AI Copilot</h3>
+          <span class="ai-header-sub">Context-Aware Wedding Financial Advisor & Hidden Cost Audit</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn-text" id="closeAiModalBtn" aria-label="Close AI Hub">✕</button>
+    </div>
+
+    <!-- Live Context Ribbon (Displays real numbers used by AI) -->
+    <div class="ai-context-ribbon" id="aiContextRibbon">
+      <span class="ribbon-item"><strong>Couples:</strong> <span id="aiCtxCouple">Our Wedding</span></span>
+      <span class="ribbon-sep">•</span>
+      <span class="ribbon-item"><strong>Target Budget:</strong> <span id="aiCtxBudget">$0</span></span>
+      <span class="ribbon-sep">•</span>
+      <span class="ribbon-item"><strong>Bank Savings:</strong> <span id="aiCtxSavings">$0</span></span>
+      <span class="ribbon-sep">•</span>
+      <span class="ribbon-item"><strong>Pace:</strong> <span id="aiCtxPace">$0</span></span>
+      <span class="ribbon-sep">•</span>
+      <span class="ribbon-item"><strong>Unpaid Bills:</strong> <span id="aiCtxUnpaidCount">0</span></span>
+    </div>
+
+    <!-- AI Navigation Tabs -->
+    <div class="ai-nav-bar" role="tablist">
+      <button type="button" class="ai-tab-btn active" id="tabBtnAudit" data-ai-tab="audit">
+        🔍 Hidden Cost & Gotcha Audit <span class="ai-badge-counter" id="aiGotchaCountBadge">0</span>
+      </button>
+      <button type="button" class="ai-tab-btn" id="tabBtnChat" data-ai-tab="chat">
+        💬 Ask Financial Advisor
+      </button>
+      <button type="button" class="ai-tab-btn" id="tabBtnAiSettings" data-ai-tab="settings">
+        ⚙️ AI Engine Settings
+      </button>
+    </div>
+
+    <!-- PANEL 1: HIDDEN COST & GOTCHA AUDIT -->
+    <div class="ai-tab-panel active" id="aiPanelAudit">
+      <div class="audit-intro-bar">
+        <div>
+          <h4>Overlooked Wedding Expenses & Industry "Gotchas"</h4>
+          <p>We audited your expenses against 2,000+ real weddings. You can add items to your budget, or tell us if an item is not part of your wedding.</p>
+        </div>
+        <div class="audit-filter-segmented" id="auditFilterGroup">
+          <button type="button" class="btn-segmented active" data-audit-filter="missing">To Review (<span id="auditMissingCount">0</span>)</button>
+          <button type="button" class="btn-segmented" data-audit-filter="excluded">🚫 Not in Our Wedding (<span id="auditExcludedCount">0</span>)</button>
+          <button type="button" class="btn-segmented" data-audit-filter="covered">✅ Already Covered (<span id="auditCoveredCount">0</span>)</button>
+          <button type="button" class="btn-segmented" data-audit-filter="all">All (<span id="auditTotalCount">0</span>)</button>
+        </div>
+      </div>
+
+      <div class="gotcha-cards-grid" id="gotchaCardsContainer">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- PANEL 2: FINANCIAL ADVISOR CHAT -->
+    <div class="ai-tab-panel" id="aiPanelChat" style="display: none;">
+      <div class="ai-chat-wrapper">
+        <div class="ai-chat-thread" id="aiChatThread">
+          <!-- Messages rendered dynamically -->
+        </div>
+
+        <!-- Quick Prompt Suggestion Chips -->
+        <div class="ai-quick-chips" id="aiQuickChips">
+          <button type="button" class="ai-chip-prompt" data-prompt="Audit my budget: what are our biggest financial risks and what hidden costs should we budget for?">
+            🔍 Audit our biggest budget risks
+          </button>
+          <button type="button" class="ai-chip-prompt" data-prompt="Can we afford to add an extra $1,500 expense without creating a deficit? Walk through our numbers.">
+            💰 Can we afford an extra $1,500?
+          </button>
+          <button type="button" class="ai-chip-prompt" data-prompt="Where can we realistically trim $1,000 - $2,000 from our budget without hurting guest experience?">
+            ✂️ Where can we trim costs?
+          </button>
+          <button type="button" class="ai-chip-prompt" data-prompt="Write a polite email to our caterer or venue asking to split payments into 3 milestones instead of 2.">
+            ✉️ Vendor payment split email script
+          </button>
+        </div>
+
+        <!-- Chat Input Row -->
+        <form id="aiChatForm" class="ai-chat-input-form">
+          <input type="text" id="aiChatInput" class="form-control" placeholder="Ask anything about your wedding finances, trade-offs, or milestones..." autocomplete="off">
+          <button type="submit" class="btn btn-primary" id="aiSendBtn">
+            <span>Send</span> ✨
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- PANEL 3: AI SETTINGS -->
+    <div class="ai-tab-panel" id="aiPanelSettings" style="display: none;">
+      <div class="ai-settings-card">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <div>
+            <h4 style="margin-bottom: 4px;">Google Gemini API Integration</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
+              EternalPlan includes smart built-in intelligence, plus optional direct access to <strong>Gemini 3.8 Flash</strong> for unlimited custom reasoning and advice.
+            </p>
+          </div>
+          <span class="badge-pill" id="aiEngineStatusBadge">Smart Local Active</span>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label for="geminiApiKeyInput" style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 6px;">Gemini API Key (Optional)</label>
+          <input type="password" id="geminiApiKeyInput" class="form-control" placeholder="AIzaSy..." style="font-size: 0.85rem;">
+          <span class="field-hint" style="font-size: 0.76rem; margin-top: 4px; display: block;">
+            Stored strictly in your private local browser. You can generate a free Gemini API key in 30 seconds at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color: var(--gold-hover); text-decoration: underline;">Google AI Studio</a>.
+          </span>
+        </div>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-primary btn-sm" id="saveAiKeyBtn">
+            💾 Save API Key
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="clearAiKeyBtn">
+            Clear Key (Use Local Engine)
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="testAiConnectionBtn">
+            ⚡ Test Connection
+          </button>
+        </div>
+        <div id="aiTestNotice" class="supabase-sync-notice" style="margin-top: 10px; display: none;"></div>
       </div>
     </div>
   </dialog>

@@ -16,7 +16,10 @@
     paycheckCadence: 'bi-weekly',
     plannedSavingsPerPaycheck: 0,
     safetyCushion: 1000,
-    expenses: []
+    expenses: [],
+    excludedHiddenCosts: [], // array of IDs: items explicitly marked "Not in our wedding"
+    coveredHiddenCosts: [],  // array of IDs: items marked as already covered
+    geminiApiKey: ''         // optional Google Gemini API key
   };
 
   let activeTab = 'dashboard';
@@ -29,6 +32,12 @@
   let rafChartId = null;
   let activeHoverPoint = null;
   let chartInteractionPoints = [];
+
+  // EternalAI Hub State
+  let activeAiTab = 'audit'; // 'audit' | 'chat' | 'settings'
+  let activeAuditFilter = 'missing'; // 'missing' | 'excluded' | 'covered' | 'all'
+  let aiChatHistory = [];
+  let isAiResponding = false;
 
   // Standard Industry Wedding Budget Benchmark Distribution
   const BENCHMARK_DISTRIBUTION = [
@@ -206,7 +215,43 @@
     copySupabaseSqlBtn: document.getElementById('copySupabaseSqlBtn'),
     supabaseSyncNotice: document.getElementById('supabaseSyncNotice'),
 
-    toastContainer: document.getElementById('toastContainer')
+    toastContainer: document.getElementById('toastContainer'),
+
+    // EternalAI Hub Elements
+    openAiHubBtn: document.getElementById('openAiHubBtn'),
+    launchAuditFromBudgetBtn: document.getElementById('launchAuditFromBudgetBtn'),
+    aiModal: document.getElementById('aiModal'),
+    closeAiModalBtn: document.getElementById('closeAiModalBtn'),
+    aiContextRibbon: document.getElementById('aiContextRibbon'),
+    aiCtxCouple: document.getElementById('aiCtxCouple'),
+    aiCtxBudget: document.getElementById('aiCtxBudget'),
+    aiCtxSavings: document.getElementById('aiCtxSavings'),
+    aiCtxPace: document.getElementById('aiCtxPace'),
+    aiCtxUnpaidCount: document.getElementById('aiCtxUnpaidCount'),
+    tabBtnAudit: document.getElementById('tabBtnAudit'),
+    tabBtnChat: document.getElementById('tabBtnChat'),
+    tabBtnAiSettings: document.getElementById('tabBtnAiSettings'),
+    aiPanelAudit: document.getElementById('aiPanelAudit'),
+    aiPanelChat: document.getElementById('aiPanelChat'),
+    aiPanelSettings: document.getElementById('aiPanelSettings'),
+    aiGotchaCountBadge: document.getElementById('aiGotchaCountBadge'),
+    auditFilterGroup: document.getElementById('auditFilterGroup'),
+    auditMissingCount: document.getElementById('auditMissingCount'),
+    auditExcludedCount: document.getElementById('auditExcludedCount'),
+    auditCoveredCount: document.getElementById('auditCoveredCount'),
+    auditTotalCount: document.getElementById('auditTotalCount'),
+    gotchaCardsContainer: document.getElementById('gotchaCardsContainer'),
+    aiChatThread: document.getElementById('aiChatThread'),
+    aiQuickChips: document.getElementById('aiQuickChips'),
+    aiChatForm: document.getElementById('aiChatForm'),
+    aiChatInput: document.getElementById('aiChatInput'),
+    aiSendBtn: document.getElementById('aiSendBtn'),
+    aiEngineStatusBadge: document.getElementById('aiEngineStatusBadge'),
+    geminiApiKeyInput: document.getElementById('geminiApiKeyInput'),
+    saveAiKeyBtn: document.getElementById('saveAiKeyBtn'),
+    clearAiKeyBtn: document.getElementById('clearAiKeyBtn'),
+    testAiConnectionBtn: document.getElementById('testAiConnectionBtn'),
+    aiTestNotice: document.getElementById('aiTestNotice')
   };
 
   // Storage Keys for Supabase Config
@@ -241,7 +286,10 @@
     paycheckCadence: 'bi-weekly',
     plannedSavingsPerPaycheck: 0,
     safetyCushion: 1000,
-    expenses: []
+    expenses: [],
+    excludedHiddenCosts: [],
+    coveredHiddenCosts: [],
+    geminiApiKey: ''
   };
 
   function getBlankState() {
@@ -271,6 +319,15 @@
           }
           if (!Array.isArray(state.expenses)) {
             state.expenses = [];
+          }
+          if (!Array.isArray(state.excludedHiddenCosts)) {
+            state.excludedHiddenCosts = [];
+          }
+          if (!Array.isArray(state.coveredHiddenCosts)) {
+            state.coveredHiddenCosts = [];
+          }
+          if (typeof state.geminiApiKey !== 'string') {
+            state.geminiApiKey = '';
           }
         }
       } catch (e) {
@@ -943,6 +1000,11 @@
 
     markAllTabsDirty();
     renderTabContent(activeTab, data);
+
+    updateAiAuditBadge(data);
+    if (DOM.aiModal && DOM.aiModal.open) {
+      renderAiHub(data);
+    }
   }
 
   function renderHeader(data) {
@@ -2781,6 +2843,70 @@
     DOM.addMilestoneRowBtn.addEventListener('click', () => addMilestoneInputRow());
     DOM.expenseForm.addEventListener('submit', handleSaveExpense);
 
+    // EternalAI Hub Modal Triggers
+    if (DOM.openAiHubBtn) {
+      DOM.openAiHubBtn.addEventListener('click', () => openAiHubModal('audit'));
+    }
+    if (DOM.launchAuditFromBudgetBtn) {
+      DOM.launchAuditFromBudgetBtn.addEventListener('click', () => openAiHubModal('audit'));
+    }
+    if (DOM.closeAiModalBtn) {
+      DOM.closeAiModalBtn.addEventListener('click', () => DOM.aiModal.close());
+    }
+
+    // AI Tab Navigation
+    [DOM.tabBtnAudit, DOM.tabBtnChat, DOM.tabBtnAiSettings].forEach(btn => {
+      if (btn) {
+        btn.addEventListener('click', () => {
+          switchAiTab(btn.dataset.aiTab);
+        });
+      }
+    });
+
+    // Audit Filter Segmented Buttons
+    if (DOM.auditFilterGroup) {
+      DOM.auditFilterGroup.querySelectorAll('[data-audit-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          DOM.auditFilterGroup.querySelectorAll('[data-audit-filter]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeAuditFilter = btn.dataset.auditFilter;
+          renderGotchaCards();
+        });
+      });
+    }
+
+    // Quick Prompt Chips
+    if (DOM.aiQuickChips) {
+      DOM.aiQuickChips.querySelectorAll('.ai-chip-prompt').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const prompt = chip.dataset.prompt;
+          if (prompt && DOM.aiChatInput) {
+            DOM.aiChatInput.value = prompt;
+            handleSendAiChat();
+          }
+        });
+      });
+    }
+
+    // Chat Submission
+    if (DOM.aiChatForm) {
+      DOM.aiChatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleSendAiChat();
+      });
+    }
+
+    // Settings API Key Buttons
+    if (DOM.saveAiKeyBtn) {
+      DOM.saveAiKeyBtn.addEventListener('click', handleSaveAiKey);
+    }
+    if (DOM.clearAiKeyBtn) {
+      DOM.clearAiKeyBtn.addEventListener('click', handleClearAiKey);
+    }
+    if (DOM.testAiConnectionBtn) {
+      DOM.testAiConnectionBtn.addEventListener('click', handleTestAiConnection);
+    }
+
     DOM.openSettingsBtn.addEventListener('click', openSettingsModal);
     DOM.closeSettingsModalBtn.addEventListener('click', () => DOM.settingsModal.close());
     DOM.cancelSettingsModalBtn.addEventListener('click', () => DOM.settingsModal.close());
@@ -3411,6 +3537,907 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
         if (activeTooltipTrigger) positionTooltip(activeTooltipTrigger);
       }, { passive: true });
     });
+  }
+
+  // =========================================================================
+  // ETERNALAI HUB: GOTCHA AUDIT SCANNER & FINANCIAL ADVISOR ENGINE
+  // =========================================================================
+
+  const HIDDEN_COSTS_CATALOG = [
+    {
+      id: 'service-tax-fee',
+      title: 'Venue & Catering Service Fee + Tax (+28-32%)',
+      categoryId: 'venue-catering',
+      categoryName: 'Venue & Catering',
+      estimatedCost: 1800,
+      severity: 'high',
+      severityLabel: 'High Financial Risk',
+      desc: 'Most venue and catering proposals quote food & beverage totals without the mandatory 20–24% administrative/service fee PLUS local sales tax (typically 6–10%). This is not a gratuity.',
+      vendorTip: 'Always request an "all-in inclusive bottom line estimate" in writing from caterers before putting down a deposit.',
+      keywords: ['service fee', 'service charge', 'admin fee', 'tax', 'sales tax', 'catering tax', 'gratuity']
+    },
+    {
+      id: 'alterations',
+      title: 'Dress Alterations, Bustle & Steaming',
+      categoryId: 'attire-beauty',
+      categoryName: 'Attire, Rings & Beauty',
+      estimatedCost: 650,
+      severity: 'high',
+      severityLabel: 'High Financial Risk',
+      desc: 'Off-the-rack wedding attire rarely fits perfectly. Hemming multiple layers, taking in the bodice, bra cups, and constructing a 3 to 7-point train bustle commonly costs $450 to $900.',
+      vendorTip: 'Budget for alterations early and consider independent bridal seamstresses, who often charge 25% less than bridal boutique in-house departments.',
+      keywords: ['alteration', 'alterations', 'bustle', 'tailoring', 'hem', 'dress fitting', 'gown fitting']
+    },
+    {
+      id: 'vendor-meals',
+      title: 'Vendor Meals (Photo, Video, DJ, Coordinator)',
+      categoryId: 'venue-catering',
+      categoryName: 'Venue & Catering',
+      estimatedCost: 350,
+      severity: 'medium',
+      severityLabel: 'Common Gotcha',
+      desc: 'Vendor contracts almost universally stipulate a hot sit-down dinner for professionals on-site for 5+ hours (photographer, 2nd shooter, videographer, DJ/band members, planner).',
+      vendorTip: 'Ask your caterer for dedicated "vendor plates," which are usually discounted 30% to 50% compared to standard guest per-head pricing.',
+      keywords: ['vendor meal', 'vendor meals', 'crew meal', 'vendor food', 'crew food']
+    },
+    {
+      id: 'delivery-setup-strike',
+      title: 'Floral & Rental Delivery, Setup & Midnight Strike',
+      categoryId: 'floral-decor',
+      categoryName: 'Floral & Decor',
+      estimatedCost: 500,
+      severity: 'medium',
+      severityLabel: 'Common Gotcha',
+      desc: 'Florists, furniture rentals, and lighting crews charge delivery and setup fees. Furthermore, venues that require complete teardown by midnight trigger "after-hours strike fees."',
+      vendorTip: 'Ask your venue if rental pick-up can occur the following morning (e.g., 9:00 AM) to completely eliminate 1:00 AM late-night strike surcharges.',
+      keywords: ['strike fee', 'delivery fee', 'setup fee', 'breakdown fee', 'teardown', 'late night pickup']
+    },
+    {
+      id: 'vendor-tips',
+      title: 'Day-Of Vendor Gratuities & Cash Tips',
+      categoryId: 'contingency',
+      categoryName: 'Honeymoon & Cushion',
+      estimatedCost: 600,
+      severity: 'high',
+      severityLabel: 'High Financial Risk',
+      desc: 'Cash envelopes for team members on wedding day: hair/makeup artists (18–20%), DJ ($50–$100), delivery crews ($20–$50 each), coordinator ($50–$150), and officiant ($50–$100).',
+      vendorTip: 'Withdraw cash and label envelopes one week prior to the wedding. Assign your Maid of Honor, Best Man, or Coordinator to hand them out.',
+      keywords: ['tips', 'vendor tips', 'gratuity', 'cash tips', 'vendor gratuities', 'tip envelopes']
+    },
+    {
+      id: 'rehearsal-dinner',
+      title: 'Rehearsal Dinner / Welcome Gathering',
+      categoryId: 'venue-catering',
+      categoryName: 'Venue & Catering',
+      estimatedCost: 1400,
+      severity: 'high',
+      severityLabel: 'High Financial Risk',
+      desc: 'Hosting wedding party, immediate family, and out-of-town guests the night before. Can easily spiral into a second mini-reception if not capped.',
+      vendorTip: 'Consider casual formats: brewery taprooms, wood-fired pizza trucks, or upscale taco buffets keep costs under $1,200 while feeling relaxed and fun.',
+      keywords: ['rehearsal', 'rehearsal dinner', 'welcome party', 'welcome drinks', 'grooms dinner']
+    },
+    {
+      id: 'postage-invites',
+      title: 'Invitation Postage & RSVP Return Stamps',
+      categoryId: 'stationery',
+      categoryName: 'Stationery & Invites',
+      estimatedCost: 180,
+      severity: 'medium',
+      severityLabel: 'Common Gotcha',
+      desc: 'Heavy cardstock, square envelopes, vellum wraps, or wax seals exceed 1 oz and require non-machinable 2-oz postage stamps (currently ~$1.15+ each), plus RSVP return stamps.',
+      vendorTip: 'Take one fully assembled invitation suite to your local post office and have it weighed before purchasing stamps, or use digital RSVP QR codes to save 50%.',
+      keywords: ['postage', 'stamps', 'usps', 'envelope stamps', 'rsvp postage']
+    },
+    {
+      id: 'hair-makeup-trial',
+      title: 'Bridal Hair & Makeup Preview Trials',
+      categoryId: 'attire-beauty',
+      categoryName: 'Attire, Rings & Beauty',
+      estimatedCost: 250,
+      severity: 'medium',
+      severityLabel: 'Common Gotcha',
+      desc: 'Preview trials to test and lock in hair and makeup looks are usually billed separately from the wedding day contract ($125 to $300 each).',
+      vendorTip: 'Schedule your hair and makeup trial on the morning of your engagement photoshoot, bridal shower, or rehearsal dinner to get double value.',
+      keywords: ['hair trial', 'makeup trial', 'beauty trial', 'trial session', 'preview trial']
+    },
+    {
+      id: 'marriage-license',
+      title: 'Marriage License & Certified Copies',
+      categoryId: 'officiant-legal',
+      categoryName: 'Officiant & Legal',
+      estimatedCost: 110,
+      severity: 'pro-tip',
+      severityLabel: 'Essential Legal',
+      desc: 'County clerk filing fees typically range between $60 and $90. You will also want 2–3 certified copies ($15–$25 each) for legal name change paperwork and passport updates.',
+      vendorTip: 'Check your county requirements early. Some states waive a portion of the fee if you complete an approved pre-marital preparation course.',
+      keywords: ['marriage license', 'county clerk', 'license fee', 'certified copies', 'legal license']
+    },
+    {
+      id: 'wedding-insurance',
+      title: 'Wedding Day Liability & Cancellation Insurance',
+      categoryId: 'contingency',
+      categoryName: 'Honeymoon & Cushion',
+      estimatedCost: 200,
+      severity: 'medium',
+      severityLabel: 'Common Gotcha',
+      desc: 'Many modern venues require couples to provide a $1,000,000 general liability policy with the venue named as an additional insured. Cancellation protection covers extreme weather or emergencies.',
+      vendorTip: 'Check with your renters or homeowners insurance policy first; many carriers offer an event liability endorsement rider for under $150.',
+      keywords: ['insurance', 'wedding insurance', 'event liability', 'venue insurance', 'cancellation insurance']
+    },
+    {
+      id: 'steaming-cleaning',
+      title: 'Attire Steaming & Post-Wedding Preservation',
+      categoryId: 'attire-beauty',
+      categoryName: 'Attire, Rings & Beauty',
+      estimatedCost: 280,
+      severity: 'pro-tip',
+      severityLabel: 'Pro-Tip',
+      desc: 'Wrinkle steaming on the day before the wedding ($80–$120) and professional gown cleaning with acid-free archival heirloom preservation box ($180–$350).',
+      vendorTip: 'Ask the boutique where you purchased your gown if they offer complimentary or discounted pre-wedding pressing and steaming.',
+      keywords: ['steaming', 'gown preservation', 'dress cleaning', 'dry cleaning', 'gown cleaning']
+    },
+    {
+      id: 'overtime-fees',
+      title: 'Venue & DJ Extra-Hour Overtime Cushion',
+      categoryId: 'entertainment',
+      categoryName: 'Music & Entertainment',
+      estimatedCost: 450,
+      severity: 'pro-tip',
+      severityLabel: 'Industry Secret',
+      desc: 'When speeches run late or guests are having the time of their lives on the dance floor, overtime rates can run $250 to $700 per hour. A planned buffer avoids stress.',
+      vendorTip: 'Check contract overtime clauses beforehand: determine if overtime must be pre-authorized in advance or can be decided on the spot by the couple.',
+      keywords: ['overtime', 'extra hour', 'dj overtime', 'venue overtime', 'late fee buffer']
+    },
+    {
+      id: 'day-of-emergency-kit',
+      title: 'Getting-Ready Suite Hospitality & Emergency Kit',
+      categoryId: 'contingency',
+      categoryName: 'Honeymoon & Cushion',
+      estimatedCost: 150,
+      severity: 'pro-tip',
+      severityLabel: 'Pro-Tip',
+      desc: 'Breakfast pastries, fruit, coffee, and champagne for wedding parties getting ready, plus fashion tape, safety pins, sewing kit, stain remover, pain relievers, and mints.',
+      vendorTip: 'Assign a family member or wedding party member to take charge of suite breakfast, or buy travel-sized pharmacy staples in bulk.',
+      keywords: ['emergency kit', 'bridal suite', 'getting ready food', 'suite snacks', 'bridal emergency']
+    },
+    {
+      id: 'thank-you-cards',
+      title: 'Thank You Stationery & Stamps',
+      categoryId: 'stationery',
+      categoryName: 'Stationery & Invites',
+      estimatedCost: 120,
+      severity: 'pro-tip',
+      severityLabel: 'Pro-Tip',
+      desc: 'Custom thank-you note cards with envelopes and postage to send to guests and vendors within 2–3 months after the wedding.',
+      vendorTip: 'Order thank-you notes at the exact same time as your invitation suites to qualify for bundle volume discounts.',
+      keywords: ['thank you', 'thank-you', 'thank you card', 'thank you notes', 'thank-you cards']
+    }
+  ];
+
+  function auditBudgetForHiddenCosts() {
+    const expenses = state.expenses || [];
+    const excluded = state.excludedHiddenCosts || [];
+    const covered = state.coveredHiddenCosts || [];
+
+    const results = HIDDEN_COSTS_CATALOG.map(item => {
+      // 1. Explicitly marked as "Not in our wedding"
+      if (excluded.includes(item.id)) {
+        return { ...item, status: 'excluded' };
+      }
+
+      // 2. Explicitly marked as already covered
+      if (covered.includes(item.id)) {
+        return { ...item, status: 'covered' };
+      }
+
+      // 3. Matched against existing expenses by keyword
+      const matched = expenses.find(exp => {
+        const name = (exp.name || '').toLowerCase();
+        const notes = (exp.notes || '').toLowerCase();
+        const vendor = (exp.vendor || '').toLowerCase();
+        return item.keywords.some(kw => name.includes(kw) || notes.includes(kw) || vendor.includes(kw));
+      });
+
+      if (matched) {
+        return { ...item, status: 'covered', matchedExpense: matched };
+      }
+
+      // 4. Missing / unbudgeted
+      return { ...item, status: 'missing' };
+    });
+
+    const missing = results.filter(r => r.status === 'missing');
+    const excludedList = results.filter(r => r.status === 'excluded');
+    const coveredList = results.filter(r => r.status === 'covered');
+
+    return {
+      all: results,
+      missing,
+      excluded: excludedList,
+      covered: coveredList,
+      missingCount: missing.length,
+      excludedCount: excludedList.length,
+      coveredCount: coveredList.length,
+      totalCount: results.length
+    };
+  }
+
+  function updateAiAuditBadge(data) {
+    const audit = auditBudgetForHiddenCosts();
+    if (DOM.aiGotchaCountBadge) {
+      DOM.aiGotchaCountBadge.textContent = audit.missingCount;
+    }
+    if (DOM.auditMissingCount) DOM.auditMissingCount.textContent = audit.missingCount;
+    if (DOM.auditExcludedCount) DOM.auditExcludedCount.textContent = audit.excludedCount;
+    if (DOM.auditCoveredCount) DOM.auditCoveredCount.textContent = audit.coveredCount;
+    if (DOM.auditTotalCount) DOM.auditTotalCount.textContent = audit.totalCount;
+  }
+
+  function openAiHubModal(tab = 'audit') {
+    switchAiTab(tab);
+    renderAiHub();
+    if (DOM.aiModal) {
+      DOM.aiModal.showModal();
+    }
+  }
+
+  function switchAiTab(tabName) {
+    activeAiTab = tabName;
+    const tabButtons = [
+      { id: 'tabBtnAudit', name: 'audit' },
+      { id: 'tabBtnChat', name: 'chat' },
+      { id: 'tabBtnAiSettings', name: 'settings' }
+    ];
+
+    tabButtons.forEach(tb => {
+      const btn = DOM[tb.id];
+      if (btn) {
+        if (tb.name === tabName) btn.classList.add('active');
+        else btn.classList.remove('active');
+      }
+    });
+
+    if (DOM.aiPanelAudit) DOM.aiPanelAudit.style.display = tabName === 'audit' ? 'block' : 'none';
+    if (DOM.aiPanelChat) DOM.aiPanelChat.style.display = tabName === 'chat' ? 'block' : 'none';
+    if (DOM.aiPanelSettings) DOM.aiPanelSettings.style.display = tabName === 'settings' ? 'block' : 'none';
+
+    if (tabName === 'chat' && DOM.aiChatInput) {
+      setTimeout(() => DOM.aiChatInput.focus(), 80);
+    }
+  }
+
+  function renderAiHub(passedData = null) {
+    const data = passedData || calculateFinancialAnalytics();
+    const audit = auditBudgetForHiddenCosts();
+
+    // 1. Live Context Ribbon
+    if (DOM.aiCtxCouple) {
+      DOM.aiCtxCouple.textContent = state.coupleNames ? `${state.coupleNames}` : 'Our Wedding';
+    }
+    if (DOM.aiCtxBudget) {
+      DOM.aiCtxBudget.textContent = state.hasTargetBudget ? formatCurrency(state.targetBudget) : 'No target set';
+    }
+    if (DOM.aiCtxSavings) {
+      DOM.aiCtxSavings.textContent = formatCurrency(state.currentSavings);
+    }
+    if (DOM.aiCtxPace) {
+      DOM.aiCtxPace.textContent = `${formatCurrency(state.plannedSavingsPerPaycheck)} / ${getCadenceName(state.paycheckCadence)}`;
+    }
+    if (DOM.aiCtxUnpaidCount) {
+      DOM.aiCtxUnpaidCount.textContent = `${data.unpaid.length} bills (${formatCurrency(data.remainingDue)})`;
+    }
+
+    // 2. Counters & Audit cards
+    updateAiAuditBadge(data);
+    renderGotchaCards(audit);
+
+    // 3. Settings Status
+    if (DOM.aiEngineStatusBadge) {
+      if (state.geminiApiKey) {
+        DOM.aiEngineStatusBadge.textContent = '⚡ Gemini 2.5 Flash Active';
+        DOM.aiEngineStatusBadge.style.background = 'rgba(104, 130, 122, 0.15)';
+        DOM.aiEngineStatusBadge.style.color = '#2E4C43';
+      } else {
+        DOM.aiEngineStatusBadge.textContent = 'Smart Local Active';
+        DOM.aiEngineStatusBadge.style.background = 'var(--gold-subtle)';
+        DOM.aiEngineStatusBadge.style.color = 'var(--gold-hover)';
+      }
+    }
+    if (DOM.geminiApiKeyInput && !DOM.geminiApiKeyInput.value) {
+      DOM.geminiApiKeyInput.value = state.geminiApiKey || '';
+    }
+
+    // 4. Initial chat message if thread empty
+    if (DOM.aiChatThread && DOM.aiChatThread.children.length === 0) {
+      renderAiWelcomeMessage(data, audit);
+    }
+  }
+
+  function renderGotchaCards(passedAudit = null) {
+    if (!DOM.gotchaCardsContainer) return;
+    const audit = passedAudit || auditBudgetForHiddenCosts();
+
+    let itemsToDisplay = [];
+    if (activeAuditFilter === 'missing') {
+      itemsToDisplay = audit.missing;
+    } else if (activeAuditFilter === 'excluded') {
+      itemsToDisplay = audit.excluded;
+    } else if (activeAuditFilter === 'covered') {
+      itemsToDisplay = audit.covered;
+    } else {
+      itemsToDisplay = audit.all;
+    }
+
+    if (itemsToDisplay.length === 0) {
+      let emptyMsg = '';
+      if (activeAuditFilter === 'missing') {
+        emptyMsg = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; background: rgba(104, 130, 122, 0.05); border: 1px dashed rgba(104, 130, 122, 0.4); border-radius: var(--radius-md);">
+            <span style="font-size: 2.2rem; display: block; margin-bottom: 8px;">🎉</span>
+            <h4 style="font-family: var(--font-serif); font-size: 1.25rem; color: var(--sage-primary); margin: 0 0 6px 0;">All Industry Gotchas Accounted For!</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 480px; margin: 0 auto;">
+              You have reviewed all 14 common wedding hidden costs. Items are either budgeted or marked as excluded from your wedding.
+            </p>
+          </div>
+        `;
+      } else if (activeAuditFilter === 'excluded') {
+        emptyMsg = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 36px 20px; background: var(--bg-subtle); border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
+            <span style="font-size: 2rem; display: block; margin-bottom: 8px;">🚫</span>
+            <h4 style="font-family: var(--font-serif); font-size: 1.15rem; color: var(--text-main); margin: 0 0 6px 0;">No Excluded Items Yet</h4>
+            <p style="font-size: 0.84rem; color: var(--text-muted); max-width: 440px; margin: 0 auto;">
+              When reviewing costs in "To Review", click <strong>🚫 Not in our wedding</strong> on any expense that isn't part of your plans. It will appear here and can be restored anytime.
+            </p>
+          </div>
+        `;
+      } else if (activeAuditFilter === 'covered') {
+        emptyMsg = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 36px 20px; background: var(--bg-subtle); border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
+            <span style="font-size: 2rem; display: block; margin-bottom: 8px;">📋</span>
+            <h4 style="font-family: var(--font-serif); font-size: 1.15rem; color: var(--text-main); margin: 0 0 6px 0;">No Covered Items Yet</h4>
+            <p style="font-size: 0.84rem; color: var(--text-muted); max-width: 440px; margin: 0 auto;">
+              As you add gotchas to your budget, they will automatically be cataloged here as covered.
+            </p>
+          </div>
+        `;
+      }
+      DOM.gotchaCardsContainer.innerHTML = emptyMsg;
+      return;
+    }
+
+    const cardsHtml = itemsToDisplay.map(item => {
+      const isExcluded = item.status === 'excluded';
+      const isCovered = item.status === 'covered';
+      const isMissing = item.status === 'missing';
+
+      let statusBadge = '';
+      if (isExcluded) {
+        statusBadge = `<span class="gotcha-status-badge excluded">🚫 Excluded: Not in your wedding</span>`;
+      } else if (isCovered) {
+        const matchName = item.matchedExpense ? ` (${escapeHtml(item.matchedExpense.name)})` : '';
+        statusBadge = `<span class="gotcha-status-badge covered">✅ In Budget${matchName}</span>`;
+      }
+
+      let actionsHtml = '';
+      if (isMissing) {
+        actionsHtml = `
+          <button type="button" class="btn btn-primary btn-sm" data-gotcha-action="add" data-gotcha-id="${item.id}">
+            + Add to Budget (${formatCurrency(item.estimatedCost)})
+          </button>
+          <button type="button" class="btn btn-not-in-wedding btn-sm" data-gotcha-action="exclude" data-gotcha-id="${item.id}" title="Tell EternalPlan this expense is not part of your wedding">
+            🚫 Not in our wedding
+          </button>
+          <button type="button" class="btn btn-text btn-sm" data-gotcha-action="covered" data-gotcha-id="${item.id}" title="Mark as already accounted for or paid by family">
+            ✅ Already covered
+          </button>
+        `;
+      } else if (isExcluded) {
+        actionsHtml = `
+          ${statusBadge}
+          <button type="button" class="btn btn-secondary btn-sm" data-gotcha-action="restore" data-gotcha-id="${item.id}" style="margin-left: auto;">
+            ↩️ Reconsider / In our wedding
+          </button>
+        `;
+      } else if (isCovered) {
+        actionsHtml = `
+          ${statusBadge}
+          <button type="button" class="btn btn-not-in-wedding btn-sm" data-gotcha-action="exclude" data-gotcha-id="${item.id}" style="margin-left: auto;" title="Change: This is not part of our wedding">
+            🚫 Not in our wedding
+          </button>
+        `;
+      }
+
+      const severityClass = item.severity === 'high' ? 'badge-danger' : (item.severity === 'medium' ? 'badge-warning' : 'badge-upcoming');
+
+      return `
+        <div class="gotcha-card ${item.status}">
+          <div class="gotcha-top-line">
+            <div class="gotcha-title-wrap">
+              <span class="gotcha-category-tag">${escapeHtml(item.categoryName)}</span>
+              <h5 class="gotcha-title">${escapeHtml(item.title)}</h5>
+            </div>
+            <span class="gotcha-cost-pill">~${formatCurrency(item.estimatedCost)}</span>
+          </div>
+
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <span class="badge-pill ${severityClass}">${escapeHtml(item.severityLabel)}</span>
+          </div>
+
+          <p class="gotcha-desc">${escapeHtml(item.desc)}</p>
+
+          <div class="gotcha-tip-box">
+            <strong>Insider Negotiation Tip:</strong> ${escapeHtml(item.vendorTip)}
+          </div>
+
+          <div class="gotcha-actions">
+            ${actionsHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    DOM.gotchaCardsContainer.innerHTML = cardsHtml;
+  }
+
+  // Gotcha Card Action Event Delegation
+  if (DOM.gotchaCardsContainer) {
+    DOM.gotchaCardsContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-gotcha-action]');
+      if (!btn) return;
+      const action = btn.dataset.gotchaAction;
+      const id = btn.dataset.gotchaId;
+
+      if (action === 'add') {
+        addHiddenCostToBudget(id);
+      } else if (action === 'exclude') {
+        markHiddenCostExcluded(id);
+      } else if (action === 'restore') {
+        restoreHiddenCost(id);
+      } else if (action === 'covered') {
+        markHiddenCostCovered(id);
+      }
+    });
+  }
+
+  function addHiddenCostToBudget(costId) {
+    const item = HIDDEN_COSTS_CATALOG.find(i => i.id === costId);
+    if (!item) return;
+
+    let dueDate = state.weddingDate;
+    if (state.weddingDate) {
+      const wDate = new Date(state.weddingDate + 'T00:00:00');
+      if (!isNaN(wDate.getTime())) {
+        // Set due date 30 days prior to wedding
+        const d = new Date(wDate.getTime() - (30 * 24 * 60 * 60 * 1000));
+        dueDate = d.toISOString().split('T')[0];
+      }
+    }
+
+    const newExpense = {
+      id: 'exp-' + Date.now(),
+      categoryId: item.categoryId,
+      name: item.title,
+      vendor: 'Estimated / TBD',
+      estimatedCost: item.estimatedCost,
+      actualCost: 0,
+      notes: `Added from EternalAI Hidden Cost Audit: ${item.desc}`,
+      milestones: [
+        {
+          id: 'm-' + Date.now() + '-1',
+          title: `${item.title} (Payment Due)`,
+          amount: item.estimatedCost,
+          dueDate: dueDate || '',
+          isPaid: false
+        }
+      ]
+    };
+
+    state.expenses.push(newExpense);
+    state.excludedHiddenCosts = state.excludedHiddenCosts.filter(id => id !== costId);
+    saveState();
+    renderAll();
+    showToast(`✨ Added "${item.title}" (${formatCurrency(item.estimatedCost)}) to your budget!`, '💍');
+  }
+
+  function markHiddenCostExcluded(costId) {
+    const item = HIDDEN_COSTS_CATALOG.find(i => i.id === costId);
+    if (!item) return;
+
+    if (!state.excludedHiddenCosts.includes(costId)) {
+      state.excludedHiddenCosts.push(costId);
+    }
+    state.coveredHiddenCosts = state.coveredHiddenCosts.filter(id => id !== costId);
+    saveState();
+    renderAll();
+    showToast(`🚫 "${item.title}" marked as NOT part of your wedding`, 'ℹ️');
+  }
+
+  function restoreHiddenCost(costId) {
+    const item = HIDDEN_COSTS_CATALOG.find(i => i.id === costId);
+    if (!item) return;
+
+    state.excludedHiddenCosts = state.excludedHiddenCosts.filter(id => id !== costId);
+    state.coveredHiddenCosts = state.coveredHiddenCosts.filter(id => id !== costId);
+    saveState();
+    renderAll();
+    showToast(`↩️ "${item.title}" restored to active audit review`, '✨');
+  }
+
+  function markHiddenCostCovered(costId) {
+    const item = HIDDEN_COSTS_CATALOG.find(i => i.id === costId);
+    if (!item) return;
+
+    if (!state.coveredHiddenCosts.includes(costId)) {
+      state.coveredHiddenCosts.push(costId);
+    }
+    state.excludedHiddenCosts = state.excludedHiddenCosts.filter(id => id !== costId);
+    saveState();
+    renderAll();
+    showToast(`✅ "${item.title}" marked as already covered`, '✨');
+  }
+
+  // FINANCIAL ADVISOR CHAT ENGINE
+  function renderAiWelcomeMessage(data, audit) {
+    if (!DOM.aiChatThread) return;
+    const coupleText = state.coupleNames ? ` <strong>${escapeHtml(state.coupleNames)}</strong>` : '';
+    const welcomeHtml = `
+      <div class="chat-msg ai">
+        <div class="chat-avatar">✨</div>
+        <div class="chat-bubble">
+          <p>Hello${coupleText}! I am your <strong>EternalAI Financial Copilot</strong>.</p>
+          <p>I have live, continuous visibility into your wedding numbers: <strong>${data.milestones.length} payment milestones</strong>, <strong>${formatCurrency(data.remainingDue)} remaining unpaid</strong>, and a planned savings pace of <strong>${formatCurrency(state.plannedSavingsPerPaycheck)} ${getCadenceName(state.paycheckCadence)}</strong>.</p>
+          <p>You currently have <strong>${audit.missingCount} hidden cost gotchas</strong> to review. Ask me anything below, or click any prompt chip to simulate costs, audit risks, or draft vendor emails!</p>
+        </div>
+      </div>
+    `;
+    DOM.aiChatThread.innerHTML = welcomeHtml;
+  }
+
+  async function handleSendAiChat() {
+    if (isAiResponding || !DOM.aiChatInput) return;
+    const prompt = DOM.aiChatInput.value.trim();
+    if (!prompt) return;
+
+    DOM.aiChatInput.value = '';
+    isAiResponding = true;
+    if (DOM.aiSendBtn) DOM.aiSendBtn.disabled = true;
+
+    // 1. Append User Message
+    appendChatMessage('user', prompt);
+
+    // 2. Append Typing Indicator
+    const typingIndicator = document.createElement('div');
+    typingIndicator.className = 'chat-msg ai';
+    typingIndicator.id = 'aiTypingIndicator';
+    typingIndicator.innerHTML = `
+      <div class="chat-avatar">✨</div>
+      <div class="chat-bubble" style="color: var(--text-muted); font-style: italic;">
+        Thinking & calculating wedding financial models...
+      </div>
+    `;
+    DOM.aiChatThread.appendChild(typingIndicator);
+    DOM.aiChatThread.scrollTop = DOM.aiChatThread.scrollHeight;
+
+    const data = calculateFinancialAnalytics();
+    const audit = auditBudgetForHiddenCosts();
+
+    let responseText = '';
+    try {
+      if (state.geminiApiKey) {
+        responseText = await callGeminiApi(prompt, data, audit);
+      } else {
+        // Smart Local Advisor Engine
+        responseText = generateLocalAdvisorResponse(prompt, data, audit);
+      }
+    } catch (err) {
+      console.warn('AI call error, falling back to local advisor:', err);
+      responseText = generateLocalAdvisorResponse(prompt, data, audit);
+    } finally {
+      const indicator = document.getElementById('aiTypingIndicator');
+      if (indicator) indicator.remove();
+
+      appendChatMessage('ai', responseText);
+      isAiResponding = false;
+      if (DOM.aiSendBtn) DOM.aiSendBtn.disabled = false;
+      if (DOM.aiChatInput) DOM.aiChatInput.focus();
+    }
+  }
+
+  function appendChatMessage(role, content) {
+    if (!DOM.aiChatThread) return;
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `chat-msg ${role}`;
+
+    const avatar = role === 'user' ? '💍' : '✨';
+    // Format simple markdown into styled HTML if AI response
+    let formattedContent = content;
+    if (role === 'ai') {
+      formattedContent = formatAdvisorText(content);
+    } else {
+      formattedContent = `<p>${escapeHtml(content)}</p>`;
+    }
+
+    msgDiv.innerHTML = `
+      <div class="chat-avatar">${avatar}</div>
+      <div class="chat-bubble">
+        ${formattedContent}
+      </div>
+    `;
+
+    DOM.aiChatThread.appendChild(msgDiv);
+    DOM.aiChatThread.scrollTop = DOM.aiChatThread.scrollHeight;
+  }
+
+  function formatAdvisorText(text) {
+    if (!text) return '';
+    // If text already has HTML paragraphs/tags, return directly
+    if (text.trim().startsWith('<p>') || text.trim().startsWith('<div>')) {
+      return text;
+    }
+
+    let html = escapeHtml(text);
+    // Bold
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Bullet points
+    html = html.replace(/^\s*[-•]\s+(.*)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+    // Paragraph splits
+    const paras = html.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+    return paras.map(p => {
+      if (p.startsWith('<ul>') || p.startsWith('<ol>')) return p;
+      return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+    }).join('');
+  }
+
+  function generateLocalAdvisorResponse(prompt, data, audit) {
+    const p = prompt.toLowerCase();
+    const sim = data.simulation;
+    const coupleName = state.coupleNames || 'Our Wedding';
+    const cadence = getCadenceName(state.paycheckCadence);
+    const pace = formatCurrency(state.plannedSavingsPerPaycheck);
+    const due = formatCurrency(data.remainingDue);
+    const savings = formatCurrency(state.currentSavings);
+
+    // 1. Audit / Risks Query
+    if (p.includes('risk') || p.includes('audit') || p.includes('health') || p.includes('forgot')) {
+      let riskAnalysis = '';
+      if (sim.hasDeficit) {
+        riskAnalysis = `
+          <p>⚠️ <strong>Cashflow Warning Detected:</strong> At your current savings rate of <strong>${pace} / ${cadence}</strong>, your balance is projected to dip into deficit by <strong>${formatCurrency(Math.abs(sim.minBalance))}</strong> around <strong>${formatDate(sim.deficitDate)}</strong>.</p>
+          <p>To safely bridge this gap, your recommended target savings pace is <strong>${formatCurrency(sim.recommendedPaycheckSavings)} / ${cadence}</strong>.</p>
+        `;
+      } else {
+        riskAnalysis = `
+          <p>✅ <strong>Cashflow Trajectory Solid:</strong> With <strong>${savings}</strong> in bank savings and <strong>${pace} / ${cadence}</strong> planned, your projected lowest balance remains safely above your <strong>${formatCurrency(state.safetyCushion)}</strong> emergency cushion.</p>
+        `;
+      }
+
+      let gotchaSummary = '';
+      if (audit.missingCount > 0) {
+        const topGotchas = audit.missing.slice(0, 3).map(g => `<li><strong>${escapeHtml(g.title)}</strong> (~${formatCurrency(g.estimatedCost)})</li>`).join('');
+        gotchaSummary = `
+          <p><strong>Top Unbudgeted Industry Gotchas:</strong> You have <strong>${audit.missingCount} items</strong> not yet accounted for in your budget. The highest impact ones are:</p>
+          <ul>${topGotchas}</ul>
+          <p>Check the <em>Hidden Cost & Gotcha Audit</em> tab to either add them with one click or mark them as <strong>🚫 Not in our wedding</strong>.</p>
+        `;
+      } else {
+        gotchaSummary = `<p>🎉 You have zero unbudgeted gotchas remaining! All industry items have been budgeted or excluded.</p>`;
+      }
+
+      return `
+        <p>Here is your comprehensive wedding financial health audit for <strong>${escapeHtml(coupleName)}</strong>:</p>
+        ${riskAnalysis}
+        ${gotchaSummary}
+        <p><strong>Key Metrics:</strong> Total unpaid due is <strong>${due}</strong> across <strong>${data.unpaid.length} upcoming milestones</strong>.</p>
+      `;
+    }
+
+    // 2. Affordability Simulation ("Can we afford $X?")
+    const matchAmt = prompt.match(/\$?([0-9,]+(\.[0-9]{2})?)/);
+    if (p.includes('afford') || p.includes('add') || matchAmt) {
+      let extraAmt = 1500;
+      if (matchAmt) {
+        const parsed = parseFloat(matchAmt[1].replace(/,/g, ''));
+        if (!isNaN(parsed) && parsed > 0) extraAmt = parsed;
+      }
+
+      // Calculate paychecks remaining
+      const wDate = state.weddingDate ? new Date(state.weddingDate + 'T00:00:00') : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000);
+      const daysLeft = Math.max(1, Math.ceil((wDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+      const intervalDays = state.paycheckCadence === 'weekly' ? 7 : (state.paycheckCadence === 'bi-weekly' ? 14 : 30);
+      const paychecksLeft = Math.max(1, Math.floor(daysLeft / intervalDays));
+
+      const extraPerPaycheck = Math.ceil(extraAmt / paychecksLeft);
+      const projectedDeficit = (sim.minBalance - extraAmt);
+      const createsDeficit = projectedDeficit < state.safetyCushion;
+
+      return `
+        <p><strong>Affordability Analysis for +${formatCurrency(extraAmt)}:</strong></p>
+        <p>With <strong>${daysLeft} days</strong> (~${paychecksLeft} paychecks) remaining until your wedding day:</p>
+        <ul>
+          <li><strong>Impact Per Paycheck:</strong> Adding this expense requires saving an additional <strong>${formatCurrency(extraPerPaycheck)} / ${cadence}</strong> to stay cashflow-neutral.</li>
+          <li><strong>Current Projected Buffer:</strong> Your lowest projected balance is currently <strong>${formatCurrency(sim.minBalance)}</strong>. After adding ${formatCurrency(extraAmt)}, it would become <strong>${formatCurrency(projectedDeficit)}</strong>.</li>
+        </ul>
+        <p>${createsDeficit 
+          ? `⚠️ <strong>Verdict: Caution.</strong> This will reduce your balance below your $${formatCurrency(state.safetyCushion)} cushion unless you boost savings by ${formatCurrency(extraPerPaycheck)}/${cadence} or reallocate from another category.` 
+          : `✅ <strong>Verdict: Affordable!</strong> Your cashflow buffer can absorb this expense without dipping below your safety cushion.`}
+        </p>
+      `;
+    }
+
+    // 3. Trimming / Where to Save
+    if (p.includes('trim') || p.includes('cut') || p.includes('save money') || p.includes('lower') || p.includes('reduce')) {
+      return `
+        <p>Here are the highest-impact, low-compromise ways to trim <strong>$1,500 – $3,500</strong> from your wedding budget:</p>
+        <ol>
+          <li><strong>Repurpose Ceremony Florals to Reception (Saves $600–$1,200):</strong> Move your ceremony arch floral spray to the sweetheart table, and reuse aisle bouquets as cocktail table centerpieces.</li>
+          <li><strong>Digital RSVP via QR Code (Saves $180–$300):</strong> Include a QR code on your printed invitation suites instead of ordering separate RSVP response cards, printed return envelopes, and USPS stamps.</li>
+          <li><strong>Vendor Meals Discount (Saves $150–$350):</strong> Most caterers offer vendor meals for 30–50% off guest plate prices. Confirm vendor counts (photographer, DJ, planner) with your caterer 2 weeks prior.</li>
+          <li><strong>Family-Style or Stations over Plated Dinner (Saves 15–20% on Labor):</strong> Plated multi-course meals require 1 server per 8–10 guests, while family-style or luxury carving stations require significantly fewer staff hours.</li>
+          <li><strong>BYO Alcohol Venue or Signature Cocktails Only (Saves $1,000+):</strong> Stick to beer, wine, and two signature craft cocktails instead of a full open top-shelf liquor bar.</li>
+        </ol>
+      `;
+    }
+
+    // 4. Vendor Negotiation / Split Email
+    if (p.includes('email') || p.includes('negotiat') || p.includes('script') || p.includes('letter') || p.includes('vendor')) {
+      return `
+        <p>Here is a professional, polite email script to request splitting a vendor payment into 3 smaller milestone installments:</p>
+        <div style="background: var(--bg-subtle); border-left: 3px solid var(--gold-primary); padding: 12px 14px; border-radius: 4px; font-family: var(--font-sans); font-size: 0.84rem; margin: 8px 0;">
+          <strong>Subject:</strong> Payment Schedule Question – [Your Names] Wedding ([Wedding Date])<br><br>
+          Hi [Vendor Name],<br><br>
+          We are so thrilled to be working with you for our wedding on [Wedding Date]! We love your work and can't wait for our celebration.<br><br>
+          As we organize our seasonal savings milestones, we wanted to ask if it might be possible to split our remaining balance into two smaller installments (for example, 50% due at [Month 1] and the final 50% due at [Month 2]) rather than one lump sum.<br><br>
+          We want to make sure this works seamlessly with your booking policies and contract schedule. Please let us know if that is feasible!<br><br>
+          Warmly,<br>
+          ${escapeHtml(coupleName)}
+        </div>
+      `;
+    }
+
+    // 5. Default General Advisor Response
+    return `
+      <p>I am your <strong>EternalAI Financial Copilot</strong>. Here is where your numbers stand:</p>
+      <ul>
+        <li><strong>Current Bank Savings:</strong> ${savings}</li>
+        <li><strong>Remaining Unpaid Bills:</strong> ${due} across ${data.unpaid.length} milestones</li>
+        <li><strong>Planned Savings Pace:</strong> ${pace} / ${cadence}</li>
+        <li><strong>Cashflow Cushion Status:</strong> ${sim.hasDeficit ? '⚠️ Projected deficit - action recommended' : '✅ Healthy trajectory'}</li>
+        <li><strong>Hidden Cost Gotchas to Review:</strong> ${audit.missingCount} items</li>
+      </ul>
+      <p>Try asking: <em>"Can we afford an extra $2,000?"</em>, <em>"Where can we realistically trim costs?"</em>, or <em>"Audit our budget risks."</em></p>
+    `;
+  }
+
+  async function callGeminiApi(userPrompt, data, audit) {
+    const apiKey = state.geminiApiKey.trim();
+    if (!apiKey) throw new Error('No API key configured');
+
+    const systemPrompt = `You are EternalAI, the world's most elite, tactful, and mathematically rigorous wedding financial copilot.
+You are embedded directly inside the couple's personal wedding planner app ("EternalPlan").
+Couple: ${state.coupleNames || 'The Couple'}
+Wedding Date: ${state.weddingDate || 'TBD'}
+Target Budget: ${state.hasTargetBudget ? '$' + state.targetBudget : 'Not set'}
+Current Bank Savings: $${state.currentSavings}
+Planned Savings Pace: $${state.plannedSavingsPerPaycheck} per ${state.paycheckCadence}
+Safety Cushion: $${state.safetyCushion}
+Total Remaining Due: $${data.remainingDue}
+Unpaid Milestones Count: ${data.unpaid.length}
+Cashflow Deficit Detected: ${data.simulation.hasDeficit ? 'YES, shortfall of $' + Math.abs(data.simulation.minBalance) + ' on ' + data.simulation.deficitDate : 'NO, healthy surplus'}
+Recommended Paycheck Savings: $${data.simulation.recommendedPaycheckSavings}
+Unbudgeted Industry Gotchas: ${audit.missingCount} items (such as service fees, alterations, vendor tips, vendor meals)
+
+Provide structured, empathetic, concise advice. Use bold text and bullet points for readability. Always ground your calculations in the couple's real numbers. Never give generic boilerplate.`;
+
+    const requestBody = {
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userPrompt }]
+        }
+      ],
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 900
+      }
+    };
+
+    // Primary endpoint: gemini-2.5-flash, fallback: gemini-1.5-flash
+    let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    let res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!res.ok) {
+      // Fallback
+      endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+    }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Gemini API Error (${res.status}): ${errText}`);
+    }
+
+    const json = await res.json();
+    const candidate = json.candidates && json.candidates[0];
+    const textPart = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0];
+    if (textPart && textPart.text) {
+      return textPart.text;
+    }
+    throw new Error('Empty response from Gemini API');
+  }
+
+  // AI SETTINGS HANDLERS
+  function handleSaveAiKey() {
+    if (!DOM.geminiApiKeyInput) return;
+    const key = DOM.geminiApiKeyInput.value.trim();
+    state.geminiApiKey = key;
+    try {
+      localStorage.setItem('eternalplan_gemini_api_key', key);
+    } catch (e) {}
+    saveState();
+    renderAiHub();
+    showToast(key ? 'Saved Gemini API key!' : 'Cleared API key (Local engine active)', '💾');
+  }
+
+  function handleClearAiKey() {
+    state.geminiApiKey = '';
+    if (DOM.geminiApiKeyInput) DOM.geminiApiKeyInput.value = '';
+    try {
+      localStorage.removeItem('eternalplan_gemini_api_key');
+    } catch (e) {}
+    saveState();
+    renderAiHub();
+    showToast('Reverted to Smart Local Financial Advisor', 'ℹ️');
+  }
+
+  async function handleTestAiConnection() {
+    if (!DOM.geminiApiKeyInput || !DOM.aiTestNotice) return;
+    const key = DOM.geminiApiKeyInput.value.trim();
+    if (!key) {
+      DOM.aiTestNotice.className = 'supabase-sync-notice notice-warning';
+      DOM.aiTestNotice.innerHTML = '<strong>⚠️ No API Key entered</strong><br>Please enter your Gemini API key above or continue using the Smart Local Advisor.';
+      DOM.aiTestNotice.style.display = 'block';
+      return;
+    }
+
+    DOM.aiTestNotice.className = 'supabase-sync-notice notice-info';
+    DOM.aiTestNotice.innerHTML = '⚡ Testing connection to Google Gemini API...';
+    DOM.aiTestNotice.style.display = 'block';
+
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: 'Hello' }] }]
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ? err.error.message : `HTTP status ${res.status}`);
+      }
+
+      DOM.aiTestNotice.className = 'supabase-sync-notice notice-success';
+      DOM.aiTestNotice.innerHTML = '<strong>✅ Gemini API Connected Successfully!</strong><br>Your AI Financial Advisor now has direct access to Gemini 2.5 Flash for advanced custom reasoning.';
+      state.geminiApiKey = key;
+      saveState();
+      renderAiHub();
+    } catch (err) {
+      DOM.aiTestNotice.className = 'supabase-sync-notice notice-warning';
+      DOM.aiTestNotice.innerHTML = `<strong>⚠️ Connection Failed:</strong> ${escapeHtml(err.message)}<br>Check that your API key is active in <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">Google AI Studio</a>.`;
+    }
   }
 
   // Start the application
