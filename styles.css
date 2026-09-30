@@ -3031,12 +3031,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .category-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
   font-size: 0.72rem;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  line-height: 1.2;
+  vertical-align: middle;
 }
 
 .category-badge.required {
@@ -3049,6 +3055,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background: rgba(179, 138, 88, 0.12);
   color: #8C6534;
   border: 1px solid rgba(179, 138, 88, 0.25);
+}
+
+.category-badge.marketing {
+  background: rgba(145, 106, 126, 0.14);
+  color: #7A4B62;
+  border: 1px solid rgba(145, 106, 126, 0.3);
 }
 
 .category-info p {

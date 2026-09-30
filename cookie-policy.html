@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=2.6">
+  <link rel="stylesheet" href="styles.css?v=2.7">
   <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body>
@@ -52,52 +52,62 @@
 
         <section style="margin-top: 28px;">
           <h2>2. Itemized Cookie & Storage Specification</h2>
-          <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.84rem;">
-            <thead>
-              <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color); text-align: left;">
-                <th style="padding: 10px;">Name / Key</th>
-                <th style="padding: 10px;">Provider</th>
-                <th style="padding: 10px;">Purpose</th>
-                <th style="padding: 10px;">Category</th>
-                <th style="padding: 10px;">Lifespan</th>
-                <th style="padding: 10px;">Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 10px; font-family: monospace; font-weight: 700;">ep_cookie_consent_v1</td>
-                <td style="padding: 10px;">EternalPlan (First-Party)</td>
-                <td style="padding: 10px;">Stores user's granular consent choices and timestamp.</td>
-                <td style="padding: 10px;"><span class="category-badge required">Strictly Necessary</span></td>
-                <td style="padding: 10px;">12 Months</td>
-                <td style="padding: 10px;">LocalStorage</td>
-              </tr>
-              <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 10px; font-family: monospace; font-weight: 700;">wedding_budget_planner_data_v1</td>
-                <td style="padding: 10px;">EternalPlan (First-Party)</td>
-                <td style="padding: 10px;">Offline backup of budget calculations, items, and milestones.</td>
-                <td style="padding: 10px;"><span class="category-badge required">Strictly Necessary</span></td>
-                <td style="padding: 10px;">Persistent (User Cleared)</td>
-                <td style="padding: 10px;">LocalStorage</td>
-              </tr>
-              <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 10px; font-family: monospace; font-weight: 700;">sb-*-auth-token</td>
-                <td style="padding: 10px;">Supabase (First-Party/Sub-processor)</td>
-                <td style="padding: 10px;">Cryptographic session token for authenticated cloud sync.</td>
-                <td style="padding: 10px;"><span class="category-badge required">Strictly Necessary</span></td>
-                <td style="padding: 10px;">Session / 7 Days</td>
-                <td style="padding: 10px;">LocalStorage</td>
-              </tr>
-              <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 10px; font-family: monospace; font-weight: 700;">_ga, _gid</td>
-                <td style="padding: 10px;">Google Analytics (Optional)</td>
-                <td style="padding: 10px;">Aggregated usage telemetry. Blocked until explicit consent.</td>
-                <td style="padding: 10px;"><span class="category-badge optional">Analytics</span></td>
-                <td style="padding: 10px;">2 Years / 24 Hours</td>
-                <td style="padding: 10px;">HTTP Cookie</td>
-              </tr>
-            </tbody>
-          </table>
+          <div style="overflow-x: auto; margin: 16px 0;">
+            <table style="width: 100%; min-width: 680px; border-collapse: collapse; font-size: 0.84rem;">
+              <thead>
+                <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-color); text-align: left;">
+                  <th style="padding: 12px 10px; white-space: nowrap;">Name / Key</th>
+                  <th style="padding: 12px 10px; white-space: nowrap;">Provider</th>
+                  <th style="padding: 12px 10px; min-width: 200px;">Purpose</th>
+                  <th style="padding: 12px 10px; white-space: nowrap; min-width: 140px;">Category</th>
+                  <th style="padding: 12px 10px; white-space: nowrap;">Lifespan</th>
+                  <th style="padding: 12px 10px; white-space: nowrap;">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; white-space: nowrap;">ep_cookie_consent_v1</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">EternalPlan (First-Party)</td>
+                  <td style="padding: 12px 10px;">Stores user's granular consent choices and timestamp.</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;"><span class="category-badge required">Strictly Necessary</span></td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">12 Months</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">LocalStorage</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; white-space: nowrap;">wedding_budget_planner_data_v1</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">EternalPlan (First-Party)</td>
+                  <td style="padding: 12px 10px;">Offline backup of budget calculations, items, and milestones.</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;"><span class="category-badge required">Strictly Necessary</span></td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">Persistent (User Cleared)</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">LocalStorage</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; white-space: nowrap;">sb-*-auth-token</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">Supabase (First-Party/Sub-processor)</td>
+                  <td style="padding: 12px 10px;">Cryptographic session token for authenticated cloud sync.</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;"><span class="category-badge required">Strictly Necessary</span></td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">Session / 7 Days</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">LocalStorage</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; white-space: nowrap;">_ga, _gid</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">Google Analytics (Optional)</td>
+                  <td style="padding: 12px 10px;">Aggregated usage telemetry. Blocked until explicit consent.</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;"><span class="category-badge optional">Analytics</span></td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">2 Years / 24 Hours</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">HTTP Cookie</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; white-space: nowrap;">_fbp, personalization_id</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">Ad Platforms (Optional)</td>
+                  <td style="padding: 12px 10px;">Promotional remarketing & campaign conversion tracking. Blocked by default.</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;"><span class="category-badge marketing">Marketing</span></td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">90 Days</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">HTTP Cookie</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section style="margin-top: 28px;">
