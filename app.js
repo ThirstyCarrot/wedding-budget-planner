@@ -2726,8 +2726,9 @@
 
   // Smooth, jitter-free tooltip placement with horizontal boundary clamping
   function updateDonutTooltipPosition(tooltip, mouseX, mouseY, containerW, containerH) {
-    const isTopHalf = mouseY < 118;
-    const clampedX = Math.max(130, Math.min(containerW - 130, mouseX));
+    const isTopHalf = mouseY < (containerH * 0.5);
+    const halfWidth = Math.min(135, Math.max(110, containerW * 0.32));
+    const clampedX = Math.max(halfWidth + 4, Math.min(containerW - halfWidth - 4, mouseX));
     tooltip.style.left = `${Math.round(clampedX)}px`;
 
     if (isTopHalf) {

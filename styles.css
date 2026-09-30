@@ -736,10 +736,13 @@ body {
 .donut-chart-container {
   overflow: visible !important;
   position: relative;
+  z-index: 2;
 }
 
 #categoryDonutCanvas {
   cursor: default;
+  position: relative;
+  z-index: 2;
   transition: cursor 0.15s ease;
 }
 
@@ -1614,6 +1617,12 @@ dialog {
   transition-behavior: allow-discrete;
 }
 
+dialog:not([open]) {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
 dialog[open] {
   opacity: 1;
   transform: scale(1) translateY(0);
@@ -2289,12 +2298,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   width: 95vw;
   max-height: 88vh;
   padding: 0;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--gold-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35), 0 0 1px 1px rgba(212, 175, 55, 0.3);
+}
+
+.ai-modal[open] {
+  display: flex;
+  flex-direction: column;
 }
 
 .ai-modal-header {
