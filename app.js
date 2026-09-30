@@ -1025,7 +1025,7 @@
 
     if (data.milestones.length === 0) {
       banner.className = 'crunch-banner';
-      banner.style.borderLeftColor = 'var(--gold-primary)';
+      banner.style.borderLeftColor = 'var(--accent-primary)';
       DOM.crunchBannerIcon.textContent = '💍';
       DOM.crunchBannerTitle.textContent = 'Welcome to Your Wedding Budget Planner';
       DOM.crunchBannerText.innerHTML = `
@@ -1904,11 +1904,11 @@
     ctx.closePath();
     ctx.fill();
 
-    // Area Fill 2: Projected Savings Balance (Soft Gold)
-    const goldGrad = ctx.createLinearGradient(0, padTop, 0, baselineY);
-    goldGrad.addColorStop(0, 'rgba(197, 160, 89, 0.24)');
-    goldGrad.addColorStop(1, 'rgba(197, 160, 89, 0.02)');
-    ctx.fillStyle = goldGrad;
+    // Area Fill 2: Projected Savings Balance (Warm Terracotta)
+    const terracottaGrad = ctx.createLinearGradient(0, padTop, 0, baselineY);
+    terracottaGrad.addColorStop(0, 'rgba(154, 52, 18, 0.12)');
+    terracottaGrad.addColorStop(1, 'rgba(154, 52, 18, 0.01)');
+    ctx.fillStyle = terracottaGrad;
     ctx.beginPath();
     drawCurvePath(balancePoints);
     ctx.lineTo(balancePoints[balancePoints.length - 1].x, baselineY);
@@ -1916,8 +1916,8 @@
     ctx.closePath();
     ctx.fill();
 
-    // Stroke 1: Cumulative Due (Rose)
-    ctx.strokeStyle = '#C4797D';
+    // Stroke 1: Cumulative Due (Slate)
+    ctx.strokeStyle = '#64748B';
     ctx.lineWidth = 2.4;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
@@ -1927,8 +1927,8 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Stroke 2: Projected Savings (Gold)
-    ctx.strokeStyle = '#C5A059';
+    // Stroke 2: Projected Savings (Terracotta)
+    ctx.strokeStyle = '#9A3412';
     ctx.lineWidth = 2.8;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
@@ -1946,12 +1946,12 @@
       ctx.beginPath();
       ctx.arc(ptDue.x, ptDue.y, 4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#C4797D';
+      ctx.strokeStyle = '#64748B';
       ctx.lineWidth = 2;
       ctx.stroke();
 
       // Balance node
-      const pointColor = s.isDeficit ? '#C0392B' : '#C5A059';
+      const pointColor = s.isDeficit ? '#B91C1C' : '#9A3412';
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
       ctx.arc(ptBalance.x, ptBalance.y, 5, 0, Math.PI * 2);
@@ -2087,19 +2087,19 @@
 
       // Draw hover highlight background
       if (activeHoverPoint && Math.abs(activeHoverPoint.x - groupCenterX) < groupW / 2) {
-        ctx.fillStyle = 'rgba(197, 160, 89, 0.08)';
+        ctx.fillStyle = 'rgba(154, 52, 18, 0.06)';
         ctx.fillRect(padLeft + idx * groupW + 3, padTop, groupW - 6, chartH);
       }
 
-      // Savings Bar (Gold)
-      ctx.fillStyle = '#C5A059';
+      // Savings Bar (Terracotta)
+      ctx.fillStyle = '#9A3412';
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(xSavings, ySavings, barW, hSavings, [4, 4, 0, 0]);
       else ctx.rect(xSavings, ySavings, barW, hSavings);
       ctx.fill();
 
-      // Due Bar (Rose)
-      ctx.fillStyle = '#C4797D';
+      // Due Bar (Slate)
+      ctx.fillStyle = '#64748B';
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(xDue, yDue, barW, hDue, [4, 4, 0, 0]);
       else ctx.rect(xDue, yDue, barW, hDue);
@@ -2228,7 +2228,7 @@
     }
 
     // Step Line
-    ctx.strokeStyle = '#C5A059';
+    ctx.strokeStyle = '#9A3412';
     ctx.lineWidth = 2.6;
     ctx.beginPath();
 
@@ -2249,7 +2249,7 @@
       const x = getX(idx, steps.length);
       const y = getY(s.balance);
 
-      const color = s.isDeficit ? '#C0392B' : '#C5A059';
+      const color = s.isDeficit ? '#B91C1C' : '#9A3412';
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
       ctx.arc(x, y, 5, 0, Math.PI * 2);
@@ -2260,7 +2260,7 @@
 
       // Drop tag
       if (s.drop > 0) {
-        ctx.fillStyle = '#C4797D';
+        ctx.fillStyle = '#64748B';
         ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(`-${formatCurrency(s.drop)}`, x, y - 9);
@@ -4156,8 +4156,8 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
         DOM.aiEngineStatusBadge.style.color = '#2E4C43';
       } else {
         DOM.aiEngineStatusBadge.textContent = 'Smart Local Active';
-        DOM.aiEngineStatusBadge.style.background = 'var(--gold-subtle)';
-        DOM.aiEngineStatusBadge.style.color = 'var(--gold-hover)';
+        DOM.aiEngineStatusBadge.style.background = 'var(--accent-subtle)';
+        DOM.aiEngineStatusBadge.style.color = 'var(--accent-primary)';
       }
     }
     if (DOM.geminiApiKeyInput && !DOM.geminiApiKeyInput.value) {
@@ -4600,7 +4600,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     if (p.includes('email') || p.includes('negotiat') || p.includes('script') || p.includes('letter') || p.includes('vendor')) {
       return `
         <p>Here is a professional, polite email script to request splitting a vendor payment into 3 smaller milestone installments:</p>
-        <div style="background: var(--bg-subtle); border-left: 3px solid var(--gold-primary); padding: 12px 14px; border-radius: 4px; font-family: var(--font-sans); font-size: 0.84rem; margin: 8px 0;">
+        <div style="background: var(--bg-subtle); border-left: 3px solid var(--accent-primary); padding: 12px 14px; border-radius: 4px; font-family: var(--font-sans); font-size: 0.84rem; margin: 8px 0;">
           <strong>Subject:</strong> Payment Schedule Question – [Your Names] Wedding ([Wedding Date])<br><br>
           Hi [Vendor Name],<br><br>
           We are so thrilled to be working with you for our wedding on [Wedding Date]! We love your work and can't wait for our celebration.<br><br>
