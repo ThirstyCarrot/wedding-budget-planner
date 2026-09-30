@@ -64,7 +64,7 @@ The application is completely self-contained (HTML5, Vanilla CSS3, Vanilla ES6 J
 
 To run locally with the built-in HTTP server:
 ```bash
-cd C:\Antigravity\wedding-budget-planner
+cd C:\Antigravity\EternalPlan-wedding-savings-planner
 python -m http.server 8080
 ```
 Then open your browser to:
