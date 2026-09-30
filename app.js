@@ -1554,63 +1554,6 @@
       categoryFragment.appendChild(groupDiv);
     });
     container.appendChild(categoryFragment);
-
-    // Render Category Legend List for the chart panel
-    // Render Category Legend List for the chart panel
-    const legendList = DOM.categoryLegendList;
-    if (!legendList) return;
-    legendList.innerHTML = '';
-    const hasExpenses = state.expenses.length > 0;
-    if (!hasExpenses || donutChartMode === 'benchmark') {
-      let benchmarkHtml = `
-        <div style="margin-bottom: 8px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gold-hover); display: flex; justify-content: space-between; align-items: center;">
-          <span>Recommended Benchmarks</span>
-          <span style="font-weight: 500; font-size: 0.72rem; color: var(--text-light);">Industry Standard</span>
-        </div>
-      `;
-
-      BENCHMARK_DISTRIBUTION.forEach(b => {
-        benchmarkHtml += `
-          <div class="legend-item" style="padding: 5px 8px;">
-            <div class="legend-left" style="gap: 8px;">
-              <span class="legend-color-dot" style="background: ${b.color}; width: 10px; height: 10px;"></span>
-              <span style="font-size: 0.82rem;">${b.icon} ${b.name}</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <div style="width: 55px; height: 5px; background: rgba(0,0,0,0.06); border-radius: 4px; overflow: hidden;">
-                <div style="width: ${b.pct * 2}%; height: 100%; background: ${b.color}; border-radius: 4px;"></div>
-              </div>
-              <span style="font-weight: 700; font-size: 0.82rem; min-width: 32px; text-align: right;">${b.pct}%</span>
-            </div>
-          </div>
-        `;
-      });
-      legendList.innerHTML = benchmarkHtml;
-    } else {
-      DEFAULT_CATEGORIES.forEach(cat => {
-        const expenses = state.expenses.filter(e => e.categoryId === cat.id);
-        if (expenses.length === 0) return;
-        const total = expenses.reduce((s, e) => s + Number(e.actualCost || e.estimatedCost || 0), 0);
-        const totalBase = data.totalActual > 0 ? data.totalActual : (data.totalEstimated || 1);
-        const pct = Math.round((total / totalBase) * 100);
-
-        const item = document.createElement('div');
-        item.className = 'legend-item';
-        item.innerHTML = `
-          <div class="legend-left">
-            <span class="legend-color-dot" style="background: ${cat.color};"></span>
-            <span>${cat.icon} ${escapeHtml(cat.name)}</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="width: 60px; height: 5px; background: rgba(0,0,0,0.06); border-radius: 4px; overflow: hidden;">
-              <div style="width: ${pct}%; height: 100%; background: ${cat.color}; border-radius: 4px;"></div>
-            </div>
-            <span style="font-weight: 700; font-size: 0.82rem;">${formatCurrency(total)} (${pct}%)</span>
-          </div>
-        `;
-        legendList.appendChild(item);
-      });
-    }
   }
 
   function renderSimulator(data) {
@@ -2363,7 +2306,7 @@
     let total = 0;
     const slices = [];
     DEFAULT_CATEGORIES.forEach(cat => {
-      const expenses = state.expenses.filter(e => e.categoryId === cat.id);
+      const expenses = (state.expenses || []).filter(e => e.categoryId === cat.id);
       const catSum = expenses.reduce((s, e) => s + Number(e.actualCost || e.estimatedCost || 0), 0);
       if (catSum > 0) {
         slices.push({ cat, amount: catSum });
@@ -2371,67 +2314,222 @@
       }
     });
 
-    const showBenchmark = donutChartMode === 'benchmark' || slices.length === 0 || total === 0;
-    const chartSlices = showBenchmark
-      ? BENCHMARK_DISTRIBUTION.map(b => ({
-          color: b.color,
-          name: b.name,
-          ratio: b.pct / 100
-        }))
-      : slices.map(s => ({
+    const isBenchmarkMode = donutChartMode === 'benchmark';
+    const hasExpenses = slices.length > 0 && total > 0;
+    const budgetBase = (state.hasTargetBudget && state.targetBudget > 0) ? state.targetBudget : total;
+
+    if (isBenchmarkMode) {
+      // Benchmark Mode: show recommended % distribution
+      const chartSlices = BENCHMARK_DISTRIBUTION.map(b => ({
+        color: b.color,
+        name: b.name,
+        ratio: b.pct / 100
+      }));
+
+      let startAngle = -Math.PI / 2;
+      const gapAngle = 0.035;
+
+      chartSlices.forEach(slice => {
+        const sliceAngle = slice.ratio * Math.PI * 2;
+        const actualSliceAngle = Math.max(0.01, sliceAngle - gapAngle);
+        const halfGap = gapAngle / 2;
+
+        ctx.fillStyle = slice.color;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, outerRadius, startAngle + halfGap, startAngle + halfGap + actualSliceAngle);
+        ctx.arc(centerX, centerY, innerRadius, startAngle + halfGap + actualSliceAngle, startAngle + halfGap, true);
+        ctx.closePath();
+        ctx.fill();
+
+        startAngle += sliceAngle;
+      });
+
+      // Center hole text for benchmark
+      ctx.fillStyle = '#C5A059';
+      ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(budgetBase > 0 ? 'TARGET BUDGET' : 'RECOMMENDED', centerX, centerY - 14);
+
+      ctx.fillStyle = '#242220';
+      ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
+      ctx.fillText(budgetBase > 0 ? formatCurrency(budgetBase) : 'Ideal Split', centerX, centerY + 2);
+
+      ctx.fillStyle = '#8A847D';
+      ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
+      ctx.fillText(budgetBase > 0 ? 'Benchmark Target' : 'Industry Standards', centerX, centerY + 18);
+    } else {
+      // Actual Spend Mode
+      if (hasExpenses) {
+        const chartSlices = slices.map(s => ({
           color: s.cat.color,
           name: s.cat.name,
           ratio: s.amount / total
         }));
 
-    let startAngle = -Math.PI / 2;
-    const gapAngle = 0.035;
+        let startAngle = -Math.PI / 2;
+        const gapAngle = 0.035;
 
-    chartSlices.forEach(slice => {
-      const sliceAngle = slice.ratio * Math.PI * 2;
-      const actualSliceAngle = Math.max(0.01, sliceAngle - gapAngle);
-      const halfGap = gapAngle / 2;
+        chartSlices.forEach(slice => {
+          const sliceAngle = slice.ratio * Math.PI * 2;
+          const actualSliceAngle = Math.max(0.01, sliceAngle - gapAngle);
+          const halfGap = gapAngle / 2;
 
-      ctx.fillStyle = slice.color;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, outerRadius, startAngle + halfGap, startAngle + halfGap + actualSliceAngle);
-      ctx.arc(centerX, centerY, innerRadius, startAngle + halfGap + actualSliceAngle, startAngle + halfGap, true);
-      ctx.closePath();
-      ctx.fill();
+          ctx.fillStyle = slice.color;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, outerRadius, startAngle + halfGap, startAngle + halfGap + actualSliceAngle);
+          ctx.arc(centerX, centerY, innerRadius, startAngle + halfGap + actualSliceAngle, startAngle + halfGap, true);
+          ctx.closePath();
+          ctx.fill();
 
-      startAngle += sliceAngle;
+          startAngle += sliceAngle;
+        });
+
+        // Center hole text with total spend
+        ctx.fillStyle = '#8A847D';
+        ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('TOTAL ALLOCATED', centerX, centerY - 14);
+
+        ctx.fillStyle = '#242220';
+        ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
+        ctx.fillText(formatCurrency(total), centerX, centerY + 2);
+
+        ctx.fillStyle = '#6E6862';
+        ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
+        if (state.hasTargetBudget && state.targetBudget > 0) {
+          const pct = Math.round((total / state.targetBudget) * 100);
+          ctx.fillText(`${pct}% of ${formatCurrency(state.targetBudget)}`, centerX, centerY + 18);
+        } else {
+          ctx.fillText(`${slices.length} ${slices.length === 1 ? 'Category' : 'Categories'}`, centerX, centerY + 18);
+        }
+      } else {
+        // Zero expenses logged: draw clean placeholder ring
+        ctx.strokeStyle = '#E8E5E1';
+        ctx.lineWidth = outerRadius - innerRadius;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, (outerRadius + innerRadius) / 2, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#8A847D';
+        ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('YOUR SPEND', centerX, centerY - 14);
+
+        ctx.fillStyle = '#242220';
+        ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
+        ctx.fillText('$0', centerX, centerY + 2);
+
+        ctx.fillStyle = '#8A847D';
+        ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
+        ctx.fillText('No expenses yet', centerX, centerY + 18);
+      }
+    }
+
+    // Always render category legend list underneath donut chart!
+    renderCategoryLegendList(data, total, slices, budgetBase);
+  }
+
+  function renderCategoryLegendList(data, total, slices, budgetBase) {
+    const legendList = DOM.categoryLegendList;
+    if (!legendList) return;
+    legendList.innerHTML = '';
+
+    const isBenchmarkMode = donutChartMode === 'benchmark';
+
+    if (isBenchmarkMode) {
+      let benchmarkHtml = `
+        <div style="margin-bottom: 8px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gold-hover); display: flex; justify-content: space-between; align-items: center;">
+          <span>Recommended Benchmarks</span>
+          <span style="font-weight: 500; font-size: 0.72rem; color: var(--text-light);">${budgetBase > 0 ? 'Target: ' + formatCurrency(budgetBase) : 'Industry %'}</span>
+        </div>
+      `;
+
+      BENCHMARK_DISTRIBUTION.forEach(b => {
+        const dollars = budgetBase > 0 ? formatCurrency(Math.round(budgetBase * (b.pct / 100))) : null;
+        benchmarkHtml += `
+          <div class="legend-item" style="padding: 6px 8px;">
+            <div class="legend-left" style="gap: 8px;">
+              <span class="legend-color-dot" style="background: ${b.color}; width: 10px; height: 10px;"></span>
+              <span style="font-size: 0.82rem;">${b.icon} ${b.name}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 55px; height: 5px; background: rgba(0,0,0,0.06); border-radius: 4px; overflow: hidden;">
+                <div style="width: ${b.pct * 2}%; height: 100%; background: ${b.color}; border-radius: 4px;"></div>
+              </div>
+              <span style="font-weight: 700; font-size: 0.82rem; min-width: 45px; text-align: right;">
+                ${dollars ? dollars + ' ' : ''}(${b.pct}%)
+              </span>
+            </div>
+          </div>
+        `;
+      });
+      legendList.innerHTML = benchmarkHtml;
+      return;
+    }
+
+    // Actual Spend Mode
+    if (!slices || slices.length === 0 || total === 0) {
+      legendList.innerHTML = `
+        <div style="text-align: center; padding: 18px 12px; background: var(--bg-subtle); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); margin-top: 6px;">
+          <span style="font-size: 1.4rem; display: block; margin-bottom: 4px;">📊</span>
+          <p style="font-size: 0.84rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px 0;">No Expenses Logged Yet</p>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 10px 0;">
+            Add your estimated wedding items in the Budget tab to see your category spend allocation and percentages.
+          </p>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('openAddExpenseBtn').click()" style="font-size: 0.78rem; padding: 5px 12px;">
+            + Add Expense
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    // Sort slices from highest spend to lowest
+    const sortedSlices = [...slices].sort((a, b) => b.amount - a.amount);
+    const fragment = document.createDocumentFragment();
+
+    sortedSlices.forEach(item => {
+      const pct = Math.round((item.amount / total) * 100);
+      const div = document.createElement('div');
+      div.className = 'legend-item';
+      div.innerHTML = `
+        <div class="legend-left">
+          <span class="legend-color-dot" style="background: ${item.cat.color};"></span>
+          <span>${item.cat.icon} ${escapeHtml(item.cat.name)}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 60px; height: 5px; background: rgba(0,0,0,0.06); border-radius: 4px; overflow: hidden;">
+            <div style="width: ${Math.min(100, pct)}%; height: 100%; background: ${item.cat.color}; border-radius: 4px;"></div>
+          </div>
+          <span style="font-weight: 700; font-size: 0.82rem;">${formatCurrency(item.amount)} (${pct}%)</span>
+        </div>
+      `;
+      fragment.appendChild(div);
     });
 
-    // Center hole text
-    if (showBenchmark) {
-      ctx.fillStyle = '#C5A059';
-      ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('RECOMMENDED', centerX, centerY - 14);
-
-      ctx.fillStyle = '#242220';
-      ctx.font = '700 15px Plus Jakarta Sans, sans-serif';
-      ctx.fillText('Ideal Split', centerX, centerY + 2);
-
-      ctx.fillStyle = '#8A847D';
-      ctx.font = '500 10px Plus Jakarta Sans, sans-serif';
-      ctx.fillText('Industry Standards', centerX, centerY + 17);
-    } else {
-      ctx.fillStyle = '#8A847D';
-      ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('TOTAL ALLOCATED', centerX, centerY - 14);
-
-      ctx.fillStyle = '#242220';
-      ctx.font = '700 16px Plus Jakarta Sans, sans-serif';
-      ctx.fillText(formatCurrency(total), centerX, centerY + 2);
-
-      ctx.fillStyle = '#6E6862';
-      ctx.font = '500 10.5px Plus Jakarta Sans, sans-serif';
-      ctx.fillText(`${slices.length} ${slices.length === 1 ? 'Category' : 'Categories'}`, centerX, centerY + 18);
+    // Summary line at bottom if target budget is configured
+    if (state.hasTargetBudget && state.targetBudget > 0) {
+      const budgetDiff = state.targetBudget - total;
+      const summaryDiv = document.createElement('div');
+      summaryDiv.style.cssText = 'margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 600;';
+      if (budgetDiff >= 0) {
+        summaryDiv.innerHTML = `
+          <span style="color: var(--text-muted);">Unallocated Target:</span>
+          <span style="color: var(--sage-primary); font-weight: 700;">${formatCurrency(budgetDiff)} remaining</span>
+        `;
+      } else {
+        summaryDiv.innerHTML = `
+          <span style="color: var(--text-muted);">Budget Overrun:</span>
+          <span style="color: var(--danger-primary); font-weight: 700;">${formatCurrency(Math.abs(budgetDiff))} over target</span>
+        `;
+      }
+      fragment.appendChild(summaryDiv);
     }
+
+    legendList.appendChild(fragment);
   }
 
   // Interactive Hover Scrubbing & Tooltip for Cashflow Chart
@@ -2546,7 +2644,6 @@
         donutChartMode = btn.dataset.donut;
         const data = calculateFinancialAnalytics();
         renderCategoryDonutChart(data);
-        renderBudgetSection(data);
       });
     }
 
