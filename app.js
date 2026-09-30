@@ -285,10 +285,28 @@
     }
   }
 
-  function saveState(pushToCloud = true) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    if (pushToCloud && supabaseClient) {
-      syncToSupabase();
+  let saveStateDebounceTimer = null;
+  function saveState(pushToCloud = true, immediate = false) {
+    const doSave = () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.warn('localStorage save error:', e);
+      }
+      if (pushToCloud && supabaseClient) {
+        syncToSupabase();
+      }
+    };
+
+    if (immediate) {
+      if (saveStateDebounceTimer) {
+        clearTimeout(saveStateDebounceTimer);
+        saveStateDebounceTimer = null;
+      }
+      doSave();
+    } else {
+      if (saveStateDebounceTimer) clearTimeout(saveStateDebounceTimer);
+      saveStateDebounceTimer = setTimeout(doSave, 200);
     }
   }
 
@@ -591,6 +609,8 @@
   // LIVE COUNTDOWN TIMER
   // =========================================================================
   function startCountdownTimer() {
+    let tickerInterval = null;
+
     function updateTicker() {
       if (!state.weddingDate) {
         DOM.cdDays.textContent = '--';
@@ -627,8 +647,29 @@
       DOM.countdownDaysText.textContent = `${days} days away`;
     }
 
-    updateTicker();
-    setInterval(updateTicker, 1000);
+    function start() {
+      if (!tickerInterval) {
+        updateTicker();
+        tickerInterval = setInterval(updateTicker, 1000);
+      }
+    }
+
+    function stop() {
+      if (tickerInterval) {
+        clearInterval(tickerInterval);
+        tickerInterval = null;
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        start();
+      }
+    });
+
+    start();
   }
 
   // =========================================================================
@@ -862,18 +903,46 @@
   // =========================================================================
   // RENDERING CONTROLLERS
   // =========================================================================
+  // Track tabs that need re-rendering to avoid updating hidden DOM trees
+  const dirtyTabs = {
+    dashboard: true,
+    schedule: true,
+    budget: true,
+    simulator: true
+  };
+
+  function markAllTabsDirty() {
+    dirtyTabs.dashboard = true;
+    dirtyTabs.schedule = true;
+    dirtyTabs.budget = true;
+    dirtyTabs.simulator = true;
+  }
+
+  function renderTabContent(tabName, data) {
+    if (!data) data = calculateFinancialAnalytics();
+    if (tabName === 'dashboard') {
+      renderVelocitySection(data);
+      renderDashboardMilestones(data);
+      renderCharts(data);
+    } else if (tabName === 'schedule') {
+      renderFullSchedule(data);
+    } else if (tabName === 'budget') {
+      renderBudgetManager(data);
+    } else if (tabName === 'simulator') {
+      renderSimulator(data);
+    }
+    dirtyTabs[tabName] = false;
+  }
+
   function renderAll() {
     const data = calculateFinancialAnalytics();
 
     renderHeader(data);
     renderCrunchBanner(data);
     renderKpiCards(data);
-    renderVelocitySection(data);
-    renderDashboardMilestones(data);
-    renderFullSchedule(data);
-    renderBudgetManager(data);
-    renderSimulator(data);
-    renderCharts(data);
+
+    markAllTabsDirty();
+    renderTabContent(activeTab, data);
   }
 
   function renderHeader(data) {
@@ -1136,10 +1205,12 @@
       return;
     }
 
+    const fragment = document.createDocumentFragment();
     nextThree.forEach(m => {
       const card = createMilestoneCardElement(m, true);
-      list.appendChild(card);
+      fragment.appendChild(card);
     });
+    list.appendChild(fragment);
   }
 
   function renderFullSchedule(data) {
@@ -1185,10 +1256,12 @@
       return;
     }
 
+    const fragment = document.createDocumentFragment();
     items.forEach(m => {
       const card = createMilestoneCardElement(m, false);
-      list.appendChild(card);
+      fragment.appendChild(card);
     });
+    list.appendChild(fragment);
   }
 
   function createMilestoneCardElement(m, isDashboard) {
@@ -1317,6 +1390,7 @@
       `;
     }
 
+    const categoryFragment = document.createDocumentFragment();
     DEFAULT_CATEGORIES.forEach(category => {
       const categoryExpenses = state.expenses.filter(exp => exp.categoryId === category.id);
       if (categoryExpenses.length === 0) return; // Only show non-empty or create placeholder
@@ -1415,8 +1489,9 @@
         </div>
       `;
 
-      container.appendChild(groupDiv);
+      categoryFragment.appendChild(groupDiv);
     });
+    container.appendChild(categoryFragment);
 
     // Render Category Legend List for the chart panel
     // Render Category Legend List for the chart panel
@@ -1477,10 +1552,10 @@
   }
 
   function renderSimulator(data) {
-    DOM.simCurrentSavings.value = state.currentSavings;
-    DOM.simPaycheckCadence.value = state.paycheckCadence;
-    DOM.simPlannedSavings.value = state.plannedSavingsPerPaycheck;
-    DOM.simSafetyCushion.value = state.safetyCushion;
+    if (document.activeElement !== DOM.simCurrentSavings) DOM.simCurrentSavings.value = state.currentSavings;
+    if (document.activeElement !== DOM.simPaycheckCadence) DOM.simPaycheckCadence.value = state.paycheckCadence;
+    if (document.activeElement !== DOM.simPlannedSavings) DOM.simPlannedSavings.value = state.plannedSavingsPerPaycheck;
+    if (document.activeElement !== DOM.simSafetyCushion) DOM.simSafetyCushion.value = state.safetyCushion;
 
     const sim = data.simulation;
     const banner = DOM.simStatusBanner;
@@ -1529,6 +1604,7 @@
       `;
     }
 
+    const fragment = document.createDocumentFragment();
     sim.timelineSteps.forEach(step => {
       const tr = document.createElement('tr');
       const isDeficit = step.isDeficit;
@@ -1545,8 +1621,9 @@
         <td class="${balanceClass}">${formatCurrency(step.projectedBalance)}</td>
         <td>${statusText}</td>
       `;
-      tbody.appendChild(tr);
+      fragment.appendChild(tr);
     });
+    tbody.appendChild(fragment);
   }
 
   // =========================================================================
@@ -1556,6 +1633,7 @@
   // CANVAS CHARTS (HIGH-DPI & INTERACTIVE)
   // =========================================================================
   function renderCharts(data) {
+    if (activeTab !== 'dashboard') return;
     if (!data) data = calculateFinancialAnalytics();
     renderCashflowChart(data);
     renderCategoryDonutChart(data);
@@ -1564,11 +1642,9 @@
   function setupCanvasDPI(canvas) {
     if (!canvas) return null;
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    // Strictly clamp dimensions to container width/height to prevent feedback loop growth
     const parent = canvas.parentElement;
-    const w = Math.round(rect.width || (parent ? parent.clientWidth : 300));
-    const h = Math.round(rect.height || (parent ? parent.clientHeight : 290));
+    const w = Math.round(canvas.clientWidth || (parent ? parent.clientWidth : 300));
+    const h = Math.round(canvas.clientHeight || (parent ? parent.clientHeight : 290));
     if (w <= 0 || h <= 0) return null;
 
     const targetW = Math.round(w * dpr);
@@ -1653,8 +1729,10 @@
     const chartW = width - padLeft - padRight;
     const chartH = height - padTop - padBottom;
 
-    // Recalculate simulation steps with activePace
-    const sim = simulateCashflow(data.milestones, data.currentSavings, activePace, data.cadenceDays, data.safetyCushion, state.weddingDate);
+    // Recalculate simulation steps with activePace (reuse if planned pace)
+    const sim = (activePace === data.plannedSavings && data.simulation)
+      ? data.simulation
+      : simulateCashflow(data.milestones, data.currentSavings, activePace, data.cadenceDays, data.safetyCushion, state.weddingDate);
     const realSteps = sim.timelineSteps;
     const isPreview = realSteps.length === 0;
 
@@ -2062,7 +2140,9 @@
     const chartW = width - padLeft - padRight;
     const chartH = height - padTop - padBottom;
 
-    const sim = simulateCashflow(data.milestones, data.currentSavings, activePace, data.cadenceDays, data.safetyCushion, state.weddingDate);
+    const sim = (activePace === data.plannedSavings && data.simulation)
+      ? data.simulation
+      : simulateCashflow(data.milestones, data.currentSavings, activePace, data.cadenceDays, data.safetyCushion, state.weddingDate);
     const realSteps = sim.timelineSteps;
     const isPreview = realSteps.length === 0;
 
@@ -2314,6 +2394,9 @@
       });
 
       if (closest && minDistance < 55) {
+        if (activeHoverPoint === closest) {
+          return; // Point unchanged: avoid re-rendering entire chart
+        }
         activeHoverPoint = closest;
         renderCashflowChart(calculateFinancialAnalytics());
 
@@ -2352,12 +2435,29 @@
       }
     }
 
-    canvas.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
-    canvas.addEventListener('mouseleave', handleLeave);
+    let hoverRafId = null;
+    canvas.addEventListener('mousemove', e => {
+      if (hoverRafId) cancelAnimationFrame(hoverRafId);
+      const cx = e.clientX;
+      const cy = e.clientY;
+      hoverRafId = requestAnimationFrame(() => handleMove(cx, cy));
+    });
+    canvas.addEventListener('mouseleave', () => {
+      if (hoverRafId) cancelAnimationFrame(hoverRafId);
+      handleLeave();
+    });
     canvas.addEventListener('touchmove', e => {
-      if (e.touches.length > 0) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      if (e.touches.length > 0) {
+        if (hoverRafId) cancelAnimationFrame(hoverRafId);
+        const cx = e.touches[0].clientX;
+        const cy = e.touches[0].clientY;
+        hoverRafId = requestAnimationFrame(() => handleMove(cx, cy));
+      }
     }, { passive: true });
-    canvas.addEventListener('touchend', handleLeave);
+    canvas.addEventListener('touchend', () => {
+      if (hoverRafId) cancelAnimationFrame(hoverRafId);
+      handleLeave();
+    });
   }
 
   // Interactive View Modes & Dynamic Pace Toolbar Controls
@@ -2755,14 +2855,21 @@
       }
     });
 
-    // Simulator input changes (live update)
+    // Simulator input changes (live update with RAF throttle & debounced save)
+    let simInputRafId = null;
     [DOM.simCurrentSavings, DOM.simPlannedSavings, DOM.simSafetyCushion].forEach(inp => {
       inp.addEventListener('input', () => {
         state.currentSavings = Number(DOM.simCurrentSavings.value) || 0;
         state.plannedSavingsPerPaycheck = Number(DOM.simPlannedSavings.value) || 0;
         state.safetyCushion = Number(DOM.simSafetyCushion.value) || 0;
-        saveState();
-        renderAll();
+        saveState(true, false); // debounced save
+        if (simInputRafId) cancelAnimationFrame(simInputRafId);
+        simInputRafId = requestAnimationFrame(() => {
+          renderAll();
+        });
+      });
+      inp.addEventListener('change', () => {
+        saveState(true, true); // save immediately on blur/change
       });
     });
 
@@ -3019,10 +3126,13 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
       }
     });
 
-    // Render charts on active tab
-    setTimeout(() => {
-      renderCharts(calculateFinancialAnalytics());
-    }, 50);
+    if (dirtyTabs[tabName]) {
+      renderTabContent(tabName);
+    } else if (tabName === 'dashboard') {
+      setTimeout(() => {
+        renderCharts(calculateFinancialAnalytics());
+      }, 30);
+    }
   }
 
   function toggleMilestonePaid(expenseId, milestoneId, isPaid) {

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EternalPlan - Wedding Budget & Due-Date Savings Planner</title>
   <meta name="description" content="Plan your dream wedding budget and calculate exactly how much money you need to save by every payment due date to ensure smooth, stress-free cash flow.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%3E<text y=%2226%22 font-size=%2226%22>💍</text></svg>">
 </head>
@@ -776,9 +780,9 @@
   <!-- Global Explanation Tooltip / Popover -->
   <div id="globalTooltip" class="app-tooltip" popover="manual" role="tooltip" aria-live="polite"></div>
 
-  <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="sample-data.js"></script>
-  <script src="app.js"></script>
+  <!-- Scripts (non-blocking defer) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="sample-data.js" defer></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
