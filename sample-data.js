@@ -25,7 +25,17 @@ const DEFAULT_WEDDING_DATA = {
   targetBudget: 36000,
   currentSavings: 12000,
   paycheckCadence: 'bi-weekly', // 'weekly', 'bi-weekly', 'semi-monthly', 'monthly'
+  nextPayDate: '2026-10-09',
   plannedSavingsPerPaycheck: 1200,
+  incomeMode: 'dual',
+  partner1Name: 'Sophia',
+  partner1Cadence: 'bi-weekly',
+  partner1NextPayDate: '2026-10-09',
+  partner1Savings: 650,
+  partner2Name: 'Liam',
+  partner2Cadence: 'semi-monthly',
+  partner2NextPayDate: '2026-10-15',
+  partner2Savings: 600,
   safetyCushion: 1000,
   expenses: [
     {

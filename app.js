@@ -13,9 +13,20 @@
     hasTargetBudget: false,
     targetBudget: 0,
     currentSavings: 0,
+    nextPayDate: '',         // optional anchor date for exact calendar paydays (YYYY-MM-DD)
     paycheckCadence: 'bi-weekly',
     plannedSavingsPerPaycheck: 0,
     safetyCushion: 1000,
+    // Dual-Income Mode
+    incomeMode: 'individual', // 'individual' | 'dual'
+    partner1Name: '',
+    partner1Cadence: 'bi-weekly',
+    partner1NextPayDate: '',
+    partner1Savings: 0,
+    partner2Name: '',
+    partner2Cadence: 'semi-monthly',
+    partner2NextPayDate: '',
+    partner2Savings: 0,
     expenses: [],
     excludedHiddenCosts: [], // array of IDs: items explicitly marked "Not in our wedding"
     coveredHiddenCosts: [],  // array of IDs: items marked as already covered
@@ -90,6 +101,7 @@
     welcomeSetupForm: document.getElementById('welcomeSetupForm'),
     welcomeWeddingDate: document.getElementById('welcomeWeddingDate'),
     welcomePaycheckCadence: document.getElementById('welcomePaycheckCadence'),
+    welcomeNextPayDate: document.getElementById('welcomeNextPayDate'),
 
     // Crunch Banner
     crunchAlertBanner: document.getElementById('crunchAlertBanner'),
@@ -143,11 +155,36 @@
     summaryTargetBudget: document.getElementById('summaryTargetBudget'),
     toggleBudgetModeInlineBtn: document.getElementById('toggleBudgetModeInlineBtn'),
 
-    // Simulator
+    // Simulator Income Mode & Controls
+    simIncomeModeToggle: document.getElementById('simIncomeModeToggle'),
+    simModeIndividualBtn: document.getElementById('simModeIndividualBtn'),
+    simModeDualBtn: document.getElementById('simModeDualBtn'),
+    simIndividualFields: document.getElementById('simIndividualFields'),
+    simDualFields: document.getElementById('simDualFields'),
+    simDualCurrentSavings: document.getElementById('simDualCurrentSavings'),
+    simDualSafetyCushion: document.getElementById('simDualSafetyCushion'),
+    simP1Name: document.getElementById('simP1Name'),
+    simP1Cadence: document.getElementById('simP1Cadence'),
+    simP1NextPayDate: document.getElementById('simP1NextPayDate'),
+    simP1Savings: document.getElementById('simP1Savings'),
+    simP1MonthlyEquivalent: document.getElementById('simP1MonthlyEquivalent'),
+    simP2Name: document.getElementById('simP2Name'),
+    simP2Cadence: document.getElementById('simP2Cadence'),
+    simP2NextPayDate: document.getElementById('simP2NextPayDate'),
+    simP2Savings: document.getElementById('simP2Savings'),
+    simP2MonthlyEquivalent: document.getElementById('simP2MonthlyEquivalent'),
+    simDualCombinedMonthly: document.getElementById('simDualCombinedMonthly'),
+    simDualSplitTrack: document.getElementById('simDualSplitTrack'),
+    simDualFillP1: document.getElementById('simDualFillP1'),
+    simDualFillP2: document.getElementById('simDualFillP2'),
+    simDualLegendP1: document.getElementById('simDualLegendP1'),
+    simDualLegendP2: document.getElementById('simDualLegendP2'),
     simCurrentSavings: document.getElementById('simCurrentSavings'),
     simPaycheckCadence: document.getElementById('simPaycheckCadence'),
+    simNextPayDate: document.getElementById('simNextPayDate'),
     simPlannedSavings: document.getElementById('simPlannedSavings'),
     simSafetyCushion: document.getElementById('simSafetyCushion'),
+    simAnchorInfo: document.getElementById('simAnchorInfo'),
     simStatusBanner: document.getElementById('simStatusBanner'),
     simStatusIcon: document.getElementById('simStatusIcon'),
     simStatusHeading: document.getElementById('simStatusHeading'),
@@ -205,8 +242,22 @@
     targetBudgetInputWrapper: document.getElementById('targetBudgetInputWrapper'),
     setTargetBudget: document.getElementById('setTargetBudget'),
     setCurrentSavings: document.getElementById('setCurrentSavings'),
+    setIncomeModeToggle: document.getElementById('setIncomeModeToggle'),
+    setModeIndividualBtn: document.getElementById('setModeIndividualBtn'),
+    setModeDualBtn: document.getElementById('setModeDualBtn'),
+    setIndividualFields: document.getElementById('setIndividualFields'),
+    setDualFields: document.getElementById('setDualFields'),
     setPaycheckCadence: document.getElementById('setPaycheckCadence'),
+    setNextPayDate: document.getElementById('setNextPayDate'),
     setPlannedPaycheck: document.getElementById('setPlannedPaycheck'),
+    setP1Name: document.getElementById('setP1Name'),
+    setP1Cadence: document.getElementById('setP1Cadence'),
+    setP1NextPayDate: document.getElementById('setP1NextPayDate'),
+    setP1Savings: document.getElementById('setP1Savings'),
+    setP2Name: document.getElementById('setP2Name'),
+    setP2Cadence: document.getElementById('setP2Cadence'),
+    setP2NextPayDate: document.getElementById('setP2NextPayDate'),
+    setP2Savings: document.getElementById('setP2Savings'),
     setSafetyCushion: document.getElementById('setSafetyCushion'),
     closeSettingsModalBtn: document.getElementById('closeSettingsModalBtn'),
     cancelSettingsModalBtn: document.getElementById('cancelSettingsModalBtn'),
@@ -297,9 +348,20 @@
     hasTargetBudget: false,
     targetBudget: 0,
     currentSavings: 0,
+    nextPayDate: '',
     paycheckCadence: 'bi-weekly',
     plannedSavingsPerPaycheck: 0,
     safetyCushion: 1000,
+    // Dual-Income Mode
+    incomeMode: 'individual', // 'individual' | 'dual'
+    partner1Name: '',
+    partner1Cadence: 'bi-weekly',
+    partner1NextPayDate: '',
+    partner1Savings: 0,
+    partner2Name: '',
+    partner2Cadence: 'semi-monthly',
+    partner2NextPayDate: '',
+    partner2Savings: 0,
     expenses: [],
     excludedHiddenCosts: [],
     coveredHiddenCosts: [],
@@ -340,6 +402,20 @@
           if (!Array.isArray(state.coveredHiddenCosts)) {
             state.coveredHiddenCosts = [];
           }
+          if (typeof state.nextPayDate !== 'string') {
+            state.nextPayDate = '';
+          }
+          if (state.incomeMode !== 'dual' && state.incomeMode !== 'individual') {
+            state.incomeMode = 'individual';
+          }
+          if (typeof state.partner1Name !== 'string') state.partner1Name = '';
+          if (typeof state.partner1Cadence !== 'string') state.partner1Cadence = state.paycheckCadence || 'bi-weekly';
+          if (typeof state.partner1NextPayDate !== 'string') state.partner1NextPayDate = state.nextPayDate || '';
+          if (typeof state.partner1Savings !== 'number') state.partner1Savings = 0;
+          if (typeof state.partner2Name !== 'string') state.partner2Name = '';
+          if (typeof state.partner2Cadence !== 'string') state.partner2Cadence = 'semi-monthly';
+          if (typeof state.partner2NextPayDate !== 'string') state.partner2NextPayDate = '';
+          if (typeof state.partner2Savings !== 'number') state.partner2Savings = 0;
           if (typeof state.geminiApiKey !== 'string') {
             state.geminiApiKey = '';
           }
@@ -637,6 +713,200 @@
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
+  function parseLocalDate(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return null;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+    return new Date(y, m, d, 0, 0, 0, 0);
+  }
+
+  function formatLocalDateToISO(date) {
+    if (!date || isNaN(date.getTime())) return '';
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function getAnchorPayday(nextPayDateStr, cadence) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let anchor = parseLocalDate(nextPayDateStr);
+    if (!anchor) {
+      // Default to upcoming Friday (or today if Friday)
+      anchor = new Date(today);
+      const dayOfWeek = anchor.getDay(); // 0 is Sun, 5 is Fri
+      const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+      anchor.setDate(anchor.getDate() + (daysUntilFriday === 0 ? 7 : daysUntilFriday));
+    }
+
+    // If anchor is in the past, advance to next upcoming payday >= today
+    if (anchor < today) {
+      if (cadence === 'weekly') {
+        while (anchor < today) anchor.setDate(anchor.getDate() + 7);
+      } else if (cadence === 'bi-weekly') {
+        while (anchor < today) anchor.setDate(anchor.getDate() + 14);
+      } else if (cadence === 'monthly') {
+        const targetDay = anchor.getDate();
+        while (anchor < today) {
+          anchor.setMonth(anchor.getMonth() + 1);
+          const maxD = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate();
+          anchor.setDate(Math.min(targetDay, maxD));
+        }
+      } else if (cadence === 'semi-monthly') {
+        const targetDay = anchor.getDate();
+        const d1 = targetDay <= 15 ? targetDay : Math.max(1, targetDay - 15);
+        const d2 = d1 + 15;
+        while (anchor < today) {
+          if (anchor.getDate() === d1) {
+            const maxD = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate();
+            anchor.setDate(Math.min(d2, maxD));
+          } else {
+            anchor.setMonth(anchor.getMonth() + 1);
+            anchor.setDate(d1);
+          }
+        }
+      } else {
+        while (anchor < today) anchor.setDate(anchor.getDate() + 14);
+      }
+    }
+
+    return anchor;
+  }
+
+  function generateUpcomingPaydays(nextPayDateStr, cadence, untilDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let end = typeof untilDate === 'string' ? parseLocalDate(untilDate) : untilDate;
+    if (!end || isNaN(end.getTime())) {
+      end = new Date(today);
+      end.setFullYear(end.getFullYear() + 2);
+    }
+
+    const firstPay = getAnchorPayday(nextPayDateStr, cadence);
+    const paydays = [];
+    const curr = new Date(firstPay);
+    const maxIterations = 350;
+    let iter = 0;
+
+    const initialDay = firstPay.getDate();
+    const d1 = initialDay <= 15 ? initialDay : Math.max(1, initialDay - 15);
+    const d2 = d1 + 15;
+
+    while (curr <= end && iter < maxIterations) {
+      paydays.push(new Date(curr));
+      iter++;
+
+      if (cadence === 'weekly') {
+        curr.setDate(curr.getDate() + 7);
+      } else if (cadence === 'bi-weekly') {
+        curr.setDate(curr.getDate() + 14);
+      } else if (cadence === 'monthly') {
+        curr.setMonth(curr.getMonth() + 1);
+        const maxD = new Date(curr.getFullYear(), curr.getMonth() + 1, 0).getDate();
+        curr.setDate(Math.min(initialDay, maxD));
+      } else if (cadence === 'semi-monthly') {
+        if (curr.getDate() === d1) {
+          const maxD = new Date(curr.getFullYear(), curr.getMonth() + 1, 0).getDate();
+          curr.setDate(Math.min(d2, maxD));
+        } else {
+          curr.setMonth(curr.getMonth() + 1);
+          curr.setDate(d1);
+        }
+      } else {
+        curr.setDate(curr.getDate() + 14);
+      }
+    }
+
+    return paydays;
+  }
+
+  function getPartnerNamesFromCouple() {
+    const raw = (state.coupleNames || '').trim();
+    const parts = raw.split(/\s*(?:&|and|\+|,)\s*/i).filter(Boolean);
+    const p1Default = parts[0] ? parts[0].trim() : 'Partner 1';
+    const p2Default = parts[1] ? parts[1].trim() : 'Partner 2';
+    return {
+      p1: (state.partner1Name && state.partner1Name.trim()) || p1Default,
+      p2: (state.partner2Name && state.partner2Name.trim()) || p2Default
+    };
+  }
+
+  function getPaychecksPerYear(cadence) {
+    switch (cadence) {
+      case 'weekly': return 52;
+      case 'bi-weekly': return 26;
+      case 'semi-monthly': return 24;
+      case 'monthly': return 12;
+      default: return 26;
+    }
+  }
+
+  function getMonthlySavingsEquivalent(amount, cadence) {
+    const num = Number(amount) || 0;
+    const ppy = getPaychecksPerYear(cadence);
+    return Math.round((num * ppy) / 12);
+  }
+
+  function generatePaycheckStream(horizonDate, options = {}) {
+    const mode = options.incomeMode || state.incomeMode || 'individual';
+    const partnerNames = getPartnerNamesFromCouple();
+
+    if (mode === 'dual') {
+      const p1Anchor = options.partner1NextPayDate || state.partner1NextPayDate || state.nextPayDate;
+      const p1Cadence = options.partner1Cadence || state.partner1Cadence || state.paycheckCadence || 'bi-weekly';
+      const p1Amount = options.partner1Savings !== undefined ? options.partner1Savings : (state.partner1Savings || 0);
+
+      const p2Anchor = options.partner2NextPayDate || state.partner2NextPayDate || state.nextPayDate;
+      const p2Cadence = options.partner2Cadence || state.partner2Cadence || 'semi-monthly';
+      const p2Amount = options.partner2Savings !== undefined ? options.partner2Savings : (state.partner2Savings || 0);
+
+      const p1Dates = generateUpcomingPaydays(p1Anchor, p1Cadence, horizonDate);
+      const p2Dates = generateUpcomingPaydays(p2Anchor, p2Cadence, horizonDate);
+
+      const stream = [];
+      p1Dates.forEach(d => {
+        stream.push({
+          date: d,
+          partner: 1,
+          partnerName: partnerNames.p1,
+          amount: p1Amount,
+          cadence: p1Cadence
+        });
+      });
+      p2Dates.forEach(d => {
+        stream.push({
+          date: d,
+          partner: 2,
+          partnerName: partnerNames.p2,
+          amount: p2Amount,
+          cadence: p2Cadence
+        });
+      });
+
+      stream.sort((a, b) => a.date.getTime() - b.date.getTime());
+      return stream;
+    } else {
+      const anchor = options.nextPayDate || state.nextPayDate;
+      const cadence = options.cadence || state.paycheckCadence || 'bi-weekly';
+      const amount = options.plannedSavings !== undefined ? options.plannedSavings : state.plannedSavingsPerPaycheck;
+      const dates = generateUpcomingPaydays(anchor, cadence, horizonDate);
+      return dates.map(d => ({
+        date: d,
+        partner: 1,
+        partnerName: 'You',
+        amount: amount,
+        cadence: cadence
+      }));
+    }
+  }
+
   function getDaysRemaining(dateStr) {
     if (!dateStr) return 0;
     const today = new Date();
@@ -800,13 +1070,38 @@
     const totalPaid = paid.reduce((sum, m) => sum + m.amount, 0);
     const totalRemainingDue = unpaid.reduce((sum, m) => sum + m.amount, 0);
 
-    // Days to wedding
+    // Dual-Income partner statistics & monthly velocity
+    const isDual = state.incomeMode === 'dual';
+    const partnerNames = getPartnerNamesFromCouple();
+    const p1Monthly = getMonthlySavingsEquivalent(state.partner1Savings, state.partner1Cadence);
+    const p2Monthly = getMonthlySavingsEquivalent(state.partner2Savings, state.partner2Cadence);
+    const indMonthly = getMonthlySavingsEquivalent(state.plannedSavingsPerPaycheck, state.paycheckCadence);
+    const totalMonthlyCombined = isDual ? (p1Monthly + p2Monthly) : indMonthly;
+    const p1SplitPct = totalMonthlyCombined > 0 ? Math.round((p1Monthly / totalMonthlyCombined) * 100) : 50;
+    const p2SplitPct = totalMonthlyCombined > 0 ? (100 - p1SplitPct) : 50;
+
+    // Days & paychecks to wedding
     const hasWeddingDate = Boolean(state.weddingDate);
     const rawDays = getDaysRemaining(state.weddingDate);
     const daysToWedding = hasWeddingDate ? Math.max(1, rawDays) : 0;
     const weeksToWedding = daysToWedding > 0 ? Math.max(1 / 7, daysToWedding / 7) : 0;
-    const paychecksToWedding = daysToWedding > 0 ? Math.max(1 / cadenceDays, daysToWedding / cadenceDays) : 0;
+
+    const paydaysToWeddingList = hasWeddingDate 
+      ? generatePaycheckStream(state.weddingDate)
+      : [];
+    const paychecksToWedding = paydaysToWeddingList.length > 0 
+      ? paydaysToWeddingList.length 
+      : (daysToWedding > 0 ? Math.max(1 / cadenceDays, daysToWedding / cadenceDays) : 0);
     const monthsToWedding = daysToWedding > 0 ? Math.max(1 / 30.4, daysToWedding / 30.417) : 0;
+
+    const anchorPayday = getAnchorPayday(state.nextPayDate, state.paycheckCadence);
+    const daysUntilNextPayday = Math.max(0, Math.ceil((anchorPayday.getTime() - (new Date().setHours(0,0,0,0))) / (1000 * 60 * 60 * 24)));
+
+    const p1AnchorPayday = getAnchorPayday(state.partner1NextPayDate || state.nextPayDate, state.partner1Cadence || state.paycheckCadence);
+    const p1DaysUntilNextPayday = Math.max(0, Math.ceil((p1AnchorPayday.getTime() - (new Date().setHours(0,0,0,0))) / (1000 * 60 * 60 * 24)));
+
+    const p2AnchorPayday = getAnchorPayday(state.partner2NextPayDate || state.nextPayDate, state.partner2Cadence || 'semi-monthly');
+    const p2DaysUntilNextPayday = Math.max(0, Math.ceil((p2AnchorPayday.getTime() - (new Date().setHours(0,0,0,0))) / (1000 * 60 * 60 * 24)));
 
     // Net savings gap needed to cover everything by wedding day
     const netGapToWedding = Math.max(0, totalRemainingDue - currentSavings);
@@ -825,7 +1120,7 @@
     let bottleneckMilestone = null;
     let nextUpcomingMilestone = null;
 
-    unpaid.forEach((m, index) => {
+    unpaid.forEach((m) => {
       runningCumulativeUnpaid += m.amount;
       m.cumulativeUnpaidDue = runningCumulativeUnpaid;
 
@@ -836,7 +1131,11 @@
       // Time units
       const dRem = Math.max(1, m.daysRemaining);
       const wRem = Math.max(1 / 7, dRem / 7);
-      const pRem = Math.max(1 / cadenceDays, dRem / cadenceDays);
+
+      // Paychecks arriving strictly on or before milestone due date
+      const milestonePaychecks = generatePaycheckStream(m.dueDate);
+      const pCount = milestonePaychecks.length;
+      const pRem = pCount > 0 ? pCount : Math.max(1 / cadenceDays, dRem / cadenceDays);
       const mRem = Math.max(1 / 30.4, dRem / 30.417);
 
       m.requiredRate = {
@@ -845,6 +1144,7 @@
         perPaycheck: netSavingsNeededByDate / pRem,
         perMonth: netSavingsNeededByDate / mRem
       };
+      m.paychecksUntilDue = pCount;
 
       if (!nextUpcomingMilestone && m.daysRemaining >= 0) {
         nextUpcomingMilestone = m;
@@ -862,8 +1162,17 @@
       nextUpcomingMilestone = unpaid[0];
     }
 
-    // Cashflow simulation across time
-    const simulation = simulateCashflow(milestones, currentSavings, plannedSavings, cadenceDays, safetyCushion, state.weddingDate);
+    // Cashflow simulation across time with exact calendar paydays
+    const simulation = simulateCashflow(
+      milestones,
+      currentSavings,
+      plannedSavings,
+      cadenceDays,
+      safetyCushion,
+      state.weddingDate,
+      state.nextPayDate,
+      state.paycheckCadence
+    );
 
     return {
       targetBudget,
@@ -875,6 +1184,25 @@
       netGapToWedding,
       daysToWedding,
       paychecksToWedding,
+      anchorPayday,
+      anchorPaydayStr: formatLocalDateToISO(anchorPayday),
+      daysUntilNextPayday,
+      isDual,
+      partnerNames,
+      p1Monthly,
+      p2Monthly,
+      indMonthly,
+      totalMonthlyCombined,
+      p1SplitPct,
+      p2SplitPct,
+      p1AnchorPayday,
+      p1AnchorPaydayStr: formatLocalDateToISO(p1AnchorPayday),
+      p1DaysUntilNextPayday,
+      p2AnchorPayday,
+      p2AnchorPaydayStr: formatLocalDateToISO(p2AnchorPayday),
+      p2DaysUntilNextPayday,
+      nextPayDate: state.nextPayDate,
+      paycheckCadence: state.paycheckCadence,
       cadenceDays,
       plannedSavings,
       safetyCushion,
@@ -889,7 +1217,7 @@
   }
 
   // Cashflow simulator step-by-step
-  function simulateCashflow(allMilestones, startingSavings, plannedPerPaycheck, cadenceDays, safetyCushion, weddingDateStr) {
+  function simulateCashflow(allMilestones, startingSavings, plannedPerPaycheck, cadenceDays, safetyCushion, weddingDateStr, nextPayDateStr, cadenceStr, dualConfig = null) {
     const unpaid = allMilestones.filter(m => !m.isPaid);
     if (unpaid.length === 0) {
       return {
@@ -897,7 +1225,15 @@
         minBalance: startingSavings,
         deficitAmount: 0,
         deficitDate: null,
+        deficitMilestone: null,
+        recoveryDate: null,
+        recoveryPartner: null,
+        deficitDurationDays: 0,
+        isTimingDeficit: false,
+        isPersistentDeficit: false,
         recommendedPaycheckSavings: 0,
+        recommendedP1Savings: 0,
+        recommendedP2Savings: 0,
         timelineSteps: []
       };
     }
@@ -905,60 +1241,171 @@
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    let currentBalance = startingSavings;
+    const isDual = (dualConfig && dualConfig.incomeMode === 'dual') || (!dualConfig && state.incomeMode === 'dual');
+    const partnerNames = getPartnerNamesFromCouple();
+
+    // Determine horizon: furthest milestone or wedding date, plus lookahead buffer
+    let lastDueDate = unpaid[unpaid.length - 1].dueDate;
+    unpaid.forEach(m => {
+      if (m.dueDate && m.dueDate > lastDueDate) lastDueDate = m.dueDate;
+    });
+    const horizonStr = (weddingDateStr && weddingDateStr > lastDueDate) ? weddingDateStr : lastDueDate;
+    const horizonDate = parseLocalDate(horizonStr) || new Date(today);
+    horizonDate.setMonth(horizonDate.getMonth() + 6);
+
+    const streamOptions = isDual ? {
+      incomeMode: 'dual',
+      partner1NextPayDate: (dualConfig && dualConfig.partner1NextPayDate) || state.partner1NextPayDate,
+      partner1Cadence: (dualConfig && dualConfig.partner1Cadence) || state.partner1Cadence,
+      partner1Savings: (dualConfig && dualConfig.partner1Savings !== undefined) ? dualConfig.partner1Savings : state.partner1Savings,
+      partner2NextPayDate: (dualConfig && dualConfig.partner2NextPayDate) || state.partner2NextPayDate,
+      partner2Cadence: (dualConfig && dualConfig.partner2Cadence) || state.partner2Cadence,
+      partner2Savings: (dualConfig && dualConfig.partner2Savings !== undefined) ? dualConfig.partner2Savings : state.partner2Savings,
+    } : {
+      incomeMode: 'individual',
+      nextPayDate: nextPayDateStr || state.nextPayDate,
+      cadence: cadenceStr || state.paycheckCadence,
+      plannedSavings: plannedPerPaycheck !== undefined ? plannedPerPaycheck : state.plannedSavingsPerPaycheck
+    };
+
+    const allPaychecks = generatePaycheckStream(horizonDate, streamOptions);
+
     let minBalance = startingSavings;
-    let deficitAmount = 0;
     let firstDeficitDate = null;
     let firstDeficitMilestone = null;
-
-    // Build timeline events
-    const timelineSteps = [];
-    let runningPaychecks = 0;
+    let firstDeficitAmount = 0;
+    let firstRecoveryDate = null;
+    let firstRecoveryPartner = null;
+    let firstDeficitDurationDays = 0;
+    let isTimingDeficit = false;
+    let isPersistentDeficit = false;
 
     // Track ideal minimal paycheck savings to never dip below safetyCushion
     let maxRecommendedPaycheck = 0;
+    let bottleneckMilestone = null;
     let cumulativeOutflow = 0;
+    const timelineSteps = [];
 
     unpaid.forEach((m) => {
       cumulativeOutflow += m.amount;
-      const days = Math.max(0, m.daysRemaining);
-      const paychecksByDate = Math.floor(days / cadenceDays);
+      const mDate = parseLocalDate(m.dueDate) || today;
+
+      // Count only paychecks that arrive strictly on or before this milestone due date
+      const paychecksByDate = allPaychecks.filter(p => p.date.getTime() <= mDate.getTime());
+      const pCount = paychecksByDate.length;
+      const p1List = paychecksByDate.filter(p => p.partner === 1);
+      const p2List = paychecksByDate.filter(p => p.partner === 2);
+      const p1Saved = p1List.reduce((sum, p) => sum + p.amount, 0);
+      const p2Saved = p2List.reduce((sum, p) => sum + p.amount, 0);
+      const totalSavingsAccrued = p1Saved + p2Saved;
 
       // Current projection
-      const projectedBalance = startingSavings + (paychecksByDate * plannedPerPaycheck) - cumulativeOutflow;
+      const projectedBalance = startingSavings + totalSavingsAccrued - cumulativeOutflow;
 
       if (projectedBalance < minBalance) {
         minBalance = projectedBalance;
       }
 
-      if (projectedBalance < safetyCushion && !firstDeficitDate) {
-        firstDeficitDate = m.dueDate;
-        firstDeficitMilestone = m;
-        deficitAmount = safetyCushion - projectedBalance;
+      const isDeficit = projectedBalance < safetyCushion;
+      let stepRecoveryDate = null;
+      let stepRecoveryPartner = null;
+      let stepDeficitDuration = 0;
+
+      if (isDeficit) {
+        // Chronological lookahead: step forward past this milestone to find when balance returns to >= safetyCushion
+        let runningBal = projectedBalance;
+        const subsequentPaychecks = allPaychecks.filter(p => p.date.getTime() > mDate.getTime());
+        const subsequentMilestones = unpaid.filter(subM => {
+          const subDate = parseLocalDate(subM.dueDate);
+          return subDate && subDate.getTime() > mDate.getTime();
+        });
+
+        const futureEvents = [];
+        subsequentPaychecks.forEach(p => futureEvents.push({ type: 'pay', date: p.date, amount: p.amount, partnerName: p.partnerName }));
+        subsequentMilestones.forEach(subM => {
+          const d = parseLocalDate(subM.dueDate);
+          if (d) futureEvents.push({ type: 'bill', date: d, amount: subM.amount });
+        });
+        futureEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+        for (const ev of futureEvents) {
+          if (ev.type === 'pay') {
+            runningBal += ev.amount;
+          } else if (ev.type === 'bill') {
+            runningBal -= ev.amount;
+          }
+          if (runningBal >= safetyCushion) {
+            stepRecoveryDate = ev.date;
+            stepRecoveryPartner = ev.partnerName || null;
+            stepDeficitDuration = Math.max(1, Math.round((ev.date.getTime() - mDate.getTime()) / 86400000));
+            break;
+          }
+        }
+
+        if (!firstDeficitDate) {
+          firstDeficitDate = m.dueDate;
+          firstDeficitMilestone = m;
+          firstDeficitAmount = safetyCushion - projectedBalance;
+          firstRecoveryDate = stepRecoveryDate;
+          firstRecoveryPartner = stepRecoveryPartner;
+          firstDeficitDurationDays = stepDeficitDuration;
+          isTimingDeficit = Boolean(stepRecoveryDate && stepDeficitDuration <= 30);
+          isPersistentDeficit = !stepRecoveryDate;
+          bottleneckMilestone = m;
+        }
       }
 
-      // Compute required paycheck rate for this milestone
-      if (paychecksByDate > 0) {
-        const requiredP = (cumulativeOutflow + safetyCushion - startingSavings) / paychecksByDate;
+      // Compute required paycheck rate for this milestone (individual mode)
+      if (pCount > 0) {
+        const requiredP = (cumulativeOutflow + safetyCushion - startingSavings) / pCount;
         if (requiredP > maxRecommendedPaycheck) {
           maxRecommendedPaycheck = requiredP;
+          if (!bottleneckMilestone) bottleneckMilestone = m;
         }
       } else {
-        // Immediate bill before first paycheck
         if (cumulativeOutflow + safetyCushion > startingSavings) {
           maxRecommendedPaycheck = Math.max(maxRecommendedPaycheck, cumulativeOutflow + safetyCushion - startingSavings);
+          if (!bottleneckMilestone) bottleneckMilestone = m;
         }
       }
 
       timelineSteps.push({
         milestone: m,
         daysRemaining: m.daysRemaining,
-        paychecksReceived: paychecksByDate,
+        paychecksReceived: pCount,
+        p1Count: p1List.length,
+        p2Count: p2List.length,
+        p1Saved: p1Saved,
+        p2Saved: p2Saved,
+        p1Name: partnerNames.p1,
+        p2Name: partnerNames.p2,
+        totalSavingsAccrued: totalSavingsAccrued,
         cumulativeDue: cumulativeOutflow,
         projectedBalance: projectedBalance,
-        isDeficit: projectedBalance < safetyCushion
+        isDeficit: isDeficit,
+        deficitAmount: isDeficit ? (safetyCushion - projectedBalance) : 0,
+        recoveryDate: stepRecoveryDate ? formatLocalDateToISO(stepRecoveryDate) : null,
+        recoveryPartner: stepRecoveryPartner,
+        deficitDurationDays: stepDeficitDuration
       });
     });
+
+    // Auto-balance calculation for dual income
+    let recommendedP1 = 0;
+    let recommendedP2 = 0;
+    if (isDual && minBalance < safetyCushion && bottleneckMilestone) {
+      const netDeficit = safetyCushion - minBalance;
+      const bDate = parseLocalDate(bottleneckMilestone.dueDate) || today;
+      const p1BeforeBottleneck = allPaychecks.filter(p => p.partner === 1 && p.date.getTime() <= bDate.getTime()).length || 1;
+      const p2BeforeBottleneck = allPaychecks.filter(p => p.partner === 2 && p.date.getTime() <= bDate.getTime()).length || 1;
+
+      // Split required gap 50/50 between partners
+      const halfDeficit = netDeficit / 2;
+      const addP1 = Math.ceil(halfDeficit / p1BeforeBottleneck);
+      const addP2 = Math.ceil(halfDeficit / p2BeforeBottleneck);
+      recommendedP1 = (state.partner1Savings || 0) + addP1;
+      recommendedP2 = (state.partner2Savings || 0) + addP2;
+    }
 
     return {
       hasDeficit: minBalance < safetyCushion,
@@ -966,7 +1413,14 @@
       deficitAmount: Math.max(0, safetyCushion - minBalance),
       deficitDate: firstDeficitDate,
       deficitMilestone: firstDeficitMilestone,
+      recoveryDate: firstRecoveryDate ? formatLocalDateToISO(firstRecoveryDate) : null,
+      recoveryPartner: firstRecoveryPartner,
+      deficitDurationDays: firstDeficitDurationDays,
+      isTimingDeficit: isTimingDeficit,
+      isPersistentDeficit: isPersistentDeficit,
       recommendedPaycheckSavings: Math.ceil(Math.max(0, maxRecommendedPaycheck)),
+      recommendedP1Savings: recommendedP1,
+      recommendedP2Savings: recommendedP2,
       timelineSteps: timelineSteps
     };
   }
@@ -1035,12 +1489,15 @@
     const next = data.nextUpcomingMilestone;
     const cadence = getCadenceName(state.paycheckCadence);
 
-    // If wedding date is not set yet, prioritize the Welcome Setup Banner for seamless 2-question onboarding
+    // If wedding date is not set yet, prioritize the Welcome Setup Banner for seamless 3-question onboarding
     if (!state.weddingDate) {
       if (DOM.welcomeSetupBanner) {
         DOM.welcomeSetupBanner.style.display = 'block';
         if (DOM.welcomePaycheckCadence) {
           DOM.welcomePaycheckCadence.value = state.paycheckCadence || 'biweekly';
+        }
+        if (DOM.welcomeNextPayDate) {
+          DOM.welcomeNextPayDate.value = state.nextPayDate || '';
         }
       }
       if (banner) {
@@ -1099,32 +1556,74 @@
     if (sim.hasDeficit) {
       banner.className = 'crunch-banner has-deficit';
       DOM.crunchBannerIcon.textContent = '⚠️';
-      DOM.crunchBannerTitle.textContent = `Cash Shortfall Alert by ${formatDate(sim.deficitDate)}`;
-      DOM.crunchBannerText.innerHTML = `
-        At your current pace of <strong>${formatCurrency(state.plannedSavingsPerPaycheck)}/${cadence}</strong>, 
-        you will experience a <strong>${formatCurrency(sim.deficitAmount)} cash deficit</strong> when paying 
-        <em>${sim.deficitMilestone ? sim.deficitMilestone.title : 'upcoming milestones'}</em>.
-        <div style="margin-top: 8px;">
-          <button class="btn btn-primary btn-sm" id="bannerFixDeficitBtn" style="font-size: 0.82rem; padding: 6px 14px;">
-            ⚡ Auto-Balance to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}
-          </button>
-        </div>
-      `;
+      const mTitle = sim.deficitMilestone ? sim.deficitMilestone.title : 'upcoming payment';
+      const mAmount = sim.deficitMilestone ? formatCurrency(sim.deficitMilestone.amount) : '';
+      const isDual = data.isDual;
+
+      if (sim.isTimingDeficit && sim.recoveryDate && sim.deficitDurationDays > 0) {
+        DOM.crunchBannerTitle.textContent = `Timing Shortfall Alert: ${sim.deficitDurationDays}-Day Dip on ${formatDate(sim.deficitDate)}`;
+        DOM.crunchBannerText.innerHTML = `
+          ${isDual 
+            ? `At your combined planned pace of <strong>${formatCurrency(data.totalMonthlyCombined)}/month</strong>, ` 
+            : `At your planned pace of <strong>${formatCurrency(state.plannedSavingsPerPaycheck)}/${cadence}</strong>, `}
+          paying <em>${escapeHtml(mTitle)}</em> (${mAmount}) on <strong>${formatDate(sim.deficitDate)}</strong> dips your balance 
+          <strong>${formatCurrency(sim.deficitAmount)} below your safety cushion</strong> for <strong>${sim.deficitDurationDays} days</strong> 
+          until ${sim.recoveryPartner ? `<strong>${escapeHtml(sim.recoveryPartner)}'s</strong>` : 'your next'} paycheck arrives on <strong>${formatDate(sim.recoveryDate)}</strong>.
+          <div style="margin-top: 8px;">
+            <button class="btn btn-primary btn-sm" id="bannerFixDeficitBtn" style="font-size: 0.82rem; padding: 6px 14px;">
+              ${isDual 
+                ? `⚡ Auto-Balance Dual Savings (${escapeHtml(data.partnerNames.p1)}: ${formatCurrency(sim.recommendedP1Savings)}, ${escapeHtml(data.partnerNames.p2)}: ${formatCurrency(sim.recommendedP2Savings)})` 
+                : `⚡ Auto-Balance to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}`}
+            </button>
+          </div>
+        `;
+        DOM.chartStatusPill.textContent = 'Timing Crunch';
+      } else {
+        DOM.crunchBannerTitle.textContent = `Cash Shortfall Alert by ${formatDate(sim.deficitDate)}`;
+        DOM.crunchBannerText.innerHTML = `
+          ${isDual 
+            ? `At your combined planned pace of <strong>${formatCurrency(data.totalMonthlyCombined)}/month</strong>, ` 
+            : `At your current pace of <strong>${formatCurrency(state.plannedSavingsPerPaycheck)}/${cadence}</strong>, `}
+          you will experience a <strong>${formatCurrency(sim.deficitAmount)} cash deficit</strong> when paying 
+          <em>${escapeHtml(mTitle)}</em> on ${formatDate(sim.deficitDate)}.
+          <div style="margin-top: 8px;">
+            <button class="btn btn-primary btn-sm" id="bannerFixDeficitBtn" style="font-size: 0.82rem; padding: 6px 14px;">
+              ${isDual 
+                ? `⚡ Auto-Balance Dual Savings (${escapeHtml(data.partnerNames.p1)}: ${formatCurrency(sim.recommendedP1Savings)}, ${escapeHtml(data.partnerNames.p2)}: ${formatCurrency(sim.recommendedP2Savings)})` 
+                : `⚡ Auto-Balance to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}`}
+            </button>
+          </div>
+        `;
+        DOM.chartStatusPill.textContent = 'Deficit Risk';
+      }
+
       DOM.crunchNextAmount.textContent = formatCurrency(next ? next.amount : 0);
-      DOM.crunchPaceLabel.textContent = `Recommended Pace`;
-      DOM.crunchNextPace.textContent = `${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}`;
+      if (isDual) {
+        DOM.crunchPaceLabel.textContent = `Combined Monthly`;
+        DOM.crunchNextPace.textContent = `${formatCurrency(data.totalMonthlyCombined)}/mo`;
+      } else {
+        DOM.crunchPaceLabel.textContent = `Recommended Pace`;
+        DOM.crunchNextPace.textContent = `${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}`;
+      }
       DOM.crunchNextPace.className = 'crunch-stat-value highlight';
-      DOM.chartStatusPill.textContent = 'Deficit Risk';
       DOM.chartStatusPill.className = 'badge-pill badge-overdue';
 
       const fixBtn = document.getElementById('bannerFixDeficitBtn');
       if (fixBtn) {
         fixBtn.addEventListener('click', () => {
-          state.plannedSavingsPerPaycheck = sim.recommendedPaycheckSavings;
-          DOM.simPlannedSavings.value = sim.recommendedPaycheckSavings;
-          saveState();
-          showToast(`Pace optimized to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}!`, '⚡');
-          renderAll();
+          if (data.isDual) {
+            state.partner1Savings = sim.recommendedP1Savings;
+            state.partner2Savings = sim.recommendedP2Savings;
+            saveState();
+            showToast(`Dual savings balanced! ${data.partnerNames.p1}: ${formatCurrency(state.partner1Savings)}, ${data.partnerNames.p2}: ${formatCurrency(state.partner2Savings)}`, '⚡');
+            renderAll();
+          } else {
+            state.plannedSavingsPerPaycheck = sim.recommendedPaycheckSavings;
+            DOM.simPlannedSavings.value = sim.recommendedPaycheckSavings;
+            saveState();
+            showToast(`Pace optimized to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}!`, '⚡');
+            renderAll();
+          }
         });
       }
     } else {
@@ -1141,19 +1640,24 @@
           Milestone <strong>"${bottleneck.title}"</strong> due ${formatDate(bottleneck.dueDate)} requires a peak savings pace of 
           <strong>${formatCurrency(bottleneck.requiredRate.perPaycheck)}/${cadence}</strong>.
         `;
+        DOM.crunchNextAmount.textContent = formatCurrency(next.amount);
+        DOM.crunchPaceLabel.textContent = `Peak Pace Needed`;
+        DOM.crunchNextPace.textContent = `${formatCurrency(bottleneck.requiredRate.perPaycheck)}/${cadence}`;
+        DOM.crunchNextPace.className = 'crunch-stat-value';
+        DOM.chartStatusPill.textContent = 'Peak Rate Ahead';
+        DOM.chartStatusPill.className = 'badge-pill badge-upcoming';
       } else {
         DOM.crunchBannerText.innerHTML = `
           Your next payment of <strong>${formatCurrency(next.amount)}</strong> is due in 
           <strong>${next.daysRemaining} days</strong> (${next.vendor}). Your cash flow plan is <strong>Healthy & On Track</strong>!
         `;
+        DOM.crunchNextAmount.textContent = formatCurrency(next ? next.amount : 0);
+        DOM.crunchPaceLabel.textContent = data.isDual ? 'Joint Savings' : 'Planned Pace';
+        DOM.crunchNextPace.textContent = data.isDual ? `${formatCurrency(data.totalMonthlyCombined)}/mo` : `${formatCurrency(state.plannedSavingsPerPaycheck)}/${cadence}`;
+        DOM.crunchNextPace.className = 'crunch-stat-value';
+        DOM.chartStatusPill.textContent = 'On Track';
+        DOM.chartStatusPill.className = 'badge-pill badge-paid';
       }
-
-      DOM.crunchNextAmount.textContent = formatCurrency(next ? next.amount : 0);
-      DOM.crunchPaceLabel.textContent = `Current Pace`;
-      DOM.crunchNextPace.textContent = `${formatCurrency(state.plannedSavingsPerPaycheck)}/${cadence}`;
-      DOM.crunchNextPace.className = 'crunch-stat-value';
-      DOM.chartStatusPill.textContent = 'On Track';
-      DOM.chartStatusPill.className = 'badge-pill badge-upcoming';
     }
   }
 
@@ -1604,10 +2108,82 @@
   }
 
   function renderSimulator(data) {
-    if (document.activeElement !== DOM.simCurrentSavings) DOM.simCurrentSavings.value = state.currentSavings;
-    if (document.activeElement !== DOM.simPaycheckCadence) DOM.simPaycheckCadence.value = state.paycheckCadence;
-    if (document.activeElement !== DOM.simPlannedSavings) DOM.simPlannedSavings.value = state.plannedSavingsPerPaycheck;
-    if (document.activeElement !== DOM.simSafetyCushion) DOM.simSafetyCushion.value = state.safetyCushion;
+    const isDual = state.incomeMode === 'dual';
+
+    // Segmented toggle active states
+    if (DOM.simModeIndividualBtn && DOM.simModeDualBtn) {
+      DOM.simModeIndividualBtn.classList.toggle('active', !isDual);
+      DOM.simModeDualBtn.classList.toggle('active', isDual);
+    }
+    if (DOM.simIndividualFields) DOM.simIndividualFields.style.display = isDual ? 'none' : 'grid';
+    if (DOM.simDualFields) DOM.simDualFields.style.display = isDual ? 'flex' : 'none';
+
+    if (!isDual) {
+      if (document.activeElement !== DOM.simCurrentSavings) DOM.simCurrentSavings.value = state.currentSavings;
+      if (document.activeElement !== DOM.simPaycheckCadence) DOM.simPaycheckCadence.value = state.paycheckCadence;
+      if (DOM.simNextPayDate && document.activeElement !== DOM.simNextPayDate) DOM.simNextPayDate.value = state.nextPayDate || '';
+      if (document.activeElement !== DOM.simPlannedSavings) DOM.simPlannedSavings.value = state.plannedSavingsPerPaycheck;
+      if (document.activeElement !== DOM.simSafetyCushion) DOM.simSafetyCushion.value = state.safetyCushion;
+    } else {
+      if (DOM.simDualCurrentSavings && document.activeElement !== DOM.simDualCurrentSavings) DOM.simDualCurrentSavings.value = state.currentSavings;
+      if (DOM.simDualSafetyCushion && document.activeElement !== DOM.simDualSafetyCushion) DOM.simDualSafetyCushion.value = state.safetyCushion;
+
+      if (DOM.simP1Name && document.activeElement !== DOM.simP1Name) DOM.simP1Name.value = data.partnerNames.p1;
+      if (DOM.simP1Cadence && document.activeElement !== DOM.simP1Cadence) DOM.simP1Cadence.value = state.partner1Cadence;
+      if (DOM.simP1NextPayDate && document.activeElement !== DOM.simP1NextPayDate) DOM.simP1NextPayDate.value = state.partner1NextPayDate || '';
+      if (DOM.simP1Savings && document.activeElement !== DOM.simP1Savings) DOM.simP1Savings.value = state.partner1Savings || 0;
+      if (DOM.simP1MonthlyEquivalent) DOM.simP1MonthlyEquivalent.textContent = `~${formatCurrency(data.p1Monthly)} / mo`;
+
+      if (DOM.simP2Name && document.activeElement !== DOM.simP2Name) DOM.simP2Name.value = data.partnerNames.p2;
+      if (DOM.simP2Cadence && document.activeElement !== DOM.simP2Cadence) DOM.simP2Cadence.value = state.partner2Cadence;
+      if (DOM.simP2NextPayDate && document.activeElement !== DOM.simP2NextPayDate) DOM.simP2NextPayDate.value = state.partner2NextPayDate || '';
+      if (DOM.simP2Savings && document.activeElement !== DOM.simP2Savings) DOM.simP2Savings.value = state.partner2Savings || 0;
+      if (DOM.simP2MonthlyEquivalent) DOM.simP2MonthlyEquivalent.textContent = `~${formatCurrency(data.p2Monthly)} / mo`;
+
+      if (DOM.simDualCombinedMonthly) DOM.simDualCombinedMonthly.textContent = `${formatCurrency(data.totalMonthlyCombined)} / month`;
+      if (DOM.simDualFillP1) DOM.simDualFillP1.style.width = `${data.p1SplitPct}%`;
+      if (DOM.simDualFillP2) DOM.simDualFillP2.style.width = `${data.p2SplitPct}%`;
+      if (DOM.simDualLegendP1) DOM.simDualLegendP1.innerHTML = `<span class="dual-legend-dot-p1"></span>${escapeHtml(data.partnerNames.p1)}: ${formatCurrency(data.p1Monthly)}/mo (${data.p1SplitPct}%)`;
+      if (DOM.simDualLegendP2) DOM.simDualLegendP2.innerHTML = `<span class="dual-legend-dot-p2"></span>${escapeHtml(data.partnerNames.p2)}: ${formatCurrency(data.p2Monthly)}/mo (${data.p2SplitPct}%)`;
+    }
+
+    // Render anchor info banner
+    if (DOM.simAnchorInfo) {
+      DOM.simAnchorInfo.style.display = 'flex';
+      if (!isDual) {
+        const anchorDate = data.anchorPayday;
+        const daysUntil = data.daysUntilNextPayday;
+        const hasCustomAnchor = Boolean(state.nextPayDate);
+        DOM.simAnchorInfo.innerHTML = `
+          <div>
+            <span>📅 <strong>Next Payday:</strong> ${formatDate(formatLocalDateToISO(anchorDate))} 
+            (${daysUntil === 0 ? 'Today!' : `in ${daysUntil} day${daysUntil === 1 ? '' : 's'}`}) • 
+            Frequency: <strong>${getCadenceName(state.paycheckCadence)}</strong></span>
+          </div>
+          <div>
+            <span style="font-size: 0.76rem; color: var(--text-muted);">
+              ${hasCustomAnchor ? '✓ Anchor date active' : '⚡ Using upcoming Friday as default anchor (pick date above)'}
+            </span>
+          </div>
+        `;
+      } else {
+        const p1Anchor = data.p1AnchorPayday;
+        const p2Anchor = data.p2AnchorPayday;
+        DOM.simAnchorInfo.innerHTML = `
+          <div>
+            <span>👥 <strong>Dual-Income Active:</strong> 
+            ${escapeHtml(data.partnerNames.p1)} (${formatDate(formatLocalDateToISO(p1Anchor))}, in ${data.p1DaysUntilNextPayday}d) • 
+            ${escapeHtml(data.partnerNames.p2)} (${formatDate(formatLocalDateToISO(p2Anchor))}, in ${data.p2DaysUntilNextPayday}d) • 
+            Combined: <strong>${formatCurrency(data.totalMonthlyCombined)}/mo</strong></span>
+          </div>
+          <div>
+            <span style="font-size: 0.76rem; color: var(--text-muted);">
+              ✓ 2 Asynchronous payroll calendars synchronized
+            </span>
+          </div>
+        `;
+      }
+    }
 
     const sim = data.simulation;
     const banner = DOM.simStatusBanner;
@@ -1637,12 +2213,24 @@
       banner.style.background = '';
       banner.style.borderColor = '';
       icon.textContent = '⚠️';
-      heading.textContent = 'Cash Shortfall Detected!';
-      detail.innerHTML = `
-        At your current planned savings rate of <strong>${formatCurrency(state.plannedSavingsPerPaycheck)} / ${cadence}</strong>, 
-        your wedding account will dip <strong>${formatCurrency(sim.deficitAmount)} below your safety cushion</strong> 
-        by <strong>${formatDate(sim.deficitDate)}</strong>! Click <strong>"Auto-Balance Savings Pace"</strong> to fix this instantly.
-      `;
+      if (sim.isTimingDeficit && sim.recoveryDate && sim.deficitDurationDays > 0) {
+        heading.textContent = `Timing Cash Crunch Detected (${sim.deficitDurationDays} Days)`;
+        detail.innerHTML = `
+          Paying <strong>${escapeHtml(sim.deficitMilestone ? sim.deficitMilestone.title : 'milestone')}</strong> on <strong>${formatDate(sim.deficitDate)}</strong> 
+          dips your balance <strong>${formatCurrency(sim.deficitAmount)} below your safety cushion</strong> for <strong>${sim.deficitDurationDays} days</strong> 
+          until ${sim.recoveryPartner ? `<strong>${escapeHtml(sim.recoveryPartner)}'s</strong>` : 'your next'} paycheck arrives on <strong>${formatDate(sim.recoveryDate)}</strong>! 
+          Click <strong>"Auto-Balance Savings Pace"</strong> to eliminate this dip.
+        `;
+      } else {
+        heading.textContent = 'Cash Shortfall Detected!';
+        detail.innerHTML = `
+          ${isDual 
+            ? `At your combined planned pace of <strong>${formatCurrency(data.totalMonthlyCombined)} / month</strong>, ` 
+            : `At your planned savings rate of <strong>${formatCurrency(state.plannedSavingsPerPaycheck)} / ${cadence}</strong>, `}
+          your wedding account will dip <strong>${formatCurrency(sim.deficitAmount)} below your safety cushion</strong> 
+          by <strong>${formatDate(sim.deficitDate)}</strong>! Click <strong>"Auto-Balance Savings Pace"</strong> to fix this instantly.
+        `;
+      }
     } else {
       banner.className = 'sim-status-banner green';
       banner.style.background = '';
@@ -1650,7 +2238,9 @@
       icon.textContent = '✅';
       heading.textContent = 'Healthy & Stress-Free Cashflow Plan';
       detail.innerHTML = `
-        At your pace of <strong>${formatCurrency(state.plannedSavingsPerPaycheck)} / ${cadence}</strong>, 
+        ${isDual 
+          ? `At your combined pace of <strong>${formatCurrency(data.totalMonthlyCombined)} / month</strong>, ` 
+          : `At your pace of <strong>${formatCurrency(state.plannedSavingsPerPaycheck)} / ${cadence}</strong>, `}
         your projected cash reserves never fall below your ${formatCurrency(state.safetyCushion)} cushion! 
         Minimum cushion reached will be <strong>${formatCurrency(sim.minBalance)}</strong>.
       `;
@@ -1661,17 +2251,32 @@
       const tr = document.createElement('tr');
       const isDeficit = step.isDeficit;
       const balanceClass = isDeficit ? 'balance-negative' : 'balance-positive';
-      const statusText = isDeficit 
-        ? `<span class="badge-pill badge-overdue">Deficit (-${formatCurrency(state.safetyCushion - step.projectedBalance)})</span>`
-        : `<span class="badge-pill badge-paid">Safe Cushion</span>`;
+
+      let statusHtml = '';
+      if (isDeficit) {
+        statusHtml = `<span class="badge-pill badge-overdue">Deficit (-${formatCurrency(state.safetyCushion - step.projectedBalance)})</span>`;
+        if (step.deficitDurationDays > 0 && step.recoveryDate) {
+          const who = step.recoveryPartner ? `${escapeHtml(step.recoveryPartner)}'s paycheck` : 'paycheck';
+          statusHtml += `<br><span class="timing-crunch-badge">⏱️ ${step.deficitDurationDays}d crunch until ${who} on ${formatDate(step.recoveryDate)}</span>`;
+        }
+      } else {
+        statusHtml = `<span class="badge-pill badge-paid">Safe Cushion</span>`;
+      }
+
+      const paycheckBadgeHtml = isDual 
+        ? `<span class="sim-paycheck-badge" title="${escapeHtml(step.p1Name)}: ${step.p1Count} (${formatCurrency(step.p1Saved)}) • ${escapeHtml(step.p2Name)}: ${step.p2Count} (${formatCurrency(step.p2Saved)})">💵 ${step.paychecksReceived} paychecks (${escapeHtml(step.p1Name)}: ${step.p1Count}, ${escapeHtml(step.p2Name)}: ${step.p2Count})</span>`
+        : `<span class="sim-paycheck-badge">💵 ${step.paychecksReceived} paycheck${step.paychecksReceived === 1 ? '' : 's'} in</span>`;
 
       tr.innerHTML = `
-        <td><strong>${formatDate(step.milestone.dueDate)}</strong></td>
+        <td>
+          <strong>${formatDate(step.milestone.dueDate)}</strong>
+          <br>${paycheckBadgeHtml}
+        </td>
         <td>${escapeHtml(step.milestone.title)}</td>
         <td>${escapeHtml(step.milestone.vendor)}</td>
         <td style="font-weight: 600;">${formatCurrency(step.milestone.amount)}</td>
         <td class="${balanceClass}">${formatCurrency(step.projectedBalance)}</td>
-        <td>${statusText}</td>
+        <td>${statusHtml}</td>
       `;
       fragment.appendChild(tr);
     });
@@ -1781,7 +2386,7 @@
     // Recalculate simulation steps with activePace (reuse if planned pace)
     const sim = (activePace === data.plannedSavings && data.simulation)
       ? data.simulation
-      : simulateCashflow(data.milestones, data.currentSavings, activePace, data.cadenceDays, data.safetyCushion, state.weddingDate);
+      : simulateCashflow(data.milestones, data.currentSavings, activePace, data.cadenceDays, data.safetyCushion, state.weddingDate, state.nextPayDate, state.paycheckCadence);
     const realSteps = sim.timelineSteps;
     const isPreview = realSteps.length === 0;
 
@@ -1833,6 +2438,16 @@
           dateLabel,
           cumulativeDue: s.cumulativeDue,
           projectedBalance: s.projectedBalance,
+          paychecksReceived: s.paychecksReceived,
+          p1Count: s.p1Count,
+          p2Count: s.p2Count,
+          p1Saved: s.p1Saved,
+          p2Saved: s.p2Saved,
+          p1Name: s.p1Name,
+          p2Name: s.p2Name,
+          recoveryDate: s.recoveryDate,
+          recoveryPartner: s.recoveryPartner,
+          deficitDurationDays: s.deficitDurationDays,
           isDeficit: s.isDeficit
         };
       });
@@ -2020,9 +2635,20 @@
         date: s.dateLabel,
         balance: s.projectedBalance,
         due: s.cumulativeDue,
+        paychecksReceived: s.paychecksReceived,
+        p1Count: s.p1Count,
+        p2Count: s.p2Count,
+        p1Saved: s.p1Saved,
+        p2Saved: s.p2Saved,
+        p1Name: s.p1Name,
+        p2Name: s.p2Name,
+        recoveryDate: s.recoveryDate,
+        recoveryPartner: s.recoveryPartner,
+        deficitDurationDays: s.deficitDurationDays,
         balanceLabel: 'Projected Balance',
         dueLabel: 'Cumulative Due',
-        isDeficit: s.isDeficit
+        isDeficit: s.isDeficit,
+        isDual: state.incomeMode === 'dual'
       });
     });
 
@@ -2071,9 +2697,14 @@
     const paychecksPerMonth = state.paycheckCadence === 'weekly' ? 4.33 : (state.paycheckCadence === 'bi-weekly' ? 2.16 : (state.paycheckCadence === 'semi-monthly' ? 2 : 1));
     const monthlySavings = Math.round(activePace * paychecksPerMonth);
 
+    const lastMonth = months[months.length - 1];
+    const endHorizon = lastMonth ? (lastMonth.yearMonth + '-31') : null;
+    const allPaydays = generateUpcomingPaydays(state.nextPayDate, state.paycheckCadence, endHorizon);
+
     if (data.milestones && data.milestones.length > 0) {
       months.forEach(m => {
-        m.savings = monthlySavings;
+        const paydaysInMonth = allPaydays.filter(pd => formatLocalDateToISO(pd).startsWith(m.yearMonth)).length;
+        m.savings = paydaysInMonth > 0 ? (paydaysInMonth * activePace) : monthlySavings;
         const matching = data.milestones.filter(item => !item.isPaid && item.dueDate && item.dueDate.startsWith(m.yearMonth));
         m.due = matching.reduce((sum, item) => sum + item.amount, 0);
       });
@@ -2191,7 +2822,7 @@
 
     const sim = (activePace === data.plannedSavings && data.simulation)
       ? data.simulation
-      : simulateCashflow(data.milestones, data.currentSavings, activePace, data.cadenceDays, data.safetyCushion, state.weddingDate);
+      : simulateCashflow(data.milestones, data.currentSavings, activePace, data.cadenceDays, data.safetyCushion, state.weddingDate, state.nextPayDate, state.paycheckCadence);
     const realSteps = sim.timelineSteps;
     const isPreview = realSteps.length === 0;
 
@@ -2216,6 +2847,14 @@
           dateLabel,
           balance: s.projectedBalance,
           drop: s.milestone.amount,
+          paychecksReceived: s.paychecksReceived,
+          p1Count: s.p1Count,
+          p2Count: s.p2Count,
+          p1Name: s.p1Name,
+          p2Name: s.p2Name,
+          recoveryDate: s.recoveryDate,
+          recoveryPartner: s.recoveryPartner,
+          deficitDurationDays: s.deficitDurationDays,
           isDeficit: s.isDeficit
         };
       });
@@ -2321,9 +2960,18 @@
         date: s.dateLabel,
         balance: s.balance,
         due: s.drop,
+        paychecksReceived: s.paychecksReceived,
+        p1Count: s.p1Count,
+        p2Count: s.p2Count,
+        p1Name: s.p1Name,
+        p2Name: s.p2Name,
+        recoveryDate: s.recoveryDate,
+        recoveryPartner: s.recoveryPartner,
+        deficitDurationDays: s.deficitDurationDays,
         balanceLabel: 'Post-Payment Cash',
         dueLabel: 'Payment Deducted',
-        isDeficit: s.isDeficit
+        isDeficit: s.isDeficit,
+        isDual: state.incomeMode === 'dual'
       });
     });
 
@@ -2830,6 +3478,33 @@
         activeHoverPoint = closest;
         renderCashflowChart(calculateFinancialAnalytics());
 
+        let paychecksHtml = '';
+        if (closest.paychecksReceived !== undefined) {
+          if (closest.isDual && (closest.p1Count !== undefined || closest.p2Count !== undefined)) {
+            paychecksHtml = `
+            <div class="tt-row">
+              <span>Paychecks In:</span>
+              <span>${closest.paychecksReceived} total (${escapeHtml(closest.p1Name || 'P1')}: ${closest.p1Count || 0}, ${escapeHtml(closest.p2Name || 'P2')}: ${closest.p2Count || 0})</span>
+            </div>`;
+          } else {
+            paychecksHtml = `
+            <div class="tt-row">
+              <span>Paychecks In:</span>
+              <span>${closest.paychecksReceived} paycheck${closest.paychecksReceived === 1 ? '' : 's'}</span>
+            </div>`;
+          }
+        }
+
+        let dipHtml = '';
+        if (closest.deficitDurationDays) {
+          const recoveryPartnerStr = closest.recoveryPartner ? ` via ${escapeHtml(closest.recoveryPartner)}'s pay` : '';
+          dipHtml = `
+          <div class="tt-row" style="color: #FFB380;">
+            <span>Shortfall Dip:</span>
+            <span>${closest.deficitDurationDays}d (recovers ${formatDate(closest.recoveryDate)}${recoveryPartnerStr})</span>
+          </div>`;
+        }
+
         tooltip.innerHTML = `
           <strong>${escapeHtml(closest.title)}</strong>
           <div class="tt-row">
@@ -2845,6 +3520,8 @@
             <span>${closest.dueLabel || 'Due'}:</span>
             <span>${formatCurrency(closest.due)}</span>
           </div>` : ''}
+          ${paychecksHtml}
+          ${dipHtml}
           <div class="tt-row" style="margin-top: 4px; font-size: 0.72rem; color: ${closest.isDeficit ? '#FF8888' : '#88DDAA'}; font-weight: 600;">
             <span>${closest.statusText || (closest.isDeficit ? '⚠️ Below Safety Cushion' : '✅ Healthy Cushion')}</span>
           </div>
@@ -3195,8 +3872,31 @@
     DOM.setTargetBudget.value = state.targetBudget || '';
     DOM.setCurrentSavings.value = state.currentSavings;
     DOM.setPaycheckCadence.value = state.paycheckCadence;
+    if (DOM.setNextPayDate) DOM.setNextPayDate.value = state.nextPayDate || '';
     DOM.setPlannedPaycheck.value = state.plannedSavingsPerPaycheck;
     DOM.setSafetyCushion.value = state.safetyCushion;
+
+    // Dual-Income mode toggle & fields in settings modal
+    const mode = state.incomeMode || 'individual';
+    if (DOM.setModeIndividualBtn && DOM.setModeDualBtn) {
+      DOM.setModeIndividualBtn.classList.toggle('active', mode === 'individual');
+      DOM.setModeDualBtn.classList.toggle('active', mode === 'dual');
+    }
+    if (DOM.setIndividualFields && DOM.setDualFields) {
+      DOM.setIndividualFields.style.display = mode === 'dual' ? 'none' : 'block';
+      DOM.setDualFields.style.display = mode === 'dual' ? 'block' : 'none';
+    }
+    const coupleNames = getPartnerNamesFromCouple(state.coupleNames);
+    if (DOM.setP1Name) DOM.setP1Name.value = state.partner1Name || coupleNames.partner1;
+    if (DOM.setP1Cadence) DOM.setP1Cadence.value = state.partner1Cadence || 'bi-weekly';
+    if (DOM.setP1NextPayDate) DOM.setP1NextPayDate.value = state.partner1NextPayDate || '';
+    if (DOM.setP1Savings) DOM.setP1Savings.value = state.partner1Savings || 0;
+
+    if (DOM.setP2Name) DOM.setP2Name.value = state.partner2Name || coupleNames.partner2;
+    if (DOM.setP2Cadence) DOM.setP2Cadence.value = state.partner2Cadence || 'semi-monthly';
+    if (DOM.setP2NextPayDate) DOM.setP2NextPayDate.value = state.partner2NextPayDate || '';
+    if (DOM.setP2Savings) DOM.setP2Savings.value = state.partner2Savings || 0;
+
     DOM.settingsModal.showModal();
   }
 
@@ -3209,8 +3909,23 @@
     state.targetBudget = state.hasTargetBudget ? (Number(DOM.setTargetBudget.value) || 0) : 0;
     state.currentSavings = Number(DOM.setCurrentSavings.value) || 0;
     state.paycheckCadence = DOM.setPaycheckCadence.value;
+    if (DOM.setNextPayDate) state.nextPayDate = DOM.setNextPayDate.value || '';
     state.plannedSavingsPerPaycheck = Number(DOM.setPlannedPaycheck.value) || 0;
     state.safetyCushion = Number(DOM.setSafetyCushion.value) || 0;
+
+    // Save income mode from active toggle button in settings
+    const isDual = DOM.setModeDualBtn && DOM.setModeDualBtn.classList.contains('active');
+    state.incomeMode = isDual ? 'dual' : 'individual';
+
+    if (DOM.setP1Name) state.partner1Name = DOM.setP1Name.value.trim();
+    if (DOM.setP1Cadence) state.partner1Cadence = DOM.setP1Cadence.value;
+    if (DOM.setP1NextPayDate) state.partner1NextPayDate = DOM.setP1NextPayDate.value || '';
+    if (DOM.setP1Savings) state.partner1Savings = Number(DOM.setP1Savings.value) || 0;
+
+    if (DOM.setP2Name) state.partner2Name = DOM.setP2Name.value.trim();
+    if (DOM.setP2Cadence) state.partner2Cadence = DOM.setP2Cadence.value;
+    if (DOM.setP2NextPayDate) state.partner2NextPayDate = DOM.setP2NextPayDate.value || '';
+    if (DOM.setP2Savings) state.partner2Savings = Number(DOM.setP2Savings.value) || 0;
 
     saveState();
     DOM.settingsModal.close();
@@ -3246,14 +3961,18 @@
         e.preventDefault();
         const dateVal = DOM.welcomeWeddingDate.value;
         const cadenceVal = DOM.welcomePaycheckCadence.value;
+        const nextPayVal = DOM.welcomeNextPayDate ? DOM.welcomeNextPayDate.value : '';
         if (!dateVal) {
           showToast('Please select your wedding date', '⚠️');
           return;
         }
         state.weddingDate = dateVal;
         state.paycheckCadence = cadenceVal;
+        if (nextPayVal) {
+          state.nextPayDate = nextPayVal;
+        }
         saveState();
-        showToast('Wedding date set! Countdown and savings pace calculated.', '✨');
+        showToast('Wedding date & payday set! Savings pace calculated.', '✨');
         renderAll();
       });
     }
@@ -3420,24 +4139,77 @@
       DOM.viewAllExpensesBtn.addEventListener('click', () => switchTab('budget'));
     }
 
-    // Auto-solve pace button
+    // Income Mode Segmented Toggle (Simulator)
+    if (DOM.simModeIndividualBtn && DOM.simModeDualBtn) {
+      DOM.simModeIndividualBtn.addEventListener('click', () => {
+        if (state.incomeMode !== 'individual') {
+          state.incomeMode = 'individual';
+          saveState();
+          showToast('Switched to Single / Combined Income mode', '💼');
+          renderAll();
+        }
+      });
+      DOM.simModeDualBtn.addEventListener('click', () => {
+        if (state.incomeMode !== 'dual') {
+          state.incomeMode = 'dual';
+          saveState();
+          showToast('Switched to Dual-Income (2 Schedules) mode', '💍');
+          renderAll();
+        }
+      });
+    }
+
+    // Income Mode Segmented Toggle (Settings Modal)
+    if (DOM.setModeIndividualBtn && DOM.setModeDualBtn) {
+      DOM.setModeIndividualBtn.addEventListener('click', () => {
+        DOM.setModeIndividualBtn.classList.add('active');
+        DOM.setModeDualBtn.classList.remove('active');
+        if (DOM.setIndividualFields) DOM.setIndividualFields.style.display = 'block';
+        if (DOM.setDualFields) DOM.setDualFields.style.display = 'none';
+      });
+      DOM.setModeDualBtn.addEventListener('click', () => {
+        DOM.setModeDualBtn.classList.add('active');
+        DOM.setModeIndividualBtn.classList.remove('active');
+        if (DOM.setIndividualFields) DOM.setIndividualFields.style.display = 'none';
+        if (DOM.setDualFields) DOM.setDualFields.style.display = 'block';
+      });
+    }
+
+    // Auto-solve pace button (supports both Individual and Dual modes)
     DOM.autoSolvePaceBtn.addEventListener('click', () => {
       const data = calculateFinancialAnalytics();
-      const recommended = data.simulation.recommendedPaycheckSavings;
-      if (recommended > 0) {
-        state.plannedSavingsPerPaycheck = recommended;
-        DOM.simPlannedSavings.value = recommended;
-        saveState();
-        showToast(`Savings pace optimized to ${formatCurrency(recommended)} / ${getCadenceName(state.paycheckCadence)}!`, '⚡');
-        renderAll();
+      if (data.isDual) {
+        const p1Rec = data.simulation.recommendedP1Savings;
+        const p2Rec = data.simulation.recommendedP2Savings;
+        if (p1Rec > 0 || p2Rec > 0) {
+          state.partner1Savings = p1Rec;
+          state.partner2Savings = p2Rec;
+          if (DOM.simP1Savings) DOM.simP1Savings.value = p1Rec;
+          if (DOM.simP2Savings) DOM.simP2Savings.value = p2Rec;
+          saveState();
+          showToast(`Dual savings balanced! ${escapeHtml(data.partnerNames.p1)}: ${formatCurrency(p1Rec)}, ${escapeHtml(data.partnerNames.p2)}: ${formatCurrency(p2Rec)}`, '⚡');
+          renderAll();
+        } else {
+          showToast('Your current savings already fully cover your wedding milestones!', '✨');
+        }
       } else {
-        showToast('Your current savings already fully cover your wedding milestones!', '✨');
+        const recommended = data.simulation.recommendedPaycheckSavings;
+        if (recommended > 0) {
+          state.plannedSavingsPerPaycheck = recommended;
+          DOM.simPlannedSavings.value = recommended;
+          saveState();
+          showToast(`Savings pace optimized to ${formatCurrency(recommended)} / ${getCadenceName(state.paycheckCadence)}!`, '⚡');
+          renderAll();
+        } else {
+          showToast('Your current savings already fully cover your wedding milestones!', '✨');
+        }
       }
     });
 
-    // Simulator input changes (live update with RAF throttle & debounced save)
+    // Simulator input changes: Single Mode (live update with RAF throttle & debounced save)
     let simInputRafId = null;
     [DOM.simCurrentSavings, DOM.simPlannedSavings, DOM.simSafetyCushion].forEach(inp => {
+      if (!inp) return;
       inp.addEventListener('input', () => {
         state.currentSavings = Number(DOM.simCurrentSavings.value) || 0;
         state.plannedSavingsPerPaycheck = Number(DOM.simPlannedSavings.value) || 0;
@@ -3453,11 +4225,118 @@
       });
     });
 
-    DOM.simPaycheckCadence.addEventListener('change', () => {
-      state.paycheckCadence = DOM.simPaycheckCadence.value;
-      saveState();
-      renderAll();
+    if (DOM.simPaycheckCadence) {
+      DOM.simPaycheckCadence.addEventListener('change', () => {
+        state.paycheckCadence = DOM.simPaycheckCadence.value;
+        saveState();
+        renderAll();
+      });
+    }
+
+    if (DOM.simNextPayDate) {
+      DOM.simNextPayDate.addEventListener('change', () => {
+        state.nextPayDate = DOM.simNextPayDate.value || '';
+        saveState();
+        renderAll();
+      });
+    }
+
+    // Simulator input changes: Dual-Income Mode
+    [DOM.simDualCurrentSavings, DOM.simDualSafetyCushion].forEach(inp => {
+      if (!inp) return;
+      inp.addEventListener('input', () => {
+        state.currentSavings = Number(DOM.simDualCurrentSavings.value) || 0;
+        state.safetyCushion = Number(DOM.simDualSafetyCushion.value) || 0;
+        saveState(true, false);
+        if (simInputRafId) cancelAnimationFrame(simInputRafId);
+        simInputRafId = requestAnimationFrame(() => {
+          renderAll();
+        });
+      });
+      inp.addEventListener('change', () => {
+        saveState(true, true);
+      });
     });
+
+    // Partner 1 Inputs
+    if (DOM.simP1Name) {
+      DOM.simP1Name.addEventListener('input', () => {
+        state.partner1Name = DOM.simP1Name.value.trim();
+        saveState(true, false);
+      });
+      DOM.simP1Name.addEventListener('change', () => {
+        state.partner1Name = DOM.simP1Name.value.trim();
+        saveState(true, true);
+        renderAll();
+      });
+    }
+    if (DOM.simP1Cadence) {
+      DOM.simP1Cadence.addEventListener('change', () => {
+        state.partner1Cadence = DOM.simP1Cadence.value;
+        saveState();
+        renderAll();
+      });
+    }
+    if (DOM.simP1NextPayDate) {
+      DOM.simP1NextPayDate.addEventListener('change', () => {
+        state.partner1NextPayDate = DOM.simP1NextPayDate.value || '';
+        saveState();
+        renderAll();
+      });
+    }
+    if (DOM.simP1Savings) {
+      DOM.simP1Savings.addEventListener('input', () => {
+        state.partner1Savings = Number(DOM.simP1Savings.value) || 0;
+        saveState(true, false);
+        if (simInputRafId) cancelAnimationFrame(simInputRafId);
+        simInputRafId = requestAnimationFrame(() => {
+          renderAll();
+        });
+      });
+      DOM.simP1Savings.addEventListener('change', () => {
+        saveState(true, true);
+      });
+    }
+
+    // Partner 2 Inputs
+    if (DOM.simP2Name) {
+      DOM.simP2Name.addEventListener('input', () => {
+        state.partner2Name = DOM.simP2Name.value.trim();
+        saveState(true, false);
+      });
+      DOM.simP2Name.addEventListener('change', () => {
+        state.partner2Name = DOM.simP2Name.value.trim();
+        saveState(true, true);
+        renderAll();
+      });
+    }
+    if (DOM.simP2Cadence) {
+      DOM.simP2Cadence.addEventListener('change', () => {
+        state.partner2Cadence = DOM.simP2Cadence.value;
+        saveState();
+        renderAll();
+      });
+    }
+    if (DOM.simP2NextPayDate) {
+      DOM.simP2NextPayDate.addEventListener('change', () => {
+        state.partner2NextPayDate = DOM.simP2NextPayDate.value || '';
+        saveState();
+        renderAll();
+      });
+    }
+    if (DOM.simP2Savings) {
+      DOM.simP2Savings.addEventListener('input', () => {
+        state.partner2Savings = Number(DOM.simP2Savings.value) || 0;
+        saveState(true, false);
+        if (simInputRafId) cancelAnimationFrame(simInputRafId);
+        simInputRafId = requestAnimationFrame(() => {
+          renderAll();
+        });
+      });
+      DOM.simP2Savings.addEventListener('change', () => {
+        saveState(true, true);
+      });
+    }
 
     // Toggle categories collapse
     let allCollapsed = false;
@@ -3834,6 +4713,13 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
       title: 'Savings Cadence',
       body: 'How frequently you deposit money into your wedding savings account.',
       howItWorks: 'Matches your real-world paycheck cycle (Weekly = 7 days, Bi-Weekly = 14 days, Semi-Monthly = 15.2 days, Monthly = 30.4 days) so the simulation mirrors your exact cash inflow.'
+    },
+    'tt-next-payday': {
+      icon: '📅',
+      title: 'Next Payday Date',
+      body: 'The exact calendar date when your next paycheck or wedding savings transfer arrives.',
+      howItWorks: 'Anchors your savings frequency to real calendar days. The simulator uses this to determine exactly which paychecks arrive before each vendor payment milestone, eliminating timing crunches and overdraft surprises.',
+      tip: '💡 If you get paid on alternate Fridays or specific dates like the 1st and 15th, setting your next payday guarantees calendar-accurate deficit tracking.'
     },
     'tt-planned-savings': {
       icon: '💰',

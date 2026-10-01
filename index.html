@@ -108,7 +108,7 @@
           <span class="welcome-setup-icon">💍</span>
           <div>
             <h3 class="welcome-setup-title">Let's personalize your wedding countdown & savings pace</h3>
-            <p class="welcome-setup-subtitle">Two quick questions to calculate how much to save every paycheck:</p>
+            <p class="welcome-setup-subtitle">Set your dates and paycheck cycle to calculate exact savings & avoid payment crunches:</p>
           </div>
         </div>
       </div>
@@ -126,6 +126,10 @@
               <option value="semimonthly">Semi-Monthly (Twice a Month)</option>
               <option value="monthly">Monthly</option>
             </select>
+          </div>
+          <div class="welcome-field">
+            <label for="welcomeNextPayDate">When is your next payday?</label>
+            <input type="date" id="welcomeNextPayDate" class="form-control" placeholder="Select date">
           </div>
           <div class="welcome-field-action">
             <button type="submit" class="btn btn-primary" id="saveWelcomeSetupBtn">
@@ -472,7 +476,20 @@
           </button>
         </div>
 
-        <div class="simulator-form-grid">
+        <!-- Income Mode Selector: Single vs Dual Income -->
+        <div class="income-mode-selector-wrapper">
+          <div class="income-mode-segmented" id="simIncomeModeToggle" role="radiogroup" aria-label="Income Mode">
+            <button type="button" class="btn-segmented active" data-mode="individual" id="simModeIndividualBtn">
+              👤 Single / Combined Income
+            </button>
+            <button type="button" class="btn-segmented" data-mode="dual" id="simModeDualBtn">
+              👥 Dual Income (Split Schedules)
+            </button>
+          </div>
+        </div>
+
+        <!-- Single Income / Combined Mode Grid -->
+        <div class="simulator-form-grid" id="simIndividualFields">
           <div class="form-group">
             <label for="simCurrentSavings">
               <span class="label-text-with-tooltip" data-tooltip-id="tt-current-savings" tabindex="0">
@@ -501,6 +518,17 @@
           </div>
 
           <div class="form-group">
+            <label for="simNextPayDate">
+              <span class="label-text-with-tooltip" data-tooltip-id="tt-next-payday" tabindex="0">
+                Next Payday Date
+                <span class="info-badge" aria-label="Info about Next Payday Date">ℹ️</span>
+              </span>
+              <span class="field-hint">Anchor for exact pay dates</span>
+            </label>
+            <input type="date" id="simNextPayDate" class="form-control">
+          </div>
+
+          <div class="form-group">
             <label for="simPlannedSavings">
               <span class="label-text-with-tooltip" data-tooltip-id="tt-planned-savings" tabindex="0">
                 Planned Savings per Paycheck
@@ -523,8 +551,114 @@
           </div>
         </div>
 
+        <!-- Dual-Income (Two Independent Schedules) Container -->
+        <div class="simulator-dual-container" id="simDualFields" style="display: none;">
+          <div class="dual-common-row">
+            <div class="form-group">
+              <label for="simDualCurrentSavings">
+                <span class="label-text-with-tooltip" data-tooltip-id="tt-current-savings" tabindex="0">
+                  Current Wedding Savings
+                  <span class="info-badge" aria-label="Info about Current Wedding Savings">ℹ️</span>
+                </span>
+                <span class="field-hint">Starting joint bank balance</span>
+              </label>
+              <input type="number" id="simDualCurrentSavings" class="form-control" value="0" min="0" step="1">
+            </div>
+
+            <div class="form-group">
+              <label for="simDualSafetyCushion">
+                <span class="label-text-with-tooltip" data-tooltip-id="tt-safety-cushion" tabindex="0">
+                  Emergency Buffer
+                  <span class="info-badge" aria-label="Info about Emergency Buffer">ℹ️</span>
+                </span>
+                <span class="field-hint">Minimum cash reserve</span>
+              </label>
+              <input type="number" id="simDualSafetyCushion" class="form-control" value="1000" min="0" step="1">
+            </div>
+          </div>
+
+          <div class="dual-income-cards-grid">
+            <!-- Partner 1 Card -->
+            <div class="partner-card partner-card-p1">
+              <div class="partner-card-header">
+                <div class="partner-title-badge">
+                  <span>💍</span>
+                  <input type="text" id="simP1Name" class="partner-name-input" placeholder="Partner 1" title="Click to rename Partner 1">
+                </div>
+                <span class="partner-monthly-stat" id="simP1MonthlyEquivalent">~$0 / mo</span>
+              </div>
+              <div class="partner-card-fields">
+                <div class="form-group">
+                  <label for="simP1Cadence">Pay Frequency</label>
+                  <select id="simP1Cadence" class="form-control form-control-sm">
+                    <option value="weekly">Weekly (Every 7d)</option>
+                    <option value="bi-weekly" selected>Bi-Weekly (Every 14d)</option>
+                    <option value="semi-monthly">Semi-Monthly (1st & 15th)</option>
+                    <option value="monthly">Monthly (1x/mo)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="simP1NextPayDate">Next Payday Date</label>
+                  <input type="date" id="simP1NextPayDate" class="form-control form-control-sm">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="simP1Savings">Savings Contribution per Paycheck ($)</label>
+                  <input type="number" id="simP1Savings" class="form-control" value="0" min="0" step="1" placeholder="Amount set aside">
+                </div>
+              </div>
+            </div>
+
+            <!-- Partner 2 Card -->
+            <div class="partner-card partner-card-p2">
+              <div class="partner-card-header">
+                <div class="partner-title-badge">
+                  <span>💍</span>
+                  <input type="text" id="simP2Name" class="partner-name-input" placeholder="Partner 2" title="Click to rename Partner 2">
+                </div>
+                <span class="partner-monthly-stat" id="simP2MonthlyEquivalent">~$0 / mo</span>
+              </div>
+              <div class="partner-card-fields">
+                <div class="form-group">
+                  <label for="simP2Cadence">Pay Frequency</label>
+                  <select id="simP2Cadence" class="form-control form-control-sm">
+                    <option value="weekly">Weekly (Every 7d)</option>
+                    <option value="bi-weekly">Bi-Weekly (Every 14d)</option>
+                    <option value="semi-monthly" selected>Semi-Monthly (1st & 15th)</option>
+                    <option value="monthly">Monthly (1x/mo)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="simP2NextPayDate">Next Payday Date</label>
+                  <input type="date" id="simP2NextPayDate" class="form-control form-control-sm">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="simP2Savings">Savings Contribution per Paycheck ($)</label>
+                  <input type="number" id="simP2Savings" class="form-control" value="0" min="0" step="1" placeholder="Amount set aside">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Combined Savings & Contribution Split Bar -->
+          <div class="dual-split-bar-wrapper">
+            <div class="dual-split-header">
+              <span>Total Joint Savings Pace:</span>
+              <strong id="simDualCombinedMonthly">$0 / month</strong>
+            </div>
+            <div class="dual-split-track" id="simDualSplitTrack" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+              <div class="dual-split-fill-p1" id="simDualFillP1" style="width: 50%;"></div>
+              <div class="dual-split-fill-p2" id="simDualFillP2" style="width: 50%;"></div>
+            </div>
+            <div class="dual-split-legend">
+              <span id="simDualLegendP1"><span class="dual-legend-dot-p1"></span>Partner 1: $0/mo (50%)</span>
+              <span id="simDualLegendP2"><span class="dual-legend-dot-p2"></span>Partner 2: $0/mo (50%)</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Simulation Results Section -->
         <div class="sim-results-panel">
+          <div id="simAnchorInfo" class="sim-anchor-banner" style="display: none;"></div>
           <div class="sim-status-banner" id="simStatusBanner">
             <span style="font-size: 1.4rem;" id="simStatusIcon">💡</span>
             <div>
@@ -727,21 +861,49 @@
           <input type="number" id="setCurrentSavings" class="form-control" min="0" step="1" required>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-          <div class="form-group">
-            <label for="setPaycheckCadence">
-              <span class="label-text-with-tooltip" data-tooltip-id="tt-cadence" tabindex="0">
-                Savings Cadence
-                <span class="info-badge" aria-label="Info about Savings Cadence">ℹ️</span>
-              </span>
-            </label>
-            <select id="setPaycheckCadence" class="form-control">
-              <option value="weekly">Weekly</option>
-              <option value="bi-weekly">Bi-Weekly</option>
-              <option value="semi-monthly">Semi-Monthly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+        <div class="form-group" style="margin-top: 6px;">
+          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px; display: block;">
+            Income & Savings Schedule Mode
+          </label>
+          <div class="income-mode-segmented" id="setIncomeModeToggle" role="radiogroup" aria-label="Settings Income Mode">
+            <button type="button" class="btn-segmented active" data-mode="individual" id="setModeIndividualBtn">
+              👤 Individual / Combined
+            </button>
+            <button type="button" class="btn-segmented" data-mode="dual" id="setModeDualBtn">
+              👥 Dual Income (2 Schedules)
+            </button>
           </div>
+        </div>
+
+        <!-- Single Income Settings Section -->
+        <div id="setIndividualFields">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="form-group">
+              <label for="setPaycheckCadence">
+                <span class="label-text-with-tooltip" data-tooltip-id="tt-cadence" tabindex="0">
+                  Savings Cadence
+                  <span class="info-badge" aria-label="Info about Savings Cadence">ℹ️</span>
+                </span>
+              </label>
+              <select id="setPaycheckCadence" class="form-control">
+                <option value="weekly">Weekly</option>
+                <option value="bi-weekly">Bi-Weekly</option>
+                <option value="semi-monthly">Semi-Monthly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="setNextPayDate">
+                <span class="label-text-with-tooltip" data-tooltip-id="tt-next-payday" tabindex="0">
+                  Next Payday Date
+                  <span class="info-badge" aria-label="Info about Next Payday Date">ℹ️</span>
+                </span>
+                <span class="field-hint">Anchor for exact pay dates</span>
+              </label>
+              <input type="date" id="setNextPayDate" class="form-control">
+            </div>
+          </div>
+
           <div class="form-group">
             <label for="setPlannedPaycheck">
               <span class="label-text-with-tooltip" data-tooltip-id="tt-planned-savings" tabindex="0">
@@ -749,7 +911,70 @@
                 <span class="info-badge" aria-label="Info about Savings per Cadence">ℹ️</span>
               </span>
             </label>
-            <input type="number" id="setPlannedPaycheck" class="form-control" min="0" step="1" required>
+            <input type="number" id="setPlannedPaycheck" class="form-control" min="0" step="1">
+          </div>
+        </div>
+
+        <!-- Dual-Income Settings Section -->
+        <div id="setDualFields" class="simulator-dual-container" style="display: none; margin-top: 10px;">
+          <div class="dual-income-cards-grid">
+            <!-- Partner 1 -->
+            <div class="partner-card partner-card-p1">
+              <div class="partner-card-header">
+                <div class="partner-title-badge">
+                  <span>💍</span>
+                  <input type="text" id="setP1Name" class="partner-name-input" placeholder="Partner 1">
+                </div>
+              </div>
+              <div class="partner-card-fields">
+                <div class="form-group">
+                  <label for="setP1Cadence">Cadence</label>
+                  <select id="setP1Cadence" class="form-control form-control-sm">
+                    <option value="weekly">Weekly</option>
+                    <option value="bi-weekly" selected>Bi-Weekly</option>
+                    <option value="semi-monthly">Semi-Monthly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="setP1NextPayDate">Next Payday</label>
+                  <input type="date" id="setP1NextPayDate" class="form-control form-control-sm">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="setP1Savings">Savings per Paycheck ($)</label>
+                  <input type="number" id="setP1Savings" class="form-control" min="0" step="1">
+                </div>
+              </div>
+            </div>
+
+            <!-- Partner 2 -->
+            <div class="partner-card partner-card-p2">
+              <div class="partner-card-header">
+                <div class="partner-title-badge">
+                  <span>💍</span>
+                  <input type="text" id="setP2Name" class="partner-name-input" placeholder="Partner 2">
+                </div>
+              </div>
+              <div class="partner-card-fields">
+                <div class="form-group">
+                  <label for="setP2Cadence">Cadence</label>
+                  <select id="setP2Cadence" class="form-control form-control-sm">
+                    <option value="weekly">Weekly</option>
+                    <option value="bi-weekly">Bi-Weekly</option>
+                    <option value="semi-monthly" selected>Semi-Monthly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="setP2NextPayDate">Next Payday</label>
+                  <input type="date" id="setP2NextPayDate" class="form-control form-control-sm">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="setP2Savings">Savings per Paycheck ($)</label>
+                  <input type="number" id="setP2Savings" class="form-control" min="0" step="1">
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

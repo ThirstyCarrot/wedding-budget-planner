@@ -407,7 +407,7 @@ body {
 
 .welcome-fields-row {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1.2fr 1fr 1fr auto;
   gap: 16px;
   align-items: flex-end;
   background: var(--bg-subtle);
@@ -437,7 +437,20 @@ body {
   font-weight: 600;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
+  .welcome-fields-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .welcome-field-action {
+    grid-column: 1 / -1;
+  }
+  .welcome-field-action button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
   .welcome-fields-row {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -1679,6 +1692,274 @@ textarea:focus {
   border: 1px solid var(--danger-border);
   color: var(--danger-primary);
 }
+
+.sim-anchor-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: rgba(179, 138, 88, 0.08);
+  border: 1px solid rgba(179, 138, 88, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  margin-bottom: 14px;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+}
+
+.sim-anchor-banner strong {
+  color: var(--text-primary);
+}
+
+.sim-paycheck-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+.timing-crunch-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(199, 84, 80, 0.12);
+  color: #C75450;
+  border: 1px solid rgba(199, 84, 80, 0.3);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+/* Dual Income Simulator & Controls */
+.income-mode-selector-wrapper {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.income-mode-segmented {
+  display: inline-flex;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 4px;
+}
+
+.income-mode-segmented .btn-segmented {
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.income-mode-segmented .btn-segmented:hover {
+  color: var(--text-primary);
+}
+
+.income-mode-segmented .btn-segmented.active {
+  background: #FFFFFF;
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.simulator-dual-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.dual-common-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.dual-income-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .dual-common-row,
+  .dual-income-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.partner-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  transition: border-color var(--transition-fast);
+}
+
+.partner-card:hover {
+  border-color: rgba(179, 138, 88, 0.4);
+}
+
+.partner-card-p1 {
+  border-left: 3px solid #B38A58;
+}
+
+.partner-card-p2 {
+  border-left: 3px solid #68827A;
+}
+
+.partner-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding-bottom: 10px;
+}
+
+.partner-title-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.partner-name-input {
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  max-width: 140px;
+}
+
+.partner-name-input:hover,
+.partner-name-input:focus {
+  border-color: var(--border-color);
+  background: #FFFFFF;
+}
+
+.partner-card-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .partner-card-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.partner-card-fields .form-group {
+  margin-bottom: 0;
+}
+
+.partner-monthly-stat {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 3px 10px;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+}
+
+.dual-split-bar-wrapper {
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dual-split-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.dual-split-track {
+  height: 10px;
+  width: 100%;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #E8E5E1;
+  display: flex;
+}
+
+.dual-split-fill-p1 {
+  background: #B38A58;
+  height: 100%;
+  transition: width var(--transition-normal);
+}
+
+.dual-split-fill-p2 {
+  background: #68827A;
+  height: 100%;
+  transition: width var(--transition-normal);
+}
+
+.dual-split-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.dual-legend-dot-p1 {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #B38A58;
+  margin-right: 4px;
+}
+
+.dual-legend-dot-p2 {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #68827A;
+  margin-right: 4px;
+}
+
 
 /* Compact Simulation Table with Hairline Dividers & Tabular Numbers */
 .sim-breakdown-table {
