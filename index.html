@@ -261,19 +261,62 @@
       <!-- Chart and Category Grid -->
       <div class="dashboard-grid-2">
         <!-- Interactive Cashflow & Payments Timeline Chart -->
-        <div class="panel-card">
+        <div class="panel-card cashflow-panel-card" id="cashflowPanelCard">
           <div class="panel-header">
             <div class="panel-title-group">
               <h2>Savings vs. Payment Deadlines</h2>
               <p>Track your projected savings growth against upcoming payment deadlines</p>
             </div>
             <div class="panel-header-controls">
+              <button type="button" class="btn-chart-guide" id="toggleChartGuideBtn" title="How to read this chart">
+                <span class="guide-btn-icon">💡</span> Guide
+              </button>
               <div class="segmented-control" id="cashflowViewModeGroup">
                 <button type="button" class="btn-segmented active" data-view="trajectory">📈 Timeline</button>
                 <button type="button" class="btn-segmented" data-view="monthly">📊 Monthly</button>
                 <button type="button" class="btn-segmented" data-view="steps">🪜 Milestones</button>
               </div>
               <span class="badge-pill badge-upcoming chart-status-pill-fixed" id="chartStatusPill">On Track</span>
+            </div>
+          </div>
+
+          <!-- Interactive Guide Explaining the Graph, Lines, Dots, and Views -->
+          <div class="chart-guide-callout" id="chartGuideCallout" style="display: none;">
+            <div class="chart-guide-header">
+              <div class="chart-guide-title">
+                <span class="guide-title-icon">💡</span>
+                <strong>How to Read the Savings vs. Payment Deadlines Chart</strong>
+              </div>
+              <button type="button" class="chart-guide-close" id="closeChartGuideBtn" aria-label="Close chart guide">✕</button>
+            </div>
+            <div class="chart-guide-body">
+              <div class="guide-card">
+                <div class="guide-card-icon">📈</div>
+                <div class="guide-card-content">
+                  <h5>3 View Modes</h5>
+                  <p><strong>Timeline:</strong> Compares total savings growing over time against cumulative payment deadlines.<br>
+                  <strong>Monthly:</strong> Cash in vs. cash out during each calendar month.<br>
+                  <strong>Milestones:</strong> Step-by-step account balance after paying each vendor.</p>
+                </div>
+              </div>
+              <div class="guide-card">
+                <div class="guide-card-icon">🎨</div>
+                <div class="guide-card-content">
+                  <h5>What the Lines & Dots Mean</h5>
+                  <p><strong>🟠 Terracotta Line:</strong> Total cumulative savings saved to date.<br>
+                  <strong>🔘 Slate Line:</strong> Cumulative vendor bills due by each date.<br>
+                  <strong>🟡 Amber Dashed Line:</strong> Minimum emergency buffer reserve ($1,000).<br>
+                  <strong>🟠 Orange Dot:</strong> Milestone on track with healthy buffer.<br>
+                  <strong>🔴 Red Dot:</strong> Shortfall dip! Hover to view recovery days.</p>
+                </div>
+              </div>
+              <div class="guide-card">
+                <div class="guide-card-icon">⚡</div>
+                <div class="guide-card-content">
+                  <h5>Test a Savings Pace</h5>
+                  <p>Drag the slider below to simulate different savings amounts per paycheck. Watch the chart update live to see how adjustments fix future shortfalls!</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -310,17 +353,34 @@
           </div>
 
           <div class="chart-legend-row" id="cashflowLegendRow">
-            <div class="legend-item-pill">
-              <span class="legend-color-dot" style="background: #9A3412;"></span>
-              <span id="legendLabelSavings">Projected Savings</span>
+            <div class="legend-item-card" id="legendItemSavings" title="Total money accumulated from initial savings and scheduled paychecks">
+              <div class="legend-swatch-box">
+                <span class="legend-color-line" style="background: #9A3412;"></span>
+                <span class="legend-color-dot" style="background: #9A3412;"></span>
+              </div>
+              <div class="legend-text-col">
+                <span class="legend-title" id="legendLabelSavings">Projected Savings</span>
+                <span class="legend-desc" id="legendDescSavings">Total saved from paychecks & pool</span>
+              </div>
             </div>
-            <div class="legend-item-pill">
-              <span class="legend-color-dot" style="background: #64748B;"></span>
-              <span id="legendLabelDue">Total Payments Due</span>
+            <div class="legend-item-card" id="legendItemDue" title="Total vendor payment deadlines and deposits due up to this date">
+              <div class="legend-swatch-box">
+                <span class="legend-color-line" style="background: #64748B;"></span>
+                <span class="legend-color-dot" style="background: #64748B;"></span>
+              </div>
+              <div class="legend-text-col">
+                <span class="legend-title" id="legendLabelDue">Payments Due</span>
+                <span class="legend-desc" id="legendDescDue">Vendor bills due by each milestone</span>
+              </div>
             </div>
-            <div class="legend-item-pill" id="legendCushionItem">
-              <span class="legend-dash-dot" style="border-top: 2px dashed #9A3412;"></span>
-              <span>Emergency Buffer</span>
+            <div class="legend-item-card" id="legendCushionItem" title="Minimum emergency buffer you should keep in reserve (default $1,000)">
+              <div class="legend-swatch-box">
+                <span class="legend-dash-line"></span>
+              </div>
+              <div class="legend-text-col">
+                <span class="legend-title" id="legendLabelCushion">Safety Cushion</span>
+                <span class="legend-desc" id="legendDescCushion">$1,000 emergency reserve floor</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1218,8 +1278,8 @@
 
   <!-- Scripts (non-blocking defer) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-  <script src="sample-data.js?v=2.6" defer></script>
-  <script src="app.js?v=2.6" defer></script>
+  <script src="sample-data.js?v=2.7" defer></script>
+  <script src="app.js?v=2.7" defer></script>
   <script src="consent-manager.js" defer></script>
 </body>
 </html>

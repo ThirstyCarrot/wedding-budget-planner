@@ -206,8 +206,15 @@
     presetPacePlus50: document.getElementById('presetPacePlus50'),
     presetPaceAuto: document.getElementById('presetPaceAuto'),
     legendLabelSavings: document.getElementById('legendLabelSavings'),
+    legendDescSavings: document.getElementById('legendDescSavings'),
     legendLabelDue: document.getElementById('legendLabelDue'),
+    legendDescDue: document.getElementById('legendDescDue'),
     legendCushionItem: document.getElementById('legendCushionItem'),
+    legendLabelCushion: document.getElementById('legendLabelCushion'),
+    legendDescCushion: document.getElementById('legendDescCushion'),
+    toggleChartGuideBtn: document.getElementById('toggleChartGuideBtn'),
+    closeChartGuideBtn: document.getElementById('closeChartGuideBtn'),
+    chartGuideCallout: document.getElementById('chartGuideCallout'),
     donutTooltip: document.getElementById('donutTooltip'),
     viewAllExpensesBtn: document.getElementById('viewAllExpensesBtn'),
 
@@ -2374,10 +2381,38 @@
     }
   }
 
+  // Standardized, human-friendly financial scale calculator (e.g. $0, $10k, $20k, $30k, $40k)
+  function calculateNiceScale(maxVal, minVal = 0, targetTicks = 4) {
+    const rawRange = Math.max(1000, (maxVal - minVal) * 1.10);
+    const roughStep = rawRange / targetTicks;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+    const normalized = roughStep / magnitude;
+    let niceFactor = 1;
+    if (normalized < 1.5) niceFactor = 1;
+    else if (normalized < 3) niceFactor = 2;
+    else if (normalized < 7) niceFactor = 5;
+    else niceFactor = 10;
+
+    const step = niceFactor * magnitude;
+    const niceMax = Math.ceil((minVal + rawRange) / step) * step;
+    return { step, niceMax, minVal: Math.floor(minVal / step) * step };
+  }
+
+  function formatYAxisTick(val) {
+    if (val === 0) return '$0';
+    const absVal = Math.abs(val);
+    const sign = val < 0 ? '-' : '';
+    if (absVal >= 1000) {
+      if (absVal % 1000 === 0) return `${sign}$${absVal / 1000}k`;
+      return `${sign}$${(absVal / 1000).toFixed(1)}k`;
+    }
+    return `${sign}$${Math.round(absVal).toLocaleString()}`;
+  }
+
   // View 1: 📈 Trajectory Curve
   function renderTrajectoryChart(data, ctx, width, height, activePace) {
-    const padLeft = 58;
-    const padRight = 24;
+    const padLeft = 60;
+    const padRight = 84; // Dedicated right margin for clean, direct line end badges
     const padTop = 24;
     const padBottom = 34;
     const chartW = width - padLeft - padRight;
@@ -2425,6 +2460,7 @@
           label: m.label,
           dateLabel: m.dateLabel,
           cumulativeDue,
+          cumSavings,
           projectedBalance,
           isDeficit: projectedBalance < cushion
         };
@@ -2433,10 +2469,12 @@
       steps = realSteps.map(s => {
         const parts = s.milestone.dueDate.split('-');
         const dateLabel = parts.length === 3 ? `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}` : s.milestone.dueDate;
+        const totalSaved = (state.currentSavings || 0) + (s.totalSavingsAccrued || 0);
         return {
           label: s.milestone.title,
           dateLabel,
           cumulativeDue: s.cumulativeDue,
+          cumSavings: totalSaved,
           projectedBalance: s.projectedBalance,
           paychecksReceived: s.paychecksReceived,
           p1Count: s.p1Count,
@@ -2453,14 +2491,13 @@
       });
     }
 
-    let maxVal = Math.max(
-      ...steps.map(s => Math.max(s.cumulativeDue || 0, s.projectedBalance || 0)),
-      state.safetyCushion || 1000,
+    const cushionAmount = Number(state.safetyCushion) || 1000;
+    const rawMax = Math.max(
+      ...steps.map(s => Math.max((s.cumulativeDue || 0) + cushionAmount, s.cumSavings || 0)),
+      cushionAmount,
       1000
     );
-    let minVal = Math.min(0, ...steps.map(s => s.projectedBalance || 0));
-    maxVal = Math.ceil((maxVal * 1.15) / 1000) * 1000;
-    if (minVal < 0) minVal = Math.floor((minVal * 1.2) / 1000) * 1000;
+    const { step: yStep, niceMax: maxVal, minVal } = calculateNiceScale(rawMax, 0, 4);
     const valRange = maxVal - minVal || 1;
 
     function getY(val) {
@@ -2471,59 +2508,24 @@
       return padLeft + (index / (total - 1)) * chartW;
     }
 
-    // Grid Lines & Y-axis labels
+    // Grid Lines & Y-axis labels with clean, standardized increments
     ctx.strokeStyle = 'rgba(60, 50, 40, 0.07)';
     ctx.lineWidth = 1;
     ctx.fillStyle = '#8A847D';
     ctx.font = '500 10.5px Plus Jakarta Sans, sans-serif';
     ctx.textAlign = 'right';
 
-    const gridSteps = 4;
-    for (let i = 0; i <= gridSteps; i++) {
-      const v = minVal + (valRange / gridSteps) * i;
+    for (let v = minVal; v <= maxVal; v += yStep) {
       const y = getY(v);
       ctx.beginPath();
       ctx.moveTo(padLeft, y);
-      ctx.lineTo(width - padRight, y);
+      ctx.lineTo(width - padRight + 10, y);
       ctx.stroke();
 
-      let label = '$' + Math.round(v).toLocaleString();
-      if (Math.abs(v) >= 10000) label = '$' + Math.round(v / 1000) + 'k';
-      ctx.fillText(label, padLeft - 7, y + 4);
+      ctx.fillText(formatYAxisTick(v), padLeft - 8, y + 4);
     }
 
-    // Zero baseline
-    if (minVal < 0) {
-      const zeroY = getY(0);
-      ctx.strokeStyle = 'rgba(192, 57, 43, 0.35)';
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(padLeft, zeroY);
-      ctx.lineTo(width - padRight, zeroY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    // Safety Cushion Line
-    const cushionVal = state.safetyCushion || 1000;
-    if (cushionVal >= minVal && cushionVal <= maxVal) {
-      const cushionY = getY(cushionVal);
-      ctx.strokeStyle = 'rgba(197, 160, 89, 0.45)';
-      ctx.setLineDash([4, 4]);
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(padLeft, cushionY);
-      ctx.lineTo(width - padRight, cushionY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.fillStyle = 'rgba(197, 160, 89, 0.9)';
-      ctx.font = '600 10px Plus Jakarta Sans, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(`Cushion: $${cushionVal.toLocaleString()}`, width - padRight, cushionY - 4);
-    }
-
-    const baselineY = getY(Math.max(0, minVal));
+    const baselineY = getY(0);
 
     function drawCurvePath(points) {
       if (points.length === 0) return;
@@ -2547,12 +2549,13 @@
     }
 
     const duePoints = steps.map((s, idx) => ({ x: getX(idx, steps.length), y: getY(s.cumulativeDue) }));
-    const balancePoints = steps.map((s, idx) => ({ x: getX(idx, steps.length), y: getY(s.projectedBalance) }));
+    const savingsPoints = steps.map((s, idx) => ({ x: getX(idx, steps.length), y: getY(s.cumSavings) }));
+    const cushionPoints = steps.map((s, idx) => ({ x: getX(idx, steps.length), y: getY((s.cumulativeDue || 0) + cushionAmount) }));
 
-    // Area Fill 1: Cumulative Due (Soft Rose)
+    // Area Fill 1: Cumulative Due (Soft Slate)
     const roseGrad = ctx.createLinearGradient(0, padTop, 0, baselineY);
-    roseGrad.addColorStop(0, 'rgba(196, 121, 125, 0.20)');
-    roseGrad.addColorStop(1, 'rgba(196, 121, 125, 0.01)');
+    roseGrad.addColorStop(0, 'rgba(100, 116, 139, 0.12)');
+    roseGrad.addColorStop(1, 'rgba(100, 116, 139, 0.01)');
     ctx.fillStyle = roseGrad;
     ctx.beginPath();
     drawCurvePath(duePoints);
@@ -2561,17 +2564,26 @@
     ctx.closePath();
     ctx.fill();
 
-    // Area Fill 2: Projected Savings Balance (Warm Terracotta)
+    // Area Fill 2: Cumulative Projected Savings (Warm Terracotta)
     const terracottaGrad = ctx.createLinearGradient(0, padTop, 0, baselineY);
-    terracottaGrad.addColorStop(0, 'rgba(154, 52, 18, 0.12)');
-    terracottaGrad.addColorStop(1, 'rgba(154, 52, 18, 0.01)');
+    terracottaGrad.addColorStop(0, 'rgba(154, 52, 18, 0.14)');
+    terracottaGrad.addColorStop(1, 'rgba(154, 52, 18, 0.02)');
     ctx.fillStyle = terracottaGrad;
     ctx.beginPath();
-    drawCurvePath(balancePoints);
-    ctx.lineTo(balancePoints[balancePoints.length - 1].x, baselineY);
-    ctx.lineTo(balancePoints[0].x, baselineY);
+    drawCurvePath(savingsPoints);
+    ctx.lineTo(savingsPoints[savingsPoints.length - 1].x, baselineY);
+    ctx.lineTo(savingsPoints[0].x, baselineY);
     ctx.closePath();
     ctx.fill();
+
+    // Stroke 0: Safety Cushion Reserve Floor (Amber Dashed)
+    ctx.strokeStyle = '#D97706';
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    drawCurvePath(cushionPoints);
+    ctx.stroke();
+    ctx.setLineDash([]);
 
     // Stroke 1: Cumulative Due (Slate)
     ctx.strokeStyle = '#64748B';
@@ -2590,51 +2602,141 @@
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.beginPath();
-    drawCurvePath(balancePoints);
+    drawCurvePath(savingsPoints);
     ctx.stroke();
 
-    // Nodes & Labels
+    // Direct Line End Labels on right margin
+    if (steps.length > 0) {
+      const lastSavings = savingsPoints[savingsPoints.length - 1];
+      const lastDue = duePoints[duePoints.length - 1];
+      const endX = lastSavings.x + 8;
+      
+      let savingsLabelY = lastSavings.y;
+      let dueLabelY = lastDue.y;
+      
+      // Ensure badges do not vertically collide if values are very close
+      if (Math.abs(savingsLabelY - dueLabelY) < 18) {
+        if (savingsLabelY <= dueLabelY) {
+          savingsLabelY -= 7;
+          dueLabelY += 7;
+        } else {
+          savingsLabelY += 7;
+          dueLabelY -= 7;
+        }
+      }
+
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      
+      // Savings badge
+      ctx.font = '700 9.5px Plus Jakarta Sans, sans-serif';
+      ctx.fillStyle = '#9A3412';
+      ctx.fillText(`Savings: ${formatYAxisTick(steps[steps.length - 1].cumSavings)}`, endX, savingsLabelY);
+
+      // Bills due badge
+      ctx.font = '700 9.5px Plus Jakarta Sans, sans-serif';
+      ctx.fillStyle = '#64748B';
+      ctx.fillText(`Due: ${formatYAxisTick(steps[steps.length - 1].cumulativeDue)}`, endX, dueLabelY);
+    }
+
+    // Baseline axis stroke
+    ctx.strokeStyle = 'rgba(60, 50, 40, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, height - padBottom);
+    ctx.lineTo(width - padRight + 10, height - padBottom);
+    ctx.stroke();
+
+    // Smart non-overlapping X-axis dates
+    const minLabelSpacing = 56;
+    const visibleLabelIndices = new Set();
+    if (steps.length > 0) {
+      visibleLabelIndices.add(0);
+      visibleLabelIndices.add(steps.length - 1);
+      let lastX = getX(0, steps.length);
+      const endX = getX(steps.length - 1, steps.length);
+      for (let i = 1; i < steps.length - 1; i++) {
+        const curX = getX(i, steps.length);
+        if ((curX - lastX >= minLabelSpacing) && (endX - curX >= minLabelSpacing)) {
+          visibleLabelIndices.add(i);
+          lastX = curX;
+        }
+      }
+    }
+
+    // Nodes & Milestone Tick Labels
     steps.forEach((s, idx) => {
-      const ptBalance = balancePoints[idx];
+      const ptSavings = savingsPoints[idx];
       const ptDue = duePoints[idx];
 
-      // Due node
-      ctx.fillStyle = '#FFFFFF';
+      // Milestone tick on bottom baseline
+      const isVisibleDate = visibleLabelIndices.has(idx);
+      ctx.strokeStyle = isVisibleDate ? 'rgba(60, 50, 40, 0.40)' : 'rgba(60, 50, 40, 0.18)';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(ptDue.x, ptDue.y, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#64748B';
-      ctx.lineWidth = 2;
+      ctx.moveTo(ptSavings.x, height - padBottom);
+      ctx.lineTo(ptSavings.x, height - padBottom + (isVisibleDate ? 5 : 2.5));
       ctx.stroke();
 
-      // Balance node
-      const pointColor = s.isDeficit ? '#B91C1C' : '#9A3412';
+      // Render date label if scheduled by smart spacing
+      if (isVisibleDate) {
+        ctx.fillStyle = '#64748B';
+        ctx.font = '600 10px Plus Jakarta Sans, sans-serif';
+        ctx.textBaseline = 'top';
+        if (idx === 0) {
+          ctx.textAlign = 'left';
+        } else if (idx === steps.length - 1) {
+          ctx.textAlign = 'right';
+        } else {
+          ctx.textAlign = 'center';
+        }
+        ctx.fillText(s.dateLabel, ptSavings.x, height - padBottom + 6);
+      }
+
+      // Due node - clean 3.5px slate circle
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.arc(ptBalance.x, ptBalance.y, 5, 0, Math.PI * 2);
+      ctx.arc(ptDue.x, ptDue.y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#64748B';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+
+      // Savings node - prominent status-colored indicator
+      const isDeficit = s.isDeficit;
+      const pointColor = isDeficit ? '#DC2626' : '#9A3412';
+      
+      if (isDeficit) {
+        ctx.fillStyle = 'rgba(220, 38, 38, 0.18)';
+        ctx.beginPath();
+        ctx.arc(ptSavings.x, ptSavings.y, 7.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(ptSavings.x, ptSavings.y, 4.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = pointColor;
       ctx.beginPath();
-      ctx.arc(ptBalance.x, ptBalance.y, 3, 0, Math.PI * 2);
+      ctx.arc(ptSavings.x, ptSavings.y, 2.8, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = pointColor;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.8;
       ctx.stroke();
-
-      // X-Axis Date
-      ctx.fillStyle = '#6E6862';
-      ctx.font = '600 10.5px Plus Jakarta Sans, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(s.dateLabel, ptBalance.x, height - padBottom + 16);
 
       // Save interaction point for hover tooltip
       chartInteractionPoints.push({
-        x: ptBalance.x,
-        y: ptBalance.y,
+        x: ptSavings.x,
+        y: ptSavings.y,
+        ySavings: ptSavings.y,
+        yDue: ptDue.y,
         title: s.label,
         date: s.dateLabel,
-        balance: s.projectedBalance,
+        savings: s.cumSavings,
         due: s.cumulativeDue,
+        balance: s.cumSavings,
+        netRemaining: s.projectedBalance,
         paychecksReceived: s.paychecksReceived,
         p1Count: s.p1Count,
         p2Count: s.p2Count,
@@ -2645,16 +2747,17 @@
         recoveryDate: s.recoveryDate,
         recoveryPartner: s.recoveryPartner,
         deficitDurationDays: s.deficitDurationDays,
-        balanceLabel: 'Projected Balance',
-        dueLabel: 'Cumulative Due',
+        balanceLabel: 'Projected Savings',
+        dueLabel: 'Payments Due',
         isDeficit: s.isDeficit,
+        statusText: s.isDeficit ? '⚠️ Below Safety Cushion' : '✅ Healthy Cushion',
         isDual: state.incomeMode === 'dual'
       });
     });
 
-    // Draw active hover scrub line & glowing circle if hovering
+    // Draw active hover scrub line & glowing circles if hovering
     if (activeHoverPoint) {
-      ctx.strokeStyle = 'rgba(60, 50, 40, 0.25)';
+      ctx.strokeStyle = 'rgba(60, 50, 40, 0.28)';
       ctx.lineWidth = 1.2;
       ctx.setLineDash([4, 3]);
       ctx.beginPath();
@@ -2663,17 +2766,41 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
+      // Vertical bridge connecting Savings dot to Due dot
+      if (activeHoverPoint.yDue !== undefined) {
+        ctx.strokeStyle = activeHoverPoint.isDeficit ? 'rgba(220, 38, 38, 0.45)' : 'rgba(154, 52, 18, 0.35)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(activeHoverPoint.x, activeHoverPoint.ySavings || activeHoverPoint.y);
+        ctx.lineTo(activeHoverPoint.x, activeHoverPoint.yDue);
+        ctx.stroke();
+      }
+
+      // Glow on savings node
       ctx.beginPath();
-      ctx.arc(activeHoverPoint.x, activeHoverPoint.y, 8, 0, Math.PI * 2);
-      ctx.strokeStyle = activeHoverPoint.isDeficit ? 'rgba(192, 57, 43, 0.45)' : 'rgba(197, 160, 89, 0.5)';
+      ctx.arc(activeHoverPoint.x, activeHoverPoint.ySavings || activeHoverPoint.y, 8, 0, Math.PI * 2);
+      ctx.strokeStyle = activeHoverPoint.isDeficit ? 'rgba(220, 38, 38, 0.45)' : 'rgba(154, 52, 18, 0.45)';
       ctx.lineWidth = 4;
       ctx.stroke();
+
+      // Glow on payments due node if available
+      if (activeHoverPoint.yDue !== undefined) {
+        ctx.beginPath();
+        ctx.arc(activeHoverPoint.x, activeHoverPoint.yDue, 7, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.45)';
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+      }
     }
 
-    // Legend labels
-    if (DOM.legendLabelSavings) DOM.legendLabelSavings.textContent = 'Projected Savings Balance';
-    if (DOM.legendLabelDue) DOM.legendLabelDue.textContent = 'Cumulative Payments Due';
-    if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'inline-flex';
+    // Legend labels & descriptions
+    if (DOM.legendLabelSavings) DOM.legendLabelSavings.textContent = 'Projected Savings';
+    if (DOM.legendDescSavings) DOM.legendDescSavings.textContent = 'Total saved from paychecks & pool';
+    if (DOM.legendLabelDue) DOM.legendLabelDue.textContent = 'Payments Due';
+    if (DOM.legendDescDue) DOM.legendDescDue.textContent = 'Vendor bills due by each milestone';
+    if (DOM.legendLabelCushion) DOM.legendLabelCushion.textContent = 'Safety Cushion';
+    if (DOM.legendDescCushion) DOM.legendDescCushion.textContent = 'Keep savings above payments + $1k';
+    if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'flex';
   }
 
   // View 2: 📊 Monthly Cash Flow Bars
@@ -2716,31 +2843,28 @@
       });
     }
 
-    let maxVal = Math.max(...months.map(m => Math.max(m.savings, m.due)), 1000);
-    maxVal = Math.ceil((maxVal * 1.25) / 500) * 500;
+    let rawMax = Math.max(...months.map(m => Math.max(m.savings, m.due)), 1000);
+    const { step: yStep, niceMax: maxVal } = calculateNiceScale(rawMax, 0, 4);
 
     function getY(val) {
       return padTop + chartH - (val / maxVal) * chartH;
     }
 
-    // Grid lines
+    // Grid lines & clean Y-axis ticks
     ctx.strokeStyle = 'rgba(60, 50, 40, 0.07)';
     ctx.lineWidth = 1;
     ctx.fillStyle = '#8A847D';
     ctx.font = '500 10.5px Plus Jakarta Sans, sans-serif';
     ctx.textAlign = 'right';
 
-    for (let i = 0; i <= 4; i++) {
-      const v = (maxVal / 4) * i;
+    for (let v = 0; v <= maxVal; v += yStep) {
       const y = getY(v);
       ctx.beginPath();
       ctx.moveTo(padLeft, y);
       ctx.lineTo(width - padRight, y);
       ctx.stroke();
 
-      let label = '$' + Math.round(v).toLocaleString();
-      if (v >= 10000) label = '$' + Math.round(v / 1000) + 'k';
-      ctx.fillText(label, padLeft - 7, y + 4);
+      ctx.fillText(formatYAxisTick(v), padLeft - 7, y + 4);
     }
 
     const baselineY = getY(0);
@@ -2807,14 +2931,16 @@
     });
 
     if (DOM.legendLabelSavings) DOM.legendLabelSavings.textContent = 'Savings Added That Month';
+    if (DOM.legendDescSavings) DOM.legendDescSavings.textContent = 'Paychecks allocated to wedding this month';
     if (DOM.legendLabelDue) DOM.legendLabelDue.textContent = 'Payments Due That Month';
+    if (DOM.legendDescDue) DOM.legendDescDue.textContent = 'Vendor invoices falling due this month';
     if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'none';
   }
 
   // View 3: 🪜 Milestone Steps
   function renderStepChart(data, ctx, width, height, activePace) {
     const padLeft = 58;
-    const padRight = 24;
+    const padRight = 36;
     const padTop = 24;
     const padBottom = 34;
     const chartW = width - padLeft - padRight;
@@ -2860,10 +2986,9 @@
       });
     }
 
-    let maxVal = Math.max(...steps.map(s => s.balance), state.safetyCushion || 1000, 1000);
-    let minVal = Math.min(0, ...steps.map(s => s.balance));
-    maxVal = Math.ceil((maxVal * 1.15) / 1000) * 1000;
-    if (minVal < 0) minVal = Math.floor((minVal * 1.2) / 1000) * 1000;
+    let rawMax = Math.max(...steps.map(s => s.balance), state.safetyCushion || 1000, 1000);
+    let rawMin = Math.min(0, ...steps.map(s => s.balance));
+    const { step: yStep, niceMax: maxVal, minVal } = calculateNiceScale(rawMax, rawMin, 4);
     const valRange = maxVal - minVal || 1;
 
     function getY(val) {
@@ -2874,38 +2999,81 @@
       return padLeft + (index / (total - 1)) * chartW;
     }
 
-    // Grid lines
+    // Grid lines & clean Y-axis ticks
     ctx.strokeStyle = 'rgba(60, 50, 40, 0.07)';
     ctx.lineWidth = 1;
     ctx.fillStyle = '#8A847D';
     ctx.font = '500 10.5px Plus Jakarta Sans, sans-serif';
     ctx.textAlign = 'right';
 
-    for (let i = 0; i <= 4; i++) {
-      const v = minVal + (valRange / 4) * i;
+    for (let v = minVal; v <= maxVal; v += yStep) {
       const y = getY(v);
       ctx.beginPath();
       ctx.moveTo(padLeft, y);
       ctx.lineTo(width - padRight, y);
       ctx.stroke();
 
-      let label = '$' + Math.round(v).toLocaleString();
-      if (Math.abs(v) >= 10000) label = '$' + Math.round(v / 1000) + 'k';
-      ctx.fillText(label, padLeft - 7, y + 4);
+      ctx.fillText(formatYAxisTick(v), padLeft - 7, y + 4);
     }
 
-    // Cushion Line
+    // Safety Cushion Reference Floor
     const cushionVal = state.safetyCushion || 1000;
     if (cushionVal >= minVal && cushionVal <= maxVal) {
       const cushionY = getY(cushionVal);
-      ctx.strokeStyle = 'rgba(197, 160, 89, 0.45)';
-      ctx.setLineDash([4, 4]);
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = '#D97706';
+      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = 1.8;
       ctx.beginPath();
       ctx.moveTo(padLeft, cushionY);
       ctx.lineTo(width - padRight, cushionY);
       ctx.stroke();
       ctx.setLineDash([]);
+
+      // Subtle badge positioned on the left side where initial balance is high
+      const badgeText = `Safety Floor: ${formatYAxisTick(cushionVal)}`;
+      ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
+      const textW = ctx.measureText(badgeText).width;
+      const badgeX = padLeft + 12;
+      const badgeY = cushionY - 14;
+
+      ctx.fillStyle = 'rgba(254, 243, 199, 0.92)';
+      ctx.strokeStyle = '#D97706';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(badgeX - 4, badgeY - 2, textW + 8, 14, 3);
+      else ctx.rect(badgeX - 4, badgeY - 2, textW + 8, 14);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#B45309';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(badgeText, badgeX, badgeY + 5);
+    }
+
+    // Baseline axis stroke
+    ctx.strokeStyle = 'rgba(60, 50, 40, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, height - padBottom);
+    ctx.lineTo(width - padRight, height - padBottom);
+    ctx.stroke();
+
+    // Smart non-overlapping X-axis dates
+    const minStepSpacing = 56;
+    const visibleStepIndices = new Set();
+    if (steps.length > 0) {
+      visibleStepIndices.add(0);
+      visibleStepIndices.add(steps.length - 1);
+      let lastX = getX(0, steps.length);
+      const endX = getX(steps.length - 1, steps.length);
+      for (let i = 1; i < steps.length - 1; i++) {
+        const curX = getX(i, steps.length);
+        if ((curX - lastX >= minStepSpacing) && (endX - curX >= minStepSpacing)) {
+          visibleStepIndices.add(i);
+          lastX = curX;
+        }
+      }
     }
 
     // Step Line
@@ -2926,6 +3094,7 @@
     ctx.stroke();
 
     // Step Nodes & Drop labels
+    let lastDropTagX = -999;
     steps.forEach((s, idx) => {
       const x = getX(idx, steps.length);
       const y = getY(s.balance);
@@ -2939,19 +3108,41 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Drop tag
-      if (s.drop > 0) {
+      // Drop tag: only display on notable milestones with at least 42px spacing from previous tag
+      const isMajorDrop = s.drop >= 2500;
+      const hasSpacing = (x - lastDropTagX >= 42);
+      if (s.drop > 0 && (isMajorDrop || (hasSpacing && s.drop >= 1000))) {
         ctx.fillStyle = '#64748B';
         ctx.font = '700 9px Plus Jakarta Sans, sans-serif';
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
         ctx.fillText(`-${formatCurrency(s.drop)}`, x, y - 9);
+        lastDropTagX = x;
       }
 
-      // X-Axis Date
-      ctx.fillStyle = '#6E6862';
-      ctx.font = '600 10.5px Plus Jakarta Sans, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(s.dateLabel, x, height - padBottom + 16);
+      // Milestone tick mark on baseline
+      const isVisibleDate = visibleStepIndices.has(idx);
+      ctx.strokeStyle = isVisibleDate ? 'rgba(60, 50, 40, 0.40)' : 'rgba(60, 50, 40, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, height - padBottom);
+      ctx.lineTo(x, height - padBottom + (isVisibleDate ? 5 : 2.5));
+      ctx.stroke();
+
+      // X-Axis Date (Boundary aware alignment to prevent edge clipping)
+      if (isVisibleDate) {
+        ctx.fillStyle = '#6E6862';
+        ctx.font = '600 10px Plus Jakarta Sans, sans-serif';
+        ctx.textBaseline = 'top';
+        if (idx === 0) {
+          ctx.textAlign = 'left';
+        } else if (idx === steps.length - 1) {
+          ctx.textAlign = 'right';
+        } else {
+          ctx.textAlign = 'center';
+        }
+        ctx.fillText(s.dateLabel, x, height - padBottom + 6);
+      }
 
       chartInteractionPoints.push({
         x,
@@ -2960,6 +3151,7 @@
         date: s.dateLabel,
         balance: s.balance,
         due: s.drop,
+        netRemaining: s.balance,
         paychecksReceived: s.paychecksReceived,
         p1Count: s.p1Count,
         p2Count: s.p2Count,
@@ -2968,16 +3160,21 @@
         recoveryDate: s.recoveryDate,
         recoveryPartner: s.recoveryPartner,
         deficitDurationDays: s.deficitDurationDays,
-        balanceLabel: 'Post-Payment Cash',
+        balanceLabel: 'Account Bank Balance',
         dueLabel: 'Payment Deducted',
         isDeficit: s.isDeficit,
+        statusText: s.isDeficit ? '⚠️ Below Safety Buffer' : '✅ Healthy Buffer',
         isDual: state.incomeMode === 'dual'
       });
     });
 
-    if (DOM.legendLabelSavings) DOM.legendLabelSavings.textContent = 'Account Cash Balance';
-    if (DOM.legendLabelDue) DOM.legendLabelDue.textContent = 'Milestone Payment Drop';
-    if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'inline-flex';
+    if (DOM.legendLabelSavings) DOM.legendLabelSavings.textContent = 'Account Bank Balance';
+    if (DOM.legendDescSavings) DOM.legendDescSavings.textContent = 'Cash in bank after paying milestone';
+    if (DOM.legendLabelDue) DOM.legendLabelDue.textContent = 'Payment Deducted';
+    if (DOM.legendDescDue) DOM.legendDescDue.textContent = 'Milestone invoice amount paid';
+    if (DOM.legendLabelCushion) DOM.legendLabelCushion.textContent = 'Safety Cushion';
+    if (DOM.legendDescCushion) DOM.legendDescCushion.textContent = '$1,000 emergency reserve floor';
+    if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'flex';
   }
 
   // Budget Allocation Donut Chart (Data calculation & setup)
@@ -3456,6 +3653,34 @@
     const tooltip = DOM.cashflowTooltip;
     if (!canvas || !tooltip) return;
 
+    function updateCashflowTooltipPosition(targetX, targetY, containerW, containerH) {
+      const tooltipW = tooltip.offsetWidth || 215;
+      const tooltipH = tooltip.offsetHeight || 125;
+      const halfW = tooltipW / 2;
+
+      // Strict boundary clamping with 12px margin from container edges
+      const clampedX = Math.max(halfW + 12, Math.min(containerW - halfW - 12, targetX));
+      tooltip.style.left = `${Math.round(clampedX)}px`;
+
+      // Set arrow pointer position relative to tooltip box
+      const arrowX = Math.max(14, Math.min(tooltipW - 14, halfW + (targetX - clampedX)));
+      tooltip.style.setProperty('--arrow-left', `${Math.round(arrowX)}px`);
+
+      // Vertical positioning: If target dot is in upper 45% of the container, flip tooltip BELOW the dot
+      const isTopHalf = targetY < (containerH * 0.45);
+      if (isTopHalf) {
+        tooltip.style.top = `${Math.round(targetY + 14)}px`;
+        tooltip.style.transform = 'translate(-50%, 0)';
+        tooltip.classList.add('tooltip-arrow-top');
+        tooltip.classList.remove('tooltip-arrow-bottom');
+      } else {
+        tooltip.style.top = `${Math.round(targetY - 12)}px`;
+        tooltip.style.transform = 'translate(-50%, -100%)';
+        tooltip.classList.add('tooltip-arrow-bottom');
+        tooltip.classList.remove('tooltip-arrow-top');
+      }
+    }
+
     function handleMove(clientX, clientY) {
       if (!chartInteractionPoints || chartInteractionPoints.length === 0) return;
       const rect = canvas.getBoundingClientRect();
@@ -3473,6 +3698,7 @@
 
       if (closest && minDistance < 55) {
         if (activeHoverPoint === closest) {
+          updateCashflowTooltipPosition(closest.x, closest.y, rect.width, rect.height);
           return; // Point unchanged: avoid re-rendering entire chart
         }
         activeHoverPoint = closest;
@@ -3512,23 +3738,27 @@
             <span>${closest.date}</span>
           </div>
           <div class="tt-row highlight">
-            <span>${closest.balanceLabel || 'Balance'}:</span>
-            <span style="color: ${closest.isDeficit ? '#FFAAAA' : '#EBD49B'};">${formatCurrency(closest.balance)}</span>
+            <span>${closest.balanceLabel || 'Projected Savings'}:</span>
+            <span style="color: #FED7AA;">${formatCurrency(closest.balance)}</span>
           </div>
           ${closest.due !== undefined ? `
           <div class="tt-row">
-            <span>${closest.dueLabel || 'Due'}:</span>
-            <span>${formatCurrency(closest.due)}</span>
+            <span>${closest.dueLabel || 'Payments Due'}:</span>
+            <span style="color: #94A3B8;">${formatCurrency(closest.due)}</span>
+          </div>` : ''}
+          ${closest.netRemaining !== undefined ? `
+          <div class="tt-row">
+            <span>Remaining Buffer:</span>
+            <span style="color: ${closest.isDeficit ? '#FFAAAA' : '#86EFAC'}; font-weight: 600;">${formatCurrency(closest.netRemaining)}</span>
           </div>` : ''}
           ${paychecksHtml}
           ${dipHtml}
-          <div class="tt-row" style="margin-top: 4px; font-size: 0.72rem; color: ${closest.isDeficit ? '#FF8888' : '#88DDAA'}; font-weight: 600;">
+          <div class="tt-row" style="margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.12); font-size: 0.72rem; color: ${closest.isDeficit ? '#FF8888' : '#88DDAA'}; font-weight: 600;">
             <span>${closest.statusText || (closest.isDeficit ? '⚠️ Below Safety Cushion' : '✅ Healthy Cushion')}</span>
           </div>
         `;
-        tooltip.style.left = `${Math.round(closest.x)}px`;
-        tooltip.style.top = `${Math.round(Math.max(40, closest.y - 10))}px`;
         tooltip.style.display = 'block';
+        updateCashflowTooltipPosition(closest.x, closest.y, rect.width, rect.height);
       } else {
         handleLeave();
       }
@@ -3569,6 +3799,22 @@
 
   // Interactive View Modes & Dynamic Pace Toolbar Controls
   function setupChartControlsListeners() {
+    // 0. Chart Guide Toggle
+    if (DOM.toggleChartGuideBtn && DOM.chartGuideCallout) {
+      DOM.toggleChartGuideBtn.addEventListener('click', () => {
+        const isHidden = DOM.chartGuideCallout.style.display === 'none' || !DOM.chartGuideCallout.style.display;
+        DOM.chartGuideCallout.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) {
+          DOM.chartGuideCallout.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    }
+    if (DOM.closeChartGuideBtn && DOM.chartGuideCallout) {
+      DOM.closeChartGuideBtn.addEventListener('click', () => {
+        DOM.chartGuideCallout.style.display = 'none';
+      });
+    }
+
     // 1. Cashflow View Mode Toggles (Trajectory, Monthly, Steps)
     if (DOM.cashflowViewModeGroup) {
       DOM.cashflowViewModeGroup.addEventListener('click', e => {
