@@ -1,6 +1,6 @@
 /**
- * consent-manager.js - Enterprise GDPR, CCPA/CPRA & ePrivacy Cookie Consent Architecture
- * 
+ * @file consent-manager.js
+ * @description Enterprise GDPR, CCPA/CPRA & ePrivacy Cookie Consent Architecture.
  * Complies with:
  * - GDPR (EU 2016/679) Articles 4(11), 7, 12, 13 (Prior explicit opt-in consent)
  * - ePrivacy Directive (2002/58/EC as amended by 2009/136/EC) Article 5(3)
@@ -15,22 +15,28 @@
   const STORAGE_KEY = 'ep_cookie_consent_v1';
   const CONSENT_VERSION = '1.0.0';
 
-  // State schema
-  const defaultConsent = {
+  /**
+   * Default state schema enforcing strict prior-consent opt-in for all optional categories.
+   * @type {Readonly<Object>}
+   */
+  const DEFAULT_CONSENT = Object.freeze({
     version: CONSENT_VERSION,
     timestamp: null,
     gpcActive: false,
-    categories: {
-      necessary: true,   // Always true, non-negotiable
-      analytics: false,   // Prior consent required
-      marketing: false   // Prior consent required
-    }
-  };
+    categories: Object.freeze({
+      necessary: true,   // Always true, non-negotiable under ePrivacy Art 5(3)
+      analytics: false,  // Explicit opt-in required prior to script execution
+      marketing: false   // Explicit opt-in required prior to script execution
+    })
+  });
 
   let currentConsent = null;
   const callbacks = [];
 
-  // Check GPC (Global Privacy Control) and DNT signals
+  /**
+   * Detects browser-level privacy signals including Global Privacy Control (GPC) and Do Not Track (DNT).
+   * @returns {boolean} True if a proactive opt-out signal is asserted by the user agent.
+   */
   function detectGpcSignal() {
     return (
       (typeof navigator !== 'undefined' && (
@@ -43,7 +49,10 @@
     );
   }
 
-  // Load existing consent from localStorage
+  /**
+   * Loads and validates previously stored consent record from localStorage.
+   * @returns {Object|null} Stored consent record if valid, otherwise null.
+   */
   function loadStoredConsent() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -158,7 +167,7 @@
         <div class="consent-banner-card">
           <div class="consent-banner-content">
             <div class="consent-banner-header">
-              <span class="consent-shield-icon" aria-hidden="true">🛡️</span>
+              <svg class="consent-shield-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               <h2 id="consentBannerTitle">Your Privacy & Cookie Choices</h2>
             </div>
             <p class="consent-banner-text">
@@ -342,8 +351,13 @@
     }
   }
 
-  // Public Interface
+  /**
+   * Public interface for consent state inspection, preference modal invocation, and event subscription.
+   */
   window.ConsentManager = {
+    /**
+     * Initializes consent state from localStorage or displays prior-consent banner.
+     */
     init: function() {
       const stored = loadStoredConsent();
       if (stored) {
@@ -358,6 +372,10 @@
         }
       }
     },
+
+    /**
+     * Programmatically opens the granular cookie preferences modal dialog.
+     */
     openSettings: function() {
       const modal = document.getElementById('consentModalDialog');
       if (!modal) {
@@ -375,14 +393,30 @@
         }
       }, 50);
     },
+
+    /**
+     * Checks if explicit user consent has been granted for a specific category.
+     * @param {('necessary'|'analytics'|'marketing')} category - Consent category to verify.
+     * @returns {boolean} True if category is active and consented.
+     */
     hasConsent: function(category) {
       if (category === 'necessary') return true;
       if (!currentConsent || !currentConsent.categories) return false;
       return currentConsent.categories[category] === true;
     },
+
+    /**
+     * Returns an immutable copy of current consent record or default baseline state.
+     * @returns {Object} Deep-cloned consent object.
+     */
     getConsent: function() {
-      return currentConsent ? JSON.parse(JSON.stringify(currentConsent)) : null;
+      return JSON.parse(JSON.stringify(currentConsent || DEFAULT_CONSENT));
     },
+
+    /**
+     * Registers a callback listener triggered whenever consent preferences are updated.
+     * @param {Function} callback - Function receiving the updated consent record.
+     */
     onConsentUpdate: function(callback) {
       if (typeof callback === 'function') {
         callbacks.push(callback);

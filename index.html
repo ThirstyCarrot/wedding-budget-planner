@@ -62,17 +62,20 @@
         <button class="btn btn-primary" id="openAddExpenseBtn">
           <span>+</span> Add Expense
         </button>
+        <button class="btn btn-secondary" id="openAddFundBtn" title="Add extra money, gifts, bonuses, or savings deposits into funds">
+          Add Funds
+        </button>
         <button class="btn btn-ai" id="openAiHubBtn" title="EternalAI Financial Advisor & Hidden Cost Scanner">
-          <span class="ai-sparkle-icon">✨</span> EternalAI Hub
+          EternalAI Hub
         </button>
         <button class="btn btn-secondary" id="openSettingsBtn" title="Wedding Settings & Budget">
-          ⚙️ Settings
+          Settings
         </button>
         <button class="btn btn-secondary" id="openDataToolsBtn" title="Export / Import, Supabase Cloud & Backups">
-          💾 Data <span class="cloud-status-dot" id="headerCloudDot" title="Cloud status: Local only"></span>
+          Data <span class="cloud-status-dot" id="headerCloudDot" title="Cloud status: Local only"></span>
         </button>
         <button class="btn btn-secondary" id="printReportBtn" title="Print Budget Report">
-          🖨️ Print
+          Print
         </button>
       </div>
     </header>
@@ -81,17 +84,17 @@
     <nav class="nav-tabs-wrapper" aria-label="Planner Views">
       <div class="nav-tabs" role="tablist">
         <button class="tab-btn active" role="tab" aria-selected="true" data-tab="dashboard">
-          <span>📊</span> Overview
+          Overview
         </button>
         <button class="tab-btn" role="tab" aria-selected="false" data-tab="schedule">
-          <span>📅</span> Payment Schedule
+          Payment Schedule
           <span class="badge-pill" id="unpaidMilestonesCount">0</span>
         </button>
         <button class="tab-btn" role="tab" aria-selected="false" data-tab="budget">
-          <span>📋</span> Budget & Expenses
+          Budget & Expenses
         </button>
         <button class="tab-btn" role="tab" aria-selected="false" data-tab="simulator">
-          <span>💡</span> Savings Simulator
+          Savings Simulator
         </button>
       </div>
 
@@ -133,7 +136,7 @@
           </div>
           <div class="welcome-field-action">
             <button type="submit" class="btn btn-primary" id="saveWelcomeSetupBtn">
-              Save & Start Planning ✨
+              Save & Start Planning
             </button>
           </div>
         </div>
@@ -161,7 +164,7 @@
       </div>
     </section>
 
-    <!-- Top KPI Cards: 3 Core Questions -->
+    <!-- Top KPI Cards: 4 Core Pillars -->
     <section class="kpi-grid" aria-label="Key Budget Metrics">
       <!-- 1. Total Wedding Budget (Target vs Planned) -->
       <div class="kpi-card" id="kpiBudgetCard">
@@ -180,7 +183,24 @@
         <span id="kpiActualBar" style="display: none;"></span>
       </div>
 
-      <!-- 2. Paid So Far -->
+      <!-- 2. Wedding Funds in Bank (Actual Savings + Extra Money) -->
+      <div class="kpi-card" id="kpiFundsCard">
+        <div class="kpi-header">
+          <span class="kpi-title">Wedding Funds Saved</span>
+          <span class="kpi-icon">🏦</span>
+        </div>
+        <div class="kpi-main-val" id="kpiCurrentSavings">$0</div>
+        <div class="kpi-meta" id="kpiFundsMeta">
+          <span id="kpiExtraFundsSummary">$0 extra gifts/bonuses</span>
+          <span class="badge-pill badge-upcoming" id="kpiTrackBadge" style="font-size: 0.72rem; padding: 2px 7px; margin-left: auto;">On Track</span>
+        </div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-bar success" id="kpiSavingsCoverageBar" style="width: 0%;"></div>
+        </div>
+        <span id="kpiSavingsGap" style="display: none;"></span>
+      </div>
+
+      <!-- 3. Paid So Far -->
       <div class="kpi-card" id="kpiPaidCard">
         <div class="kpi-header">
           <span class="kpi-title">Paid So Far</span>
@@ -193,7 +213,7 @@
         </div>
       </div>
 
-      <!-- 3. Remaining to Pay & Savings Coverage -->
+      <!-- 4. Remaining to Pay & Savings Coverage -->
       <div class="kpi-card" id="kpiRemainingCard">
         <div class="kpi-header">
           <span class="kpi-title">Remaining to Pay</span>
@@ -207,10 +227,6 @@
         <div class="kpi-progress">
           <div class="kpi-progress-bar rose" id="kpiRemainingBar" style="width: 0%;"></div>
         </div>
-        <!-- Hidden elements for backward-compatible bindings -->
-        <span id="kpiCurrentSavings" style="display: none;">$0</span>
-        <span id="kpiSavingsGap" style="display: none;"></span>
-        <span id="kpiSavingsCoverageBar" style="display: none;"></span>
       </div>
     </section>
 
@@ -258,6 +274,117 @@
         </p>
       </div>
 
+      <!-- Wedding Funds & Savings Health Tracker -->
+      <div class="panel-card savings-health-card" id="savingsHealthCard">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.35rem;">🏦</span>
+              <h2>Wedding Funds & Savings Health</h2>
+              <span class="badge-pill" id="savingsTrackHeaderPill">Evaluating Track...</span>
+            </div>
+            <p>Input your actual money in savings to verify you're on the right track, and log any extra gifts or bonuses obtained</p>
+          </div>
+          <div class="savings-card-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="addFundFromSectionBtn">
+              <span>+</span> Add Extra Money
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 1: Live Savings Input & On-Track Status Banner -->
+        <div class="savings-health-grid">
+          <!-- Left: Input & Bank Balance -->
+          <div class="savings-input-card">
+            <div class="savings-input-header">
+              <label for="quickSavingsInput" class="savings-input-title">
+                <span>Money Put into Wedding Savings ($)</span>
+              </label>
+              <span class="field-hint">Actual dedicated funds in your bank account today</span>
+            </div>
+            <div class="savings-input-action-row">
+              <div class="savings-currency-field">
+                <span class="currency-symbol">$</span>
+                <input type="number" id="quickSavingsInput" class="form-control savings-input-lg" min="0" step="1" placeholder="0" aria-label="Current Money in Wedding Savings">
+              </div>
+              <button type="button" class="btn btn-primary" id="saveQuickSavingsBtn">
+                Save Balance
+              </button>
+            </div>
+            <div class="savings-input-footnote" id="quickSavingsFootnote">
+              Update your balance whenever you deposit money to see if your timeline stays on track.
+            </div>
+          </div>
+
+          <!-- Right: On-Track Health Diagnosis -->
+          <div class="savings-diagnosis-card" id="savingsDiagnosisCard">
+            <div class="diagnosis-top-row">
+              <span class="diagnosis-badge" id="savingsTrackBadge">🟢 On Track</span>
+              <span class="diagnosis-pace-indicator" id="savingsPaceComparison">Pace: $0/paycheck</span>
+            </div>
+            <h4 class="diagnosis-title" id="savingsTrackTitle">Evaluating your wedding savings track...</h4>
+            <p class="diagnosis-narrative" id="savingsTrackNarrative">
+              Add your savings and expenses to see your personalized on-track evaluation.
+            </p>
+
+            <!-- Next Milestone Readiness Progress Bar -->
+            <div class="readiness-meter-wrapper" id="readinessMeterWrapper">
+              <div class="readiness-header">
+                <span class="readiness-label" id="readinessLabel">Next Payment Readiness</span>
+                <span class="readiness-val" id="readinessVal">0%</span>
+              </div>
+              <div class="readiness-track">
+                <div class="readiness-fill" id="readinessFill" style="width: 0%;"></div>
+              </div>
+              <span class="readiness-subtext" id="readinessSubtext">Next payment due: None scheduled</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Four Funds Breakdown KPI Tiles -->
+        <div class="funds-tiles-row">
+          <div class="fund-tile">
+            <span class="fund-tile-label">Total in Bank Today</span>
+            <div class="fund-tile-val" id="fundsTileSavings">$0</div>
+            <span class="fund-tile-sub" id="fundsTileSavingsSub">Savings balance</span>
+          </div>
+          <div class="fund-tile">
+            <span class="fund-tile-label">Extra Money Obtained</span>
+            <div class="fund-tile-val highlight-green" id="fundsTileExtra">$0</div>
+            <span class="fund-tile-sub" id="fundsTileExtraSub">0 gifts & bonuses</span>
+          </div>
+          <div class="fund-tile">
+            <span class="fund-tile-label">Total Paid to Vendors</span>
+            <div class="fund-tile-val" id="fundsTilePaid">$0</div>
+            <span class="fund-tile-sub" id="fundsTilePaidSub">Contracts & deposits</span>
+          </div>
+          <div class="fund-tile">
+            <span class="fund-tile-label">Net Remaining Gap</span>
+            <div class="fund-tile-val" id="fundsTileGap">$0</div>
+            <span class="fund-tile-sub" id="fundsTileGapSub">Remaining unpaid costs</span>
+          </div>
+        </div>
+
+        <!-- Section 3: Extra Money Obtained List -->
+        <div class="extra-funds-container">
+          <div class="extra-funds-header">
+            <div>
+              <h3 style="font-size: 1.02rem; font-weight: 700; color: var(--text-main);">Extra Money & Financial Contributions</h3>
+              <p style="font-size: 0.84rem; color: var(--text-muted); margin-top: 2px;">
+                Family gifts, bonuses, tax refunds, and registry funds obtained:
+              </p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="addExtraFundTableBtn">
+              + Add Extra Money
+            </button>
+          </div>
+
+          <div class="extra-funds-list" id="extraFundsList">
+            <!-- Dynamically populated rows -->
+          </div>
+        </div>
+      </div>
+
       <!-- Chart and Category Grid -->
       <div class="dashboard-grid-2">
         <!-- Interactive Cashflow & Payments Timeline Chart -->
@@ -269,12 +396,12 @@
             </div>
             <div class="panel-header-controls">
               <button type="button" class="btn-chart-guide" id="toggleChartGuideBtn" title="How to read this chart">
-                <span class="guide-btn-icon">💡</span> Guide
+                Guide
               </button>
               <div class="segmented-control" id="cashflowViewModeGroup">
-                <button type="button" class="btn-segmented active" data-view="trajectory">📈 Timeline</button>
-                <button type="button" class="btn-segmented" data-view="monthly">📊 Monthly</button>
-                <button type="button" class="btn-segmented" data-view="steps">🪜 Milestones</button>
+                <button type="button" class="btn-segmented active" data-view="trajectory">Timeline</button>
+                <button type="button" class="btn-segmented" data-view="monthly">Monthly</button>
+                <button type="button" class="btn-segmented" data-view="steps">Milestones</button>
               </div>
               <span class="badge-pill badge-upcoming chart-status-pill-fixed" id="chartStatusPill">On Track</span>
             </div>
@@ -284,14 +411,12 @@
           <div class="chart-guide-callout" id="chartGuideCallout" style="display: none;">
             <div class="chart-guide-header">
               <div class="chart-guide-title">
-                <span class="guide-title-icon">💡</span>
                 <strong>How to Read the Savings vs. Payment Deadlines Chart</strong>
               </div>
               <button type="button" class="chart-guide-close" id="closeChartGuideBtn" aria-label="Close chart guide">✕</button>
             </div>
             <div class="chart-guide-body">
               <div class="guide-card">
-                <div class="guide-card-icon">📈</div>
                 <div class="guide-card-content">
                   <h5>3 View Modes</h5>
                   <p><strong>Timeline:</strong> Compares total savings growing over time against cumulative payment deadlines.<br>
@@ -300,18 +425,16 @@
                 </div>
               </div>
               <div class="guide-card">
-                <div class="guide-card-icon">🎨</div>
                 <div class="guide-card-content">
                   <h5>What the Lines & Dots Mean</h5>
-                  <p><strong>🟠 Terracotta Line:</strong> Total cumulative savings saved to date.<br>
-                  <strong>🔘 Slate Line:</strong> Cumulative vendor bills due by each date.<br>
-                  <strong>🟡 Amber Dashed Line:</strong> Minimum emergency buffer reserve ($1,000).<br>
-                  <strong>🟠 Orange Dot:</strong> Milestone on track with healthy buffer.<br>
-                  <strong>🔴 Red Dot:</strong> Shortfall dip! Hover to view recovery days.</p>
+                  <p><strong>Terracotta Line:</strong> Total cumulative savings saved to date.<br>
+                  <strong>Slate Line:</strong> Cumulative vendor bills due by each date.<br>
+                  <strong>Amber Dashed Line:</strong> Minimum emergency buffer reserve ($1,000).<br>
+                  <strong>Orange Dot:</strong> Milestone on track with healthy buffer.<br>
+                  <strong>Red Dot:</strong> Shortfall dip! Hover to view recovery days.</p>
                 </div>
               </div>
               <div class="guide-card">
-                <div class="guide-card-icon">⚡</div>
                 <div class="guide-card-content">
                   <h5>Test a Savings Pace</h5>
                   <p>Drag the slider below to simulate different savings amounts per paycheck. Watch the chart update live to see how adjustments fix future shortfalls!</p>
@@ -332,8 +455,8 @@
                 <button type="button" class="btn-sim-preset" id="presetPaceMinus50" title="Decrease pace by $50">-$50</button>
                 <button type="button" class="btn-sim-preset active" id="presetPaceCurrent" title="Reset to planned savings rate">Current</button>
                 <button type="button" class="btn-sim-preset" id="presetPacePlus50" title="Increase pace by $50">+$50</button>
-                <button type="button" class="btn-sim-preset" id="presetPaceAuto" title="Set to auto-balanced safe pace">⚡ Safe</button>
-                <button type="button" class="btn-sim-save" id="applySimPaceBtn" title="Permanently apply this simulated rate as your planned savings pace">💾 Save Pace</button>
+                <button type="button" class="btn-sim-preset" id="presetPaceAuto" title="Set to auto-balanced safe pace">Auto-Safe</button>
+                <button type="button" class="btn-sim-save" id="applySimPaceBtn" title="Permanently apply this simulated rate as your planned savings pace">Save Pace</button>
               </div>
             </div>
 
@@ -481,11 +604,11 @@
         <!-- AI Audit Callout Banner -->
         <div class="ai-audit-callout-banner" id="aiAuditCalloutBanner">
           <div class="ai-callout-left">
-            <span class="ai-sparkle-badge">✨ EternalAI Audit</span>
+            <span class="ai-sparkle-badge">EternalAI Audit</span>
             <span>Unsure if you forgot something? Scan your budget for overlooked costs like service fees, alterations, and tips.</span>
           </div>
           <button type="button" class="btn btn-ai btn-sm" id="launchAuditFromBudgetBtn">
-            🔍 Audit for Hidden Costs
+            Audit for Hidden Costs
           </button>
         </div>
 
@@ -508,7 +631,7 @@
             <div class="totals-banner-val" id="summaryTargetBudget" style="font-size: 1.3rem;">Not Set (Bottom-Up)</div>
             <div class="totals-banner-sub">
               <button type="button" class="btn-link-action" id="toggleBudgetModeInlineBtn">
-                ⚙️ Set Budget Goal
+                Set Budget Goal
               </button>
             </div>
           </div>
@@ -532,7 +655,7 @@
             <p>Test different savings amounts to make sure you have enough in the bank when vendor bills arrive</p>
           </div>
           <button class="btn btn-primary btn-sm" id="autoSolvePaceBtn">
-            ⚡ Auto-Balance Savings Pace
+            Auto-Balance Savings Pace
           </button>
         </div>
 
@@ -540,10 +663,10 @@
         <div class="income-mode-selector-wrapper">
           <div class="income-mode-segmented" id="simIncomeModeToggle" role="radiogroup" aria-label="Income Mode">
             <button type="button" class="btn-segmented active" data-mode="individual" id="simModeIndividualBtn">
-              👤 Single / Combined Income
+              Single / Combined Income
             </button>
             <button type="button" class="btn-segmented" data-mode="dual" id="simModeDualBtn">
-              👥 Dual Income (Split Schedules)
+              Dual Income (Split Schedules)
             </button>
           </div>
         </div>
@@ -833,7 +956,7 @@
               <div class="milestone-header-line">
                 <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">Deposit & Balance Schedule</span>
                 <div style="display: flex; gap: 6px;">
-                  <button type="button" class="btn btn-secondary btn-sm" id="autoFillMilestoneBtn" title="Set single payment for full cost">⚡ Pay on Wedding Day</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="autoFillMilestoneBtn" title="Set single payment for full cost">Pay on Wedding Day</button>
                   <button type="button" class="btn btn-secondary btn-sm" id="addMilestoneRowBtn">+ Add Payment Date</button>
                 </div>
               </div>
@@ -850,7 +973,7 @@
         <!-- TIER 2B: OPTIONAL VENDOR & NOTES DISCLOSURE -->
         <details class="expense-advanced-details" id="expenseAdvancedDetails">
           <summary class="expense-advanced-summary">
-            <span>📝 Vendor Name & Notes (Optional)</span>
+            <span>Vendor Name & Notes (Optional)</span>
           </summary>
           <div class="expense-advanced-body">
             <div class="form-group" style="margin-top: 12px;">
@@ -868,6 +991,84 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="cancelExpenseModalBtn">Cancel</button>
         <button type="submit" class="btn btn-primary" id="saveExpenseSubmitBtn">Save Expense</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- =========================================================================
+       MODAL: ADD / EDIT EXTRA MONEY & FUNDS
+       ========================================================================= -->
+  <dialog id="fundModal" aria-labelledby="fundModalTitle">
+    <div class="modal-header">
+      <div>
+        <h3 id="fundModalTitle">Add Extra Money into Funds</h3>
+        <p class="field-hint" style="margin-top: 2px;">Record gifts, bonuses, tax refunds, or extra contributions toward your wedding</p>
+      </div>
+      <button type="button" class="btn btn-text" id="closeFundModalBtn" aria-label="Close modal">✕</button>
+    </div>
+    <form id="fundForm">
+      <input type="hidden" id="editFundId" value="">
+      <div class="modal-body">
+        <div class="form-row-2col">
+          <div class="form-group">
+            <label for="fundName">Source / Description</label>
+            <input type="text" id="fundName" class="form-control" placeholder="e.g. Gift from Parents, Work Bonus, Tax Refund" required>
+          </div>
+          <div class="form-group">
+            <label for="fundAmount">Amount ($)</label>
+            <input type="number" id="fundAmount" class="form-control" placeholder="e.g. 2500" min="1" step="1" required>
+          </div>
+        </div>
+
+        <div class="form-row-2col">
+          <div class="form-group">
+            <label for="fundCategory">Category / Type</label>
+            <select id="fundCategory" class="form-control" required>
+              <option value="gift">🎁 Family & Friends Gift</option>
+              <option value="bonus">💼 Work Bonus / Commission</option>
+              <option value="tax_refund">🏛️ Tax Refund</option>
+              <option value="registry">💌 Registry / Cash Fund</option>
+              <option value="side_hustle">🛠️ Side Hustle / Sold Items</option>
+              <option value="savings_deposit">🏦 Regular Savings Deposit</option>
+              <option value="other">🌟 Other Contribution</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="fundDate">Date Received / Expected</label>
+            <input type="date" id="fundDate" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="fundContributor">
+            <span>Contributor / Giver (Optional)</span>
+            <span class="field-hint">Who provided this money?</span>
+          </label>
+          <input type="text" id="fundContributor" class="form-control" placeholder="e.g. Mom & Dad, Employer, Guests, Aunt Sarah">
+        </div>
+
+        <div class="form-group">
+          <label for="fundNotes">Notes / Earmark (Optional)</label>
+          <textarea id="fundNotes" class="form-control" rows="2" placeholder="e.g. Earmarked for photographer deposit or open bar"></textarea>
+        </div>
+
+        <!-- Automatic Bank Balance Deposit Option Card -->
+        <div class="fund-deposit-toggle-card">
+          <label class="fund-deposit-label">
+            <input type="checkbox" id="fundAddToSavings" checked>
+            <div class="fund-deposit-text">
+              <strong>Deposit directly into Current Wedding Savings</strong>
+              <p class="field-hint" id="fundAddToSavingsHint">
+                Checking this will automatically add this amount to your Current Wedding Savings in the bank.
+              </p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelFundModalBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveFundSubmitBtn">Add to Wedding Funds</button>
       </div>
     </form>
   </dialog>
@@ -927,10 +1128,10 @@
           </label>
           <div class="income-mode-segmented" id="setIncomeModeToggle" role="radiogroup" aria-label="Settings Income Mode">
             <button type="button" class="btn-segmented active" data-mode="individual" id="setModeIndividualBtn">
-              👤 Individual / Combined
+              Individual / Combined
             </button>
             <button type="button" class="btn-segmented" data-mode="dual" id="setModeDualBtn">
-              👥 Dual Income (2 Schedules)
+              Dual Income (2 Schedules)
             </button>
           </div>
         </div>
@@ -1071,53 +1272,50 @@
       </p>
 
       <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
-        <!-- Supabase Cloud Sync Card -->
-        <div class="supabase-sync-card" style="background: rgba(197, 160, 89, 0.07); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-bottom: 6px;">
+        <!-- Wedding Cloud Sync & Partner Collaboration Card -->
+        <div class="supabase-sync-card" style="background: rgba(197, 160, 89, 0.08); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 8px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 1.25rem;">☁️</span>
-              <strong style="color: var(--text-main); font-size: 0.95rem;">Supabase Cloud Database</strong>
+              <span style="font-size: 1.3rem;">☁️</span>
+              <strong style="color: var(--text-main); font-size: 0.98rem;">Cloud Sync &amp; Partner Sharing</strong>
             </div>
             <span class="badge-pill" id="supabaseStatusBadge" style="background: #E8E5E1; color: var(--text-muted); font-size: 0.75rem; cursor: pointer;" title="Click to view cloud sync details">Offline (Local Only)</span>
           </div>
-          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
-            Connect your Supabase project to automatically save your wedding plan to the cloud and sync with your partner in real time.
+          <p style="font-size: 0.83rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.45;">
+            Sync your wedding budget across devices in real time. Anyone with your <strong>Wedding Sync Passphrase</strong> can view and edit the same plan—no account, database setup, or API keys required.
           </p>
 
           <div style="display: flex; flex-direction: column; gap: 10px;">
             <div>
-              <label for="supabaseUrl" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Supabase Project URL</label>
-              <input type="url" id="supabaseUrl" class="form-control" placeholder="https://yourproject.supabase.co" style="font-size: 0.82rem;">
+              <label for="supabaseSyncId" style="font-size: 0.82rem; font-weight: 600; display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>Wedding Sync Passphrase / ID</span>
+                <span style="font-size: 0.74rem; font-weight: 500; color: var(--accent-primary);">Shared Secret</span>
+              </label>
+              <input type="text" id="supabaseSyncId" class="form-control" placeholder="e.g. Irish09" autocomplete="off" spellcheck="false" style="font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px;">
+              <span class="field-hint" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: block;">Share this passphrase with your partner so both devices stay synchronized.</span>
             </div>
-            <div>
-              <label for="supabaseAnonKey" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Supabase Anon Public API Key</label>
-              <input type="password" id="supabaseAnonKey" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-size: 0.82rem;">
-            </div>
-            <div>
-              <label for="supabaseSyncId" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Wedding Sync Passphrase / ID</label>
-              <input type="text" id="supabaseSyncId" class="form-control" placeholder="e.g. our-wedding-2027" style="font-size: 0.82rem;">
-              <span class="field-hint" style="font-size: 0.75rem;">Share this same ID with your partner so both devices sync the same budget.</span>
-            </div>
-            <div style="display: flex; gap: 8px; margin-top: 4px;">
-              <button type="button" class="btn btn-primary btn-sm" id="connectSupabaseBtn" style="flex: 1;">
-                🔗 Save & Connect
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
+              <button type="button" class="btn btn-primary btn-sm" id="connectSupabaseBtn" style="flex: 1.2; min-width: 140px;">
+                Connect &amp; Sync
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="sharePartnerLinkBtn" title="Copy 1-click sync link for your partner" style="flex: 1; min-width: 130px; display: none;">
+                Copy Partner Link
               </button>
               <button type="button" class="btn btn-secondary btn-sm" id="disconnectSupabaseBtn" style="display: none;">
                 Disconnect
               </button>
-              <button type="button" class="btn btn-secondary btn-sm" id="copySupabaseSqlBtn" title="Copy SQL schema for Supabase SQL Editor">
-                📋 Copy SQL Schema
-              </button>
             </div>
+
             <div id="supabaseSyncNotice" class="supabase-sync-notice"></div>
           </div>
         </div>
 
         <button class="btn btn-secondary" id="exportJsonBtn">
-          📥 Export Data to JSON File
+          Export Data to JSON File
         </button>
         <button class="btn btn-secondary" id="exportCsvBtn">
-          📊 Export Payment Schedule to CSV
+          Export Payment Schedule to CSV
         </button>
         
         <div style="margin-top: 6px;">
@@ -1129,10 +1327,10 @@
 
         <div style="display: flex; justify-content: space-between; gap: 12px;">
           <button class="btn btn-secondary" id="loadSampleDataBtn" title="Load sample $36k wedding">
-            🔄 Load Sample Wedding
+            Load Sample Wedding
           </button>
           <button class="btn btn-danger" id="resetAllDataBtn" title="Wipe all data">
-            ⚠️ Start From Scratch
+            Start From Scratch
           </button>
         </div>
       </div>
@@ -1145,7 +1343,7 @@
   <dialog id="aiModal" class="ai-modal" aria-labelledby="aiModalTitle">
     <div class="modal-header ai-modal-header">
       <div class="ai-header-brand">
-        <div class="ai-brand-badge">✨</div>
+        <div class="ai-brand-badge">AI</div>
         <div>
           <h3 id="aiModalTitle">EternalPlan AI Copilot</h3>
           <span class="ai-header-sub">Context-Aware Wedding Financial Advisor & Hidden Cost Audit</span>
@@ -1170,13 +1368,13 @@
     <!-- AI Navigation Tabs -->
     <div class="ai-nav-bar" role="tablist">
       <button type="button" class="ai-tab-btn active" id="tabBtnAudit" data-ai-tab="audit">
-        🔍 Hidden Cost & Gotcha Audit <span class="ai-badge-counter" id="aiGotchaCountBadge">0</span>
+        Hidden Cost & Gotcha Audit <span class="ai-badge-counter" id="aiGotchaCountBadge">0</span>
       </button>
       <button type="button" class="ai-tab-btn" id="tabBtnChat" data-ai-tab="chat">
-        💬 Ask Financial Advisor
+        Ask Financial Advisor
       </button>
       <button type="button" class="ai-tab-btn" id="tabBtnAiSettings" data-ai-tab="settings">
-        ⚙️ AI Engine Settings
+        AI Engine Settings
       </button>
     </div>
 
@@ -1189,8 +1387,8 @@
         </div>
         <div class="audit-filter-segmented" id="auditFilterGroup">
           <button type="button" class="btn-segmented active" data-audit-filter="missing">To Review (<span id="auditMissingCount">0</span>)</button>
-          <button type="button" class="btn-segmented" data-audit-filter="excluded">🚫 Not in Our Wedding (<span id="auditExcludedCount">0</span>)</button>
-          <button type="button" class="btn-segmented" data-audit-filter="covered">✅ Already Covered (<span id="auditCoveredCount">0</span>)</button>
+          <button type="button" class="btn-segmented" data-audit-filter="excluded">Not in Our Wedding (<span id="auditExcludedCount">0</span>)</button>
+          <button type="button" class="btn-segmented" data-audit-filter="covered">Already Covered (<span id="auditCoveredCount">0</span>)</button>
           <button type="button" class="btn-segmented" data-audit-filter="all">All (<span id="auditTotalCount">0</span>)</button>
         </div>
       </div>
@@ -1210,16 +1408,16 @@
         <!-- Quick Prompt Suggestion Chips -->
         <div class="ai-quick-chips" id="aiQuickChips">
           <button type="button" class="ai-chip-prompt" data-prompt="Audit my budget: what are our biggest financial risks and what hidden costs should we budget for?">
-            🔍 Audit our biggest budget risks
+            Audit our biggest budget risks
           </button>
           <button type="button" class="ai-chip-prompt" data-prompt="Can we afford to add an extra $1,500 expense without creating a deficit? Walk through our numbers.">
-            💰 Can we afford an extra $1,500?
+            Can we afford an extra $1,500?
           </button>
           <button type="button" class="ai-chip-prompt" data-prompt="Where can we realistically trim $1,000 - $2,000 from our budget without hurting guest experience?">
-            ✂️ Where can we trim costs?
+            Where can we trim costs?
           </button>
           <button type="button" class="ai-chip-prompt" data-prompt="Write a polite email to our caterer or venue asking to split payments into 3 milestones instead of 2.">
-            ✉️ Vendor payment split email script
+            Vendor payment split email script
           </button>
         </div>
 
@@ -1227,7 +1425,7 @@
         <form id="aiChatForm" class="ai-chat-input-form">
           <input type="text" id="aiChatInput" class="form-control" placeholder="Ask anything about your wedding finances, trade-offs, or milestones..." autocomplete="off">
           <button type="submit" class="btn btn-primary" id="aiSendBtn">
-            <span>Send</span> ✨
+            <span>Send</span>
           </button>
         </form>
       </div>
@@ -1256,13 +1454,13 @@
 
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
           <button type="button" class="btn btn-primary btn-sm" id="saveAiKeyBtn">
-            💾 Save API Key
+            Save API Key
           </button>
           <button type="button" class="btn btn-secondary btn-sm" id="clearAiKeyBtn">
             Clear Key (Use Local Engine)
           </button>
           <button type="button" class="btn btn-secondary btn-sm" id="testAiConnectionBtn">
-            ⚡ Test Connection
+            Test Connection
           </button>
         </div>
         <div id="aiTestNotice" class="supabase-sync-notice" style="margin-top: 10px; display: none;"></div>

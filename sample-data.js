@@ -1,6 +1,22 @@
-// sample-data.js
-// Pre-populated realistic wedding data to provide couples with an immediate, inspiring blueprint.
+/**
+ * @file sample-data.js
+ * @description Pre-populated realistic wedding data providing couples with an immediate, inspiring blueprint.
+ * Contains standard wedding industry budget categories, realistic vendor contracts, milestone payment schedules,
+ * and dual-income financial configurations.
+ */
 
+/**
+ * @typedef {Object} BudgetCategory
+ * @property {string} id - Unique slug identifier for the category.
+ * @property {string} name - Display title used in tables and summaries.
+ * @property {string} icon - Deliberate UI emoji identifier displayed in charts and selects.
+ * @property {string} color - Hex color code for chart rendering and visual tagging.
+ */
+
+/**
+ * Default wedding budget categories with designated visual palette and UI icons.
+ * @type {ReadonlyArray<BudgetCategory>}
+ */
 const DEFAULT_CATEGORIES = [
   { id: 'venue-catering', name: 'Venue & Catering', icon: '🏰', color: '#B38A58' },
   { id: 'photo-video', name: 'Photography & Video', icon: '📸', color: '#916A7E' },
@@ -18,6 +34,68 @@ if (typeof window !== 'undefined') {
   window.DEFAULT_CATEGORIES = DEFAULT_CATEGORIES;
 }
 
+/**
+ * @typedef {Object} PaymentMilestone
+ * @property {string} id - Unique identifier for the milestone installment.
+ * @property {string} title - Descriptive payment installment name (e.g., Deposit, Final Balance).
+ * @property {number} amount - Dollar amount due for this milestone.
+ * @property {string} dueDate - Due date formatted as YYYY-MM-DD.
+ * @property {boolean} isPaid - Payment fulfillment status.
+ * @property {string|null} paidDate - Settlement date formatted as YYYY-MM-DD, or null if unpaid.
+ */
+
+/**
+ * @typedef {Object} ExpenseItem
+ * @property {string} id - Unique expense identifier.
+ * @property {string} categoryId - Reference to matching BudgetCategory id.
+ * @property {string} name - Human-readable expense name.
+ * @property {string} vendor - Contracted or prospective vendor name.
+ * @property {string} notes - Scope details, headcount parameters, or contract terms.
+ * @property {number} estimatedCost - Initial quote or planning cost.
+ * @property {number} actualCost - Agreed contracted cost or total milestone sum.
+ * @property {PaymentMilestone[]} milestones - Schedule of installment payments.
+ */
+
+/**
+ * @typedef {Object} ExtraFundItem
+ * @property {string} id - Unique fund identifier.
+ * @property {string} name - Source name (e.g., Family gift, Bonus).
+ * @property {number} amount - Monetary amount received or expected.
+ * @property {string} date - Expected or received date (YYYY-MM-DD).
+ * @property {string} category - Classification identifier (e.g., gift, bonus).
+ * @property {string} contributor - Donor or funding entity.
+ * @property {string} notes - Allocation instructions or context.
+ * @property {boolean} addedToSavings - Whether amount has been deposited into current savings.
+ */
+
+/**
+ * @typedef {Object} WeddingPlannerState
+ * @property {string} coupleNames - Partner names formatted as a couple title.
+ * @property {string} weddingDate - Wedding ceremony date (YYYY-MM-DD).
+ * @property {boolean} hasTargetBudget - Whether a fixed top-down budget ceiling is enforced.
+ * @property {number} targetBudget - Budget ceiling in dollars if hasTargetBudget is true.
+ * @property {number} currentSavings - Current liquid cash reserves allocated for the wedding.
+ * @property {('weekly'|'bi-weekly'|'semi-monthly'|'monthly')} paycheckCadence - Pay frequency for single mode.
+ * @property {string} nextPayDate - Anchor payday date for single mode (YYYY-MM-DD).
+ * @property {number} plannedSavingsPerPaycheck - Target savings contribution per paycheck.
+ * @property {('individual'|'dual')} incomeMode - Cashflow modeling strategy.
+ * @property {string} partner1Name - Name of Partner 1.
+ * @property {('weekly'|'bi-weekly'|'semi-monthly'|'monthly')} partner1Cadence - Partner 1 payroll cadence.
+ * @property {string} partner1NextPayDate - Anchor payday for Partner 1 (YYYY-MM-DD).
+ * @property {number} partner1Savings - Partner 1 target savings per paycheck.
+ * @property {string} partner2Name - Name of Partner 2.
+ * @property {('weekly'|'bi-weekly'|'semi-monthly'|'monthly')} partner2Cadence - Partner 2 payroll cadence.
+ * @property {string} partner2NextPayDate - Anchor payday for Partner 2 (YYYY-MM-DD).
+ * @property {number} partner2Savings - Partner 2 target savings per paycheck.
+ * @property {number} safetyCushion - Minimum reserve floor to maintain at all times.
+ * @property {ExtraFundItem[]} extraFunds - External cash inflows and gifts.
+ * @property {ExpenseItem[]} expenses - Line-item wedding expenses with milestone installments.
+ */
+
+/**
+ * Complete default sample state simulating an authentic modern wedding financial profile.
+ * @type {WeddingPlannerState}
+ */
 const DEFAULT_WEDDING_DATA = {
   coupleNames: 'Sophia & Liam',
   weddingDate: '2027-06-19',
@@ -37,6 +115,28 @@ const DEFAULT_WEDDING_DATA = {
   partner2NextPayDate: '2026-10-15',
   partner2Savings: 600,
   safetyCushion: 1000,
+  extraFunds: [
+    {
+      id: 'fund-sample-1',
+      name: 'Parents Wedding Gift Contribution',
+      amount: 5000,
+      date: '2026-09-01',
+      category: 'gift',
+      contributor: 'Parents',
+      notes: 'Gift earmarked toward Rosewood Gardens venue deposit',
+      addedToSavings: true
+    },
+    {
+      id: 'fund-sample-2',
+      name: 'Annual Work Bonus',
+      amount: 2000,
+      date: '2026-10-01',
+      category: 'bonus',
+      contributor: 'Work',
+      notes: 'Direct deposit into joint wedding savings account',
+      addedToSavings: true
+    }
+  ],
   expenses: [
     {
       id: 'exp-1',

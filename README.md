@@ -230,10 +230,11 @@ Save your budget to your private Supabase cloud database to plan seamlessly acro
                      (PostgreSQL DB)
 ```
 
-1. **Zero Login Friction**: Connect using your Supabase Project URL, Public Anon Key, and a custom **Wedding Sync Passphrase / ID** (e.g., `our-wedding-2027`).
-2. **Real-Time Synchronization**: Changes made on one device automatically sync to your partner's device.
-3. **Offline-First Resilience**: If internet connection drops, changes are cached in browser `localStorage` and automatically pushed when reconnected.
-4. **Copy SQL Schema**: One-click button inside the app to copy the required database schema directly into the Supabase SQL Editor.
+1. **Passphrase-Only Sync**: Connect using just your shared **Wedding Sync Passphrase / ID** (e.g., `Irish09`). Database URL and API keys are encapsulated securely so partners and guests don't need any technical setup.
+2. **1-Click Partner Share Link**: Click **Copy Partner Link** to generate an instant link (`https://yourdomain/#sync=Irish09`) that automatically connects and syncs on your partner's phone or laptop.
+3. **Real-Time Live Collaboration**: Updates sync bidirectional in real-time across devices using Supabase Realtime channels.
+4. **Offline-First Resilience**: If internet connection drops, changes are cached in browser `localStorage` and automatically pushed when reconnected.
+5. **Advanced / Self-Hosted Override**: Optional expandable settings drawer for couples who want to connect their own custom self-hosted Supabase instance.
 
 ### Supabase Table Setup
 Run the following SQL in your **Supabase SQL Editor**:

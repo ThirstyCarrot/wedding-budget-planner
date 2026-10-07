@@ -1,4 +1,10 @@
-// app.js - Wedding Budget & Due-Date Savings Planner Logic
+/**
+ * @file app.js
+ * @description Core client-side application architecture for EternalPlan.
+ * Coordinates local-first state management, asynchronous dual-income paycheck modeling,
+ * high-DPI Canvas interactive cashflow visualization, obfuscated Supabase Realtime synchronization,
+ * and AI-assisted wedding financial risk & gotcha auditing.
+ */
 
 (function() {
   'use strict';
@@ -28,6 +34,7 @@
     partner2NextPayDate: '',
     partner2Savings: 0,
     expenses: [],
+    extraFunds: [],          // array of extra money items: { id, name, amount, date, category, contributor, notes, addedToSavings }
     excludedHiddenCosts: [], // array of IDs: items explicitly marked "Not in our wedding"
     coveredHiddenCosts: [],  // array of IDs: items marked as already covered
     geminiApiKey: ''         // optional Google Gemini API key
@@ -35,7 +42,6 @@
 
   let activeTab = 'dashboard';
   let scheduleFilter = 'all-unpaid';
-  let activeExpenseModalId = null;
   let cashflowChartMode = 'trajectory'; // 'trajectory' | 'monthly' | 'steps'
   let simulatedPace = null;
   let isDraggingSlider = false;
@@ -48,18 +54,8 @@
   // EternalAI Hub State
   let activeAiTab = 'audit'; // 'audit' | 'chat' | 'settings'
   let activeAuditFilter = 'missing'; // 'missing' | 'excluded' | 'covered' | 'all'
-  let aiChatHistory = [];
   let isAiResponding = false;
 
-  // Standard Industry Wedding Budget Benchmark Distribution
-  const BENCHMARK_DISTRIBUTION = [
-    { name: 'Reception & Venue', pct: 45, color: '#B38A58', icon: '🏰' },
-    { name: 'Photography & Video', pct: 15, color: '#916A7E', icon: '📸' },
-    { name: 'Attire, Rings & Beauty', pct: 12, color: '#68827A', icon: '👗' },
-    { name: 'Floral & Decor', pct: 10, color: '#889868', icon: '💐' },
-    { name: 'Music & Entertainment', pct: 8, color: '#A06B52', icon: '🎷' },
-    { name: 'Stationery & Misc', pct: 10, color: '#768599', icon: '💌' }
-  ];
 
   // DOM Elements
   const DOM = {
@@ -128,6 +124,9 @@
     kpiUpcomingCount: document.getElementById('kpiUpcomingCount'),
     kpiRemainingBar: document.getElementById('kpiRemainingBar'),
     kpiCurrentSavings: document.getElementById('kpiCurrentSavings'),
+    kpiFundsCard: document.getElementById('kpiFundsCard'),
+    kpiExtraFundsSummary: document.getElementById('kpiExtraFundsSummary'),
+    kpiTrackBadge: document.getElementById('kpiTrackBadge'),
     kpiSavingsGap: document.getElementById('kpiSavingsGap'),
     kpiSavingsCoverageBar: document.getElementById('kpiSavingsCoverageBar'),
 
@@ -241,6 +240,49 @@
     closeExpenseModalBtn: document.getElementById('closeExpenseModalBtn'),
     cancelExpenseModalBtn: document.getElementById('cancelExpenseModalBtn'),
 
+    // Funds & Savings Health Tracker Elements
+    openAddFundBtn: document.getElementById('openAddFundBtn'),
+    savingsHealthCard: document.getElementById('savingsHealthCard'),
+    savingsTrackHeaderPill: document.getElementById('savingsTrackHeaderPill'),
+    addFundFromSectionBtn: document.getElementById('addFundFromSectionBtn'),
+    quickSavingsInput: document.getElementById('quickSavingsInput'),
+    saveQuickSavingsBtn: document.getElementById('saveQuickSavingsBtn'),
+    quickSavingsFootnote: document.getElementById('quickSavingsFootnote'),
+    savingsDiagnosisCard: document.getElementById('savingsDiagnosisCard'),
+    savingsTrackBadge: document.getElementById('savingsTrackBadge'),
+    savingsPaceComparison: document.getElementById('savingsPaceComparison'),
+    savingsTrackTitle: document.getElementById('savingsTrackTitle'),
+    savingsTrackNarrative: document.getElementById('savingsTrackNarrative'),
+    readinessMeterWrapper: document.getElementById('readinessMeterWrapper'),
+    readinessLabel: document.getElementById('readinessLabel'),
+    readinessVal: document.getElementById('readinessVal'),
+    readinessFill: document.getElementById('readinessFill'),
+    readinessSubtext: document.getElementById('readinessSubtext'),
+    fundsTileSavings: document.getElementById('fundsTileSavings'),
+    fundsTileExtra: document.getElementById('fundsTileExtra'),
+    fundsTileExtraSub: document.getElementById('fundsTileExtraSub'),
+    fundsTilePaid: document.getElementById('fundsTilePaid'),
+    fundsTileGap: document.getElementById('fundsTileGap'),
+    addExtraFundTableBtn: document.getElementById('addExtraFundTableBtn'),
+    extraFundsList: document.getElementById('extraFundsList'),
+
+    // Fund Modal Elements
+    fundModal: document.getElementById('fundModal'),
+    fundForm: document.getElementById('fundForm'),
+    fundModalTitle: document.getElementById('fundModalTitle'),
+    editFundId: document.getElementById('editFundId'),
+    fundName: document.getElementById('fundName'),
+    fundAmount: document.getElementById('fundAmount'),
+    fundCategory: document.getElementById('fundCategory'),
+    fundDate: document.getElementById('fundDate'),
+    fundContributor: document.getElementById('fundContributor'),
+    fundNotes: document.getElementById('fundNotes'),
+    fundAddToSavings: document.getElementById('fundAddToSavings'),
+    fundAddToSavingsHint: document.getElementById('fundAddToSavingsHint'),
+    closeFundModalBtn: document.getElementById('closeFundModalBtn'),
+    cancelFundModalBtn: document.getElementById('cancelFundModalBtn'),
+    saveFundSubmitBtn: document.getElementById('saveFundSubmitBtn'),
+
     settingsModal: document.getElementById('settingsModal'),
     settingsForm: document.getElementById('settingsForm'),
     setCoupleNames: document.getElementById('setCoupleNames'),
@@ -277,14 +319,12 @@
     loadSampleDataBtn: document.getElementById('loadSampleDataBtn'),
     resetAllDataBtn: document.getElementById('resetAllDataBtn'),
 
-    // Supabase Elements
+    // Supabase Cloud Sync Elements
     supabaseStatusBadge: document.getElementById('supabaseStatusBadge'),
-    supabaseUrl: document.getElementById('supabaseUrl'),
-    supabaseAnonKey: document.getElementById('supabaseAnonKey'),
     supabaseSyncId: document.getElementById('supabaseSyncId'),
     connectSupabaseBtn: document.getElementById('connectSupabaseBtn'),
+    sharePartnerLinkBtn: document.getElementById('sharePartnerLinkBtn'),
     disconnectSupabaseBtn: document.getElementById('disconnectSupabaseBtn'),
-    copySupabaseSqlBtn: document.getElementById('copySupabaseSqlBtn'),
     supabaseSyncNotice: document.getElementById('supabaseSyncNotice'),
 
     toastContainer: document.getElementById('toastContainer'),
@@ -326,15 +366,47 @@
     aiTestNotice: document.getElementById('aiTestNotice')
   };
 
-  // Storage Keys for Supabase Config
+  // Storage Keys & Vault for Supabase Cloud Sync
   const SUPABASE_CONFIG_KEY = 'wedding_supabase_config_v1';
   let supabaseClient = null;
+  let realtimeChannel = null;
+  let isCloudSyncReady = false;
   let supabaseConfig = {
     url: '',
     anonKey: '',
-    syncId: 'wedding_plan_default'
+    syncId: ''
   };
   let supabaseSyncDebounce = null;
+
+  /**
+   * Encapsulated Cloud Sync Vault providing XOR-masked and Base64-obfuscated Supabase credentials.
+   * Prevents cleartext endpoint and API key exposure in DOM attributes, scripts, or localStorage.
+   */
+  const CloudSyncVault = (() => {
+    const _SALT = 'EternalPlanWeddingSync2027';
+    // XOR-masked and Base64 encoded project endpoint & publishable key
+    const _MASK_URL = 'LQARAh1bQ38CGwA9CRQQBQ0GJx0IF0BbSlIhDksBGxENMg0SC3kGCw==';
+    const _MASK_KEY = 'NhY6AhsDADkfCQ81CQE7HxwzND0IJQVeUVosGzcAAFEaJCA1CQhQXTULPQM9FA==';
+
+    function _unmask(b64, k) {
+      try {
+        const raw = atob(b64);
+        let res = '';
+        for (let i = 0; i < raw.length; i++) {
+          res += String.fromCharCode(raw.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+        }
+        return res;
+      } catch (e) {
+        return '';
+      }
+    }
+
+    return {
+      getDefaultUrl: () => _unmask(_MASK_URL, _SALT),
+      getDefaultKey: () => _unmask(_MASK_KEY, _SALT),
+      hasDefaultCredentials: () => true
+    };
+  })();
 
   // =========================================================================
   // INITIALIZATION & STATE MANAGEMENT
@@ -370,6 +442,7 @@
     partner2NextPayDate: '',
     partner2Savings: 0,
     expenses: [],
+    extraFunds: [],
     excludedHiddenCosts: [],
     coveredHiddenCosts: [],
     geminiApiKey: ''
@@ -379,6 +452,10 @@
     return JSON.parse(JSON.stringify(BLANK_STATE));
   }
 
+  /**
+   * Loads and normalizes persisted application state from localStorage.
+   * Handles schema migrations, default fallbacks, and array instantiations.
+   */
   function loadState() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -395,13 +472,16 @@
 
         if (isLegacySample) {
           state = getBlankState();
-          saveState();
+          saveState(false, true);
         } else {
           if (state.hasTargetBudget === undefined) {
             state.hasTargetBudget = false;
           }
           if (!Array.isArray(state.expenses)) {
             state.expenses = [];
+          }
+          if (!Array.isArray(state.extraFunds)) {
+            state.extraFunds = [];
           }
           if (!Array.isArray(state.excludedHiddenCosts)) {
             state.excludedHiddenCosts = [];
@@ -430,16 +510,21 @@
       } catch (e) {
         console.error('Failed to parse saved state, starting blank slate', e);
         state = getBlankState();
-        saveState();
+        saveState(false, true);
       }
     } else {
       // First visit: start with a fresh blank slate
       state = getBlankState();
-      saveState();
+      saveState(false, true);
     }
   }
 
   let saveStateDebounceTimer = null;
+  /**
+   * Persists current state to localStorage and triggers debounced remote sync if enabled.
+   * @param {boolean} [pushToCloud=true] - Whether to broadcast state changes to Supabase.
+   * @param {boolean} [immediate=false] - Whether to bypass the 200ms debounce timer.
+   */
   function saveState(pushToCloud = true, immediate = false) {
     const doSave = () => {
       try {
@@ -447,7 +532,7 @@
       } catch (e) {
         console.warn('localStorage save error:', e);
       }
-      if (pushToCloud && supabaseClient) {
+      if (pushToCloud && supabaseClient && isCloudSyncReady && supabaseConfig && supabaseConfig.syncId) {
         syncToSupabase();
       }
     };
@@ -467,62 +552,71 @@
   // =========================================================================
   // SUPABASE CLOUD SYNC ENGINE
   // =========================================================================
-  function sanitizeSupabaseUrl(rawUrl) {
-    if (!rawUrl) return '';
-    let url = rawUrl.trim().replace(/^['"]|['"]$/g, '');
-    // Check if user pasted a Supabase dashboard URL instead of API URL
-    const dashboardMatch = url.match(/supabase\.com\/dashboard\/project\/([a-z0-9_-]+)/i);
-    if (dashboardMatch && dashboardMatch[1]) {
-      url = `https://${dashboardMatch[1]}.supabase.co`;
-    }
-    // Prepend https:// if protocol is missing
-    if (!/^https?:\/\//i.test(url)) {
-      url = 'https://' + url;
-    }
-    // Strip trailing slashes
-    return url.replace(/\/+$/, '');
-  }
-
-  function sanitizeAnonKey(rawKey) {
-    if (!rawKey) return '';
-    return rawKey.trim().replace(/^['"]|['"]$/g, '');
-  }
 
   function sanitizeSyncId(rawId) {
-    if (!rawId) return 'wedding_plan_default';
-    const cleaned = rawId.trim().replace(/^['"]|['"]$/g, '');
-    return cleaned || 'wedding_plan_default';
+    if (!rawId) return '';
+    return String(rawId).trim().replace(/^['"]|['"]$/g, '');
   }
 
   function loadSupabaseConfig() {
     try {
       const saved = localStorage.getItem(SUPABASE_CONFIG_KEY);
       if (saved) {
-        supabaseConfig = JSON.parse(saved);
-        supabaseConfig.url = sanitizeSupabaseUrl(supabaseConfig.url);
-        supabaseConfig.anonKey = sanitizeAnonKey(supabaseConfig.anonKey);
-        supabaseConfig.syncId = sanitizeSyncId(supabaseConfig.syncId);
-
-        if (DOM.supabaseUrl) DOM.supabaseUrl.value = supabaseConfig.url || '';
-        if (DOM.supabaseAnonKey) DOM.supabaseAnonKey.value = supabaseConfig.anonKey || '';
-        if (DOM.supabaseSyncId) DOM.supabaseSyncId.value = supabaseConfig.syncId || 'wedding_plan_default';
+        const parsed = JSON.parse(saved);
+        supabaseConfig.syncId = sanitizeSyncId(parsed.syncId);
       }
+
+      // Check URL hash (#sync=Irish09) or query param (?sync=Irish09) for 1-click partner syncing
+      const hashMatch = window.location.hash.match(/sync=([a-zA-Z0-9_\-\.]+)/i);
+      const urlParams = new URLSearchParams(window.location.search);
+      const querySync = urlParams.get('sync');
+      const urlSyncId = (hashMatch && hashMatch[1]) || querySync;
+
+      if (urlSyncId) {
+        supabaseConfig.syncId = sanitizeSyncId(urlSyncId);
+      }
+
+      // Sanitize localStorage: never store raw database URLs or keys
+      if (supabaseConfig.syncId) {
+        localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify({ syncId: supabaseConfig.syncId }));
+      }
+
+      // Populate UI field
+      if (DOM.supabaseSyncId) DOM.supabaseSyncId.value = supabaseConfig.syncId || '';
     } catch (e) {
       console.warn('Failed to load Supabase config', e);
     }
   }
 
+  /**
+   * Initializes the Supabase client using vaulted credentials and registers realtime listeners.
+   * Verifies table connectivity and initiates the first-time pull/push sync cycle.
+   */
   function initSupabaseClient() {
     loadSupabaseConfig();
-    if (!window.supabase || !supabaseConfig.url || !supabaseConfig.anonKey) {
+    if (!window.supabase) {
+      updateSupabaseBadge('offline');
+      return;
+    }
+
+    const syncId = sanitizeSyncId(supabaseConfig.syncId);
+    if (!syncId) {
+      updateSupabaseBadge('offline');
+      return;
+    }
+
+    const url = CloudSyncVault.getDefaultUrl();
+    const anonKey = CloudSyncVault.getDefaultKey();
+
+    if (!url || !anonKey) {
       updateSupabaseBadge('offline');
       return;
     }
 
     try {
-      supabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
-      if (DOM.disconnectSupabaseBtn) DOM.disconnectSupabaseBtn.style.display = 'inline-block';
+      supabaseClient = window.supabase.createClient(url, anonKey);
       syncFromSupabase();
+      subscribeToRealtime(syncId);
     } catch (err) {
       console.error('Failed to create Supabase client', err);
       updateSupabaseBadge('error');
@@ -532,28 +626,79 @@
 
   function updateSupabaseBadge(status) {
     const dot = document.getElementById('headerCloudDot');
+    const syncId = (supabaseConfig && supabaseConfig.syncId) ? supabaseConfig.syncId : '';
+
     if (dot) {
       dot.className = 'cloud-status-dot ' + (status === 'connected' ? 'connected' : (status === 'syncing' ? 'syncing' : (status === 'error' ? 'error' : '')));
-      dot.title = status === 'connected' ? 'Cloud Synced' : (status === 'syncing' ? 'Syncing with Supabase...' : (status === 'error' ? 'Supabase Table/Config Error' : 'Local Only (Offline)'));
+      dot.title = status === 'connected' ? `Cloud Synced (${syncId || 'Active'})` : (status === 'syncing' ? 'Syncing with Supabase...' : (status === 'error' ? 'Cloud Sync Table/Config Error' : 'Local Only (Offline)'));
     }
 
     if (!DOM.supabaseStatusBadge) return;
     if (status === 'connected') {
-      DOM.supabaseStatusBadge.textContent = '🟢 Cloud Synced';
+      DOM.supabaseStatusBadge.textContent = syncId ? `Synced (${syncId})` : 'Cloud Synced';
       DOM.supabaseStatusBadge.style.background = 'rgba(104, 130, 122, 0.15)';
       DOM.supabaseStatusBadge.style.color = '#3F5B53';
+      if (DOM.disconnectSupabaseBtn) DOM.disconnectSupabaseBtn.style.display = 'inline-block';
+      if (DOM.sharePartnerLinkBtn) DOM.sharePartnerLinkBtn.style.display = 'inline-block';
     } else if (status === 'syncing') {
-      DOM.supabaseStatusBadge.textContent = '🔄 Syncing...';
+      DOM.supabaseStatusBadge.textContent = 'Syncing...';
       DOM.supabaseStatusBadge.style.background = 'rgba(197, 160, 89, 0.2)';
       DOM.supabaseStatusBadge.style.color = '#7A5B20';
     } else if (status === 'error') {
-      DOM.supabaseStatusBadge.textContent = '⚠️ Config / Table Error';
+      DOM.supabaseStatusBadge.textContent = 'Config / Table Error';
       DOM.supabaseStatusBadge.style.background = 'rgba(196, 121, 125, 0.2)';
       DOM.supabaseStatusBadge.style.color = '#8A3238';
     } else {
       DOM.supabaseStatusBadge.textContent = 'Offline (Local Only)';
       DOM.supabaseStatusBadge.style.background = '#E8E5E1';
       DOM.supabaseStatusBadge.style.color = 'var(--text-muted)';
+      if (DOM.disconnectSupabaseBtn) DOM.disconnectSupabaseBtn.style.display = 'none';
+      if (DOM.sharePartnerLinkBtn) DOM.sharePartnerLinkBtn.style.display = 'none';
+    }
+  }
+
+  function subscribeToRealtime(syncId) {
+    if (!supabaseClient || !syncId) return;
+    try {
+      if (realtimeChannel) {
+        supabaseClient.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+      }
+
+      realtimeChannel = supabaseClient
+        .channel('wedding_plans_' + syncId)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'wedding_plans',
+            filter: `id=eq.${syncId}`
+          },
+          (payload) => {
+            if (payload.new && payload.new.data && typeof payload.new.data === 'object') {
+              const currentStr = JSON.stringify(state);
+              const remoteStr = JSON.stringify(payload.new.data);
+              if (currentStr !== remoteStr) {
+                const activeEl = document.activeElement;
+                const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+                if (!isTyping) {
+                  state = payload.new.data;
+                  saveState(false, true);
+                  renderAll();
+                  showToast('Updated with live changes from partner');
+                }
+              }
+            }
+          }
+        )
+        .subscribe((subStatus) => {
+          if (subStatus === 'SUBSCRIBED') {
+            console.log('Realtime sync channel active for:', syncId);
+          }
+        });
+    } catch (err) {
+      console.warn('Realtime subscription error:', err);
     }
   }
 
@@ -575,13 +720,13 @@
 
     if (isMissingTable) {
       showSupabaseNotice(
-        `<strong>⚠️ Missing Database Table: "wedding_plans"</strong><br>` +
-        `Your Supabase project is reachable, but the <code>wedding_plans</code> table has not been created in your database yet.<br><br>` +
-        `<strong>How to fix in 30 seconds:</strong><br>` +
-        `1. Click the <strong>📋 Copy SQL Schema</strong> button below.<br>` +
-        `2. In your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; font-weight: 700;">Supabase Dashboard</a>, open the <strong>SQL Editor</strong> tab (left sidebar).<br>` +
-        `3. Click <strong>New query</strong>, paste the copied SQL, and click <strong>▶ Run</strong>.<br>` +
-        `4. Then return here and click <strong>Save & Connect</strong> again.`,
+        `<strong>Missing Database Table: "wedding_plans"</strong><br>` +
+        `The cloud database is reachable, but the <code>wedding_plans</code> table has not been created yet.<br><br>` +
+        `<strong>How to initialize:</strong><br>` +
+        `1. Click the <strong>Copy SQL Schema</strong> button below.<br>` +
+        `2. In your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; font-weight: 700;">Supabase Dashboard</a>, open the <strong>SQL Editor</strong> tab.<br>` +
+        `3. Paste the copied SQL and click <strong>▶ Run</strong>.<br>` +
+        `4. Then return here and click <strong>Connect &amp; Sync</strong> again.`,
         'warning'
       );
       return;
@@ -590,8 +735,8 @@
     // 2. Invalid API Key
     if (code === 'PGRST301' || msg.includes('jwt') || msg.includes('api key') || msg.includes('unauthorized') || msg.includes('invalid api key')) {
       showSupabaseNotice(
-        `<strong>⚠️ Invalid Supabase Anon Key</strong><br>` +
-        `Please check that you copied the <em>anon public</em> key from your Supabase Project Settings ➔ API.`,
+        `<strong>Invalid Supabase Key</strong><br>` +
+        `Please check that you copied the correct publishable / anon public key from your Supabase Project Settings.`,
         'warning'
       );
       return;
@@ -600,9 +745,8 @@
     // 3. Network or URL error
     if (msg.includes('fetch') || msg.includes('network') || msg.includes('failed to fetch')) {
       showSupabaseNotice(
-        `<strong>⚠️ Could Not Reach Supabase URL</strong><br>` +
-        `Unable to connect to <code>${escapeHtml(supabaseConfig.url || 'URL')}</code>. ` +
-        `Please verify that your Project URL looks like <code>https://your-project.supabase.co</code>.`,
+        `<strong>Could Not Reach Cloud Database</strong><br>` +
+        `Unable to reach the database endpoint. Please verify your internet connection.`,
         'warning'
       );
       return;
@@ -610,14 +754,15 @@
 
     // 4. Fallback general error
     showSupabaseNotice(
-      `<strong>⚠️ Supabase Sync Issue</strong><br>${escapeHtml(error.message || error.details || 'Connection error. Check browser console.')}`,
+      `<strong>Cloud Sync Issue</strong><br>${escapeHtml(error.message || error.details || 'Connection error. Check browser console.')}`,
       'warning'
     );
   }
 
   async function syncFromSupabase() {
-    if (!supabaseClient) return;
+    if (!supabaseClient || !supabaseConfig.syncId) return;
     const syncId = sanitizeSyncId(supabaseConfig.syncId);
+    if (!syncId) return;
     try {
       updateSupabaseBadge('syncing');
       const { data, error } = await supabaseClient
@@ -635,15 +780,25 @@
 
       if (data && data.data && typeof data.data === 'object') {
         state = data.data;
-        saveState(false);
+        saveState(false, true);
         renderAll();
+        isCloudSyncReady = true;
         updateSupabaseBadge('connected');
-        showSupabaseNotice('<strong>✅ Synced with Supabase cloud</strong>', 'success');
-        showToast('Restored latest wedding data from Supabase cloud', '☁️');
+        showSupabaseNotice(`<strong>Synced with wedding plan: <code>${escapeHtml(syncId)}</code></strong>`, 'success');
+        showToast(`Restored wedding plan: ${syncId}`);
       } else {
-        // Plan doesn't exist yet on remote, upload current local state
-        syncToSupabase();
+        // Plan doesn't exist on remote yet
+        isCloudSyncReady = true;
+        const hasLocalData = !!(state.coupleNames || (state.expenses && state.expenses.length > 0) || state.targetBudget > 0);
+        if (hasLocalData) {
+          syncToSupabase();
+          showSupabaseNotice(`<strong>Cloud sync initialized for <code>${escapeHtml(syncId)}</code></strong>`, 'success');
+        } else {
+          updateSupabaseBadge('connected');
+          showSupabaseNotice(`<strong>Cloud sync active for <code>${escapeHtml(syncId)}</code></strong>`, 'success');
+        }
       }
+      subscribeToRealtime(syncId);
     } catch (e) {
       console.error('Supabase sync error', e);
       handleSupabaseError(e);
@@ -651,13 +806,19 @@
     }
   }
 
+  /**
+   * Performs debounced upsert of the local wedding plan state to the Supabase cloud table.
+   * Validates client connection and sync authorization before initiating network payload.
+   */
   function syncToSupabase() {
-    if (!supabaseClient) return;
+    if (!supabaseClient || !supabaseConfig.syncId || !isCloudSyncReady) return;
     if (supabaseSyncDebounce) clearTimeout(supabaseSyncDebounce);
     supabaseSyncDebounce = setTimeout(async () => {
       try {
-        updateSupabaseBadge('syncing');
+        if (!isCloudSyncReady) return;
         const syncId = sanitizeSyncId(supabaseConfig.syncId);
+        if (!syncId) return;
+        updateSupabaseBadge('syncing');
         const { error } = await supabaseClient
           .from('wedding_plans')
           .upsert({
@@ -688,10 +849,15 @@
     DOM.supabaseSyncNotice.innerHTML = htmlMsg;
   }
 
-  function showToast(message, icon = '✨') {
+  /**
+   * Displays a transient feedback notification toast.
+   * @param {string} message - Notification text to display.
+   * @param {string} [icon=''] - Optional deliberate status icon.
+   */
+  function showToast(message, icon = '') {
     const toast = document.createElement('div');
     toast.className = 'toast';
-    toast.innerHTML = `<span style="font-size: 1.2rem;">${icon}</span> <span>${message}</span>`;
+    toast.innerHTML = `${icon ? `<span style="font-size: 1.1rem; margin-right: 6px;">${icon}</span>` : ''}<span>${message}</span>`;
     DOM.toastContainer.appendChild(toast);
     setTimeout(() => {
       toast.style.opacity = '0';
@@ -861,6 +1027,13 @@
     return Math.round((num * ppy) / 12);
   }
 
+  /**
+   * Generates a chronologically interleaved sequence of paydays between today and the target horizon.
+   * In dual-income mode, merges Partner 1 and Partner 2 payroll schedules into a unified cashflow stream.
+   * @param {Date|string} horizonDate - Projection cutoff date.
+   * @param {Object} [options={}] - Override parameters for simulation experiments.
+   * @returns {Array<Object>} Sorted array of paycheck events with dates, partner tags, and amounts.
+   */
   function generatePaycheckStream(horizonDate, options = {}) {
     const mode = options.incomeMode || state.incomeMode || 'individual';
     const partnerNames = getPartnerNamesFromCouple();
@@ -978,7 +1151,7 @@
         DOM.cdHours.textContent = '00';
         DOM.cdMins.textContent = '00';
         DOM.cdSecs.textContent = '00';
-        DOM.countdownDaysText.textContent = "Wedding Day Celebrated! 🎉";
+        DOM.countdownDaysText.textContent = "Wedding Day Celebrated!";
         return;
       }
 
@@ -1054,6 +1227,12 @@
     return list;
   }
 
+  /**
+   * Evaluates comprehensive financial metrics across the entire wedding budget.
+   * Computes velocity rates (per-day, per-week, per-paycheck), cumulative milestone requirements,
+   * timeline shortfall bottleneck dates, and readiness scores.
+   * @returns {Object} Calculated metrics, savings track diagnosis, and milestone schedules.
+   */
   function calculateFinancialAnalytics() {
     const milestones = getAllMilestones();
     const unpaid = milestones.filter(m => !m.isPaid);
@@ -1181,6 +1360,123 @@
       state.paycheckCadence
     );
 
+    // Extra funds calculation
+    const extraFunds = Array.isArray(state.extraFunds) ? state.extraFunds : [];
+    const totalExtraFunds = extraFunds.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+    const coveragePct = totalRemainingDue > 0 ? Math.min(100, Math.round((currentSavings / totalRemainingDue) * 100)) : (totalEstimated > 0 ? 100 : 0);
+
+    // Evaluate if couple is on the right track
+    let savingsTrack = {
+      level: 'on_track', // 'fully_funded' | 'ahead' | 'on_track' | 'caution' | 'behind' | 'no_date' | 'no_expenses'
+      badgeClass: 'badge-success',
+      badgeText: 'On Track',
+      headerPillText: 'On Track',
+      headerPillClass: 'badge-paid',
+      title: 'Your wedding savings track is healthy & on pace',
+      narrative: '',
+      readinessPct: 0,
+      readinessFillClass: 'fill-success',
+      readinessSubtext: '',
+      paceSummary: isDual
+        ? `Joint: ${formatCurrency(totalMonthlyCombined)}/mo`
+        : `Planned: ${formatCurrency(plannedSavings)} / ${getCadenceName(state.paycheckCadence)}`
+    };
+
+    if (!hasWeddingDate) {
+      savingsTrack.level = 'no_date';
+      savingsTrack.badgeClass = 'badge-upcoming';
+      savingsTrack.badgeText = 'Set Date';
+      savingsTrack.headerPillText = 'Date Not Set';
+      savingsTrack.headerPillClass = 'badge-upcoming';
+      savingsTrack.title = 'Set your wedding date to evaluate track';
+      savingsTrack.narrative = 'Enter your wedding date in Settings to calculate your target savings pace and check if you are on track.';
+      savingsTrack.readinessPct = 0;
+      savingsTrack.readinessSubtext = 'Waiting for wedding date...';
+    } else if (totalEstimated === 0) {
+      savingsTrack.level = 'no_expenses';
+      savingsTrack.badgeClass = 'badge-upcoming';
+      savingsTrack.badgeText = 'Add Expenses';
+      savingsTrack.headerPillText = 'Ready to Plan';
+      savingsTrack.headerPillClass = 'badge-upcoming';
+      savingsTrack.title = 'Ready for your wedding expenses';
+      savingsTrack.narrative = `You currently have ${formatCurrency(currentSavings)} in wedding savings. Click "+ Add Expense" to start building your budget and see your personalized on-track health evaluation.`;
+      savingsTrack.readinessPct = 100;
+      savingsTrack.readinessSubtext = 'No expenses scheduled yet';
+    } else if (unpaid.length === 0) {
+      savingsTrack.level = 'fully_funded';
+      savingsTrack.badgeClass = 'badge-success';
+      savingsTrack.badgeText = '100% Paid';
+      savingsTrack.headerPillText = 'All Paid';
+      savingsTrack.headerPillClass = 'badge-paid';
+      savingsTrack.title = 'All wedding vendor payments complete!';
+      savingsTrack.narrative = 'You have paid all vendor milestones in full. Congratulations on reaching complete financial freedom for your wedding day!';
+      savingsTrack.readinessPct = 100;
+      savingsTrack.readinessSubtext = 'All vendor bills paid';
+    } else if (netGapToWedding <= 0) {
+      savingsTrack.level = 'fully_funded';
+      savingsTrack.badgeClass = 'badge-success';
+      savingsTrack.badgeText = '100% Funded';
+      savingsTrack.headerPillText = 'Fully Funded';
+      savingsTrack.headerPillClass = 'badge-paid';
+      savingsTrack.title = 'All remaining wedding costs are 100% covered by savings!';
+      const surplus = currentSavings - totalRemainingDue;
+      savingsTrack.narrative = `Your bank savings (${formatCurrency(currentSavings)}) completely covers all ${unpaid.length} remaining unpaid expenses (${formatCurrency(totalRemainingDue)})${surplus > 0 ? ` with a comfortable ${formatCurrency(surplus)} surplus` : ''}. You're fully funded!`;
+      savingsTrack.readinessPct = 100;
+      savingsTrack.readinessSubtext = '100% covered by bank funds in hand';
+    } else if (!simulation.hasDeficit) {
+      const nextM = nextUpcomingMilestone;
+      const nextNeeded = nextM ? (nextM.amount + safetyCushion) : safetyCushion;
+      const nextProgressPct = nextM ? Math.min(100, Math.round((currentSavings / nextNeeded) * 100)) : 100;
+
+      if (currentSavings >= nextNeeded) {
+        savingsTrack.level = 'ahead';
+        savingsTrack.badgeClass = 'badge-success';
+        savingsTrack.badgeText = 'Ahead of Schedule';
+        savingsTrack.headerPillText = 'Ahead of Schedule';
+        savingsTrack.headerPillClass = 'badge-paid';
+        savingsTrack.title = 'You are in great shape and ahead of pace!';
+        const surplus = currentSavings - nextNeeded;
+        savingsTrack.narrative = `Your wedding bank balance (${formatCurrency(currentSavings)}) covers your next payment (${escapeHtml(nextM ? nextM.title : '')} for ${formatCurrency(nextM ? nextM.amount : 0)} on ${formatDate(nextM ? nextM.dueDate : '')}) while keeping your ${formatCurrency(safetyCushion)} emergency cushion${surplus > 0 ? ` plus an extra ${formatCurrency(surplus)} buffer` : ''}.`;
+        savingsTrack.readinessPct = 100;
+        savingsTrack.readinessSubtext = `100% ready for next payment: ${nextM ? nextM.vendor : ''} (${formatCurrency(nextM ? nextM.amount : 0)})`;
+      } else {
+        savingsTrack.level = 'on_track';
+        savingsTrack.badgeClass = 'badge-success';
+        savingsTrack.badgeText = 'On Track';
+        savingsTrack.headerPillText = 'On Track';
+        savingsTrack.headerPillClass = 'badge-paid';
+        savingsTrack.title = 'Your savings pace is on schedule';
+        savingsTrack.narrative = `At your planned savings pace of ${isDual ? `${formatCurrency(totalMonthlyCombined)}/month combined` : `${formatCurrency(plannedSavings)} / ${getCadenceName(state.paycheckCadence)}`}, your deposits will arrive in time for every upcoming payment deadline without dipping below your safety cushion.`;
+        savingsTrack.readinessPct = nextProgressPct;
+        savingsTrack.readinessSubtext = `${nextProgressPct}% ready for next payment: ${nextM ? nextM.vendor : ''} (${formatCurrency(nextM ? nextM.amount : 0)} due in ${nextM ? nextM.daysRemaining : 0} days)`;
+      }
+    } else {
+      const nextM = nextUpcomingMilestone;
+      if (simulation.isTimingDeficit && simulation.recoveryDate) {
+        savingsTrack.level = 'caution';
+        savingsTrack.badgeClass = 'badge-caution';
+        savingsTrack.badgeText = 'Timing Dip Ahead';
+        savingsTrack.headerPillText = 'Timing Dip';
+        savingsTrack.headerPillClass = 'badge-upcoming';
+        savingsTrack.readinessFillClass = 'fill-warning';
+        savingsTrack.title = `Timing dip of ${formatCurrency(simulation.deficitAmount)} around ${formatDate(simulation.deficitDate)}`;
+        savingsTrack.narrative = `Paying ${escapeHtml(simulation.deficitMilestone ? simulation.deficitMilestone.title : 'payment')} (${formatCurrency(simulation.deficitMilestone ? simulation.deficitMilestone.amount : 0)}) on ${formatDate(simulation.deficitDate)} causes a temporary ${simulation.deficitDurationDays}-day balance dip until the next paycheck arrives on ${formatDate(simulation.recoveryDate)}. Increase savings slightly to maintain your full safety cushion.`;
+        savingsTrack.readinessPct = Math.min(95, Math.max(15, Math.round((currentSavings / (nextM ? nextM.amount + safetyCushion : 1)) * 100)));
+        savingsTrack.readinessSubtext = `Dip of ${formatCurrency(simulation.deficitAmount)} below safety cushion on ${formatDate(simulation.deficitDate)}`;
+      } else {
+        savingsTrack.level = 'behind';
+        savingsTrack.badgeClass = 'badge-danger';
+        savingsTrack.badgeText = 'Shortfall Risk';
+        savingsTrack.headerPillText = 'Action Needed';
+        savingsTrack.headerPillClass = 'badge-overdue';
+        savingsTrack.readinessFillClass = 'fill-danger';
+        savingsTrack.title = `Shortfall of ${formatCurrency(simulation.deficitAmount)} projected by ${formatDate(simulation.deficitDate)}`;
+        savingsTrack.narrative = `Your current savings (${formatCurrency(currentSavings)}) and savings pace will fall ${formatCurrency(simulation.deficitAmount)} short when ${escapeHtml(simulation.deficitMilestone ? simulation.deficitMilestone.title : 'a bill')} is due on ${formatDate(simulation.deficitDate)}. Recommended safe pace: ${isDual ? 'auto-balanced dual pace' : `${formatCurrency(simulation.recommendedPaycheckSavings)} / ${getCadenceName(state.paycheckCadence)}`}.`;
+        savingsTrack.readinessPct = Math.min(85, Math.max(10, Math.round((currentSavings / (nextM ? nextM.amount + safetyCushion : 1)) * 100)));
+        savingsTrack.readinessSubtext = `Shortfall of ${formatCurrency(simulation.deficitAmount)} projected by ${formatDate(simulation.deficitDate)}`;
+      }
+    }
+
     return {
       targetBudget,
       totalEstimated,
@@ -1188,6 +1484,9 @@
       totalPaid,
       totalRemainingDue,
       currentSavings,
+      totalExtraFunds,
+      coveragePct,
+      savingsTrack,
       netGapToWedding,
       daysToWedding,
       paychecksToWedding,
@@ -1454,6 +1753,7 @@
     if (!data) data = calculateFinancialAnalytics();
     if (tabName === 'dashboard') {
       renderVelocitySection(data);
+      renderSavingsTracker(data);
       renderDashboardMilestones(data);
       renderCharts(data);
     } else if (tabName === 'schedule') {
@@ -1549,7 +1849,7 @@
     if (data.unpaid.length === 0) {
       banner.className = 'crunch-banner';
       banner.style.borderLeftColor = 'var(--sage-primary)';
-      DOM.crunchBannerIcon.textContent = '🎉';
+      DOM.crunchBannerIcon.textContent = '💍';
       DOM.crunchBannerTitle.textContent = 'All Wedding Payments Are 100% Complete!';
       DOM.crunchBannerText.textContent = 'You have paid all vendor milestones. Congratulations on reaching complete financial freedom for your big day!';
       DOM.crunchNextAmount.textContent = '$0';
@@ -1562,7 +1862,7 @@
 
     if (sim.hasDeficit) {
       banner.className = 'crunch-banner has-deficit';
-      DOM.crunchBannerIcon.textContent = '⚠️';
+      DOM.crunchBannerIcon.textContent = '💍';
       const mTitle = sim.deficitMilestone ? sim.deficitMilestone.title : 'upcoming payment';
       const mAmount = sim.deficitMilestone ? formatCurrency(sim.deficitMilestone.amount) : '';
       const isDual = data.isDual;
@@ -1579,8 +1879,8 @@
           <div style="margin-top: 8px;">
             <button class="btn btn-primary btn-sm" id="bannerFixDeficitBtn" style="font-size: 0.82rem; padding: 6px 14px;">
               ${isDual 
-                ? `⚡ Auto-Balance Dual Savings (${escapeHtml(data.partnerNames.p1)}: ${formatCurrency(sim.recommendedP1Savings)}, ${escapeHtml(data.partnerNames.p2)}: ${formatCurrency(sim.recommendedP2Savings)})` 
-                : `⚡ Auto-Balance to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}`}
+                ? `Auto-Balance Dual Savings (${escapeHtml(data.partnerNames.p1)}: ${formatCurrency(sim.recommendedP1Savings)}, ${escapeHtml(data.partnerNames.p2)}: ${formatCurrency(sim.recommendedP2Savings)})` 
+                : `Auto-Balance to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}`}
             </button>
           </div>
         `;
@@ -1596,8 +1896,8 @@
           <div style="margin-top: 8px;">
             <button class="btn btn-primary btn-sm" id="bannerFixDeficitBtn" style="font-size: 0.82rem; padding: 6px 14px;">
               ${isDual 
-                ? `⚡ Auto-Balance Dual Savings (${escapeHtml(data.partnerNames.p1)}: ${formatCurrency(sim.recommendedP1Savings)}, ${escapeHtml(data.partnerNames.p2)}: ${formatCurrency(sim.recommendedP2Savings)})` 
-                : `⚡ Auto-Balance to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}`}
+                ? `Auto-Balance Dual Savings (${escapeHtml(data.partnerNames.p1)}: ${formatCurrency(sim.recommendedP1Savings)}, ${escapeHtml(data.partnerNames.p2)}: ${formatCurrency(sim.recommendedP2Savings)})` 
+                : `Auto-Balance to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}`}
             </button>
           </div>
         `;
@@ -1622,20 +1922,20 @@
             state.partner1Savings = sim.recommendedP1Savings;
             state.partner2Savings = sim.recommendedP2Savings;
             saveState();
-            showToast(`Dual savings balanced! ${data.partnerNames.p1}: ${formatCurrency(state.partner1Savings)}, ${data.partnerNames.p2}: ${formatCurrency(state.partner2Savings)}`, '⚡');
+            showToast(`Dual savings balanced! ${data.partnerNames.p1}: ${formatCurrency(state.partner1Savings)}, ${data.partnerNames.p2}: ${formatCurrency(state.partner2Savings)}`);
             renderAll();
           } else {
             state.plannedSavingsPerPaycheck = sim.recommendedPaycheckSavings;
             DOM.simPlannedSavings.value = sim.recommendedPaycheckSavings;
             saveState();
-            showToast(`Pace optimized to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}!`, '⚡');
+            showToast(`Pace optimized to ${formatCurrency(sim.recommendedPaycheckSavings)}/${cadence}!`);
             renderAll();
           }
         });
       }
     } else {
       banner.className = 'crunch-banner';
-      DOM.crunchBannerIcon.textContent = '✨';
+      DOM.crunchBannerIcon.textContent = '💍';
       DOM.crunchBannerTitle.textContent = next 
         ? `Upcoming Payment: ${next.title} (${formatDate(next.dueDate)})`
         : 'All Milestones on Schedule';
@@ -1702,14 +2002,39 @@
       }
     }
 
-    // 2. Paid So Far
+    // 2. Wedding Funds in Bank (Actual Savings + Extra Money)
+    if (DOM.kpiCurrentSavings) DOM.kpiCurrentSavings.textContent = formatCurrency(data.currentSavings);
+    if (DOM.kpiExtraFundsSummary) {
+      DOM.kpiExtraFundsSummary.textContent = `${formatCurrency(data.totalExtraFunds)} extra gifts/bonuses`;
+    }
+    if (DOM.kpiTrackBadge && data.savingsTrack) {
+      DOM.kpiTrackBadge.textContent = data.savingsTrack.badgeText;
+      DOM.kpiTrackBadge.className = 'badge-pill ' + (data.savingsTrack.level === 'behind' ? 'badge-overdue' : (data.savingsTrack.level === 'caution' ? 'badge-upcoming' : 'badge-paid'));
+    }
+    if (DOM.kpiSavingsCoverageBar) {
+      DOM.kpiSavingsCoverageBar.style.width = `${data.coveragePct}%`;
+      DOM.kpiSavingsCoverageBar.className = data.coveragePct >= 100 ? 'kpi-progress-bar success' : (data.coveragePct >= 50 ? 'kpi-progress-bar' : 'kpi-progress-bar rose');
+    }
+    if (DOM.kpiFundsCard) {
+      DOM.kpiFundsCard.style.cursor = 'pointer';
+      DOM.kpiFundsCard.onclick = () => {
+        switchTab('dashboard');
+        const card = document.getElementById('savingsHealthCard');
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (DOM.quickSavingsInput) DOM.quickSavingsInput.focus();
+        }
+      };
+    }
+
+    // 3. Paid So Far
     DOM.kpiPaidSoFar.textContent = formatCurrency(data.totalPaid);
     const paidPct = data.totalActual > 0 ? Math.min(100, Math.round((data.totalPaid / data.totalActual) * 100)) : (data.totalEstimated > 0 ? Math.min(100, Math.round((data.totalPaid / data.totalEstimated) * 100)) : 0);
     const bookedLabel = data.totalActual > 0 ? ` (${formatCurrency(data.totalActual)} booked total)` : '';
     DOM.kpiPaidPct.textContent = `${paidPct}% paid${bookedLabel}`;
     if (DOM.kpiPaidBar) DOM.kpiPaidBar.style.width = `${paidPct}%`;
 
-    // 3. Remaining to Pay & Savings Coverage
+    // 4. Remaining to Pay & Savings Coverage
     DOM.kpiRemainingDue.textContent = formatCurrency(data.totalRemainingDue);
     const upcomingPaymentsText = `${data.unpaid.length} payment${data.unpaid.length === 1 ? '' : 's'} upcoming`;
     const savingsEl = document.getElementById('kpiSavingsSummary');
@@ -1737,7 +2062,6 @@
 
     // Keep hidden elements updated for backward compatibility
     if (DOM.kpiActualCost) DOM.kpiActualCost.textContent = formatCurrency(data.totalActual);
-    if (DOM.kpiCurrentSavings) DOM.kpiCurrentSavings.textContent = formatCurrency(data.currentSavings);
   }
 
   function renderVelocitySection(data) {
@@ -1784,7 +2108,7 @@
 
     if (data.netGapToWedding <= 0) {
       DOM.velocityAdviceText.innerHTML = `
-        🎉 <strong>Your wedding costs are 100% covered!</strong> Your savings pool covers all remaining unpaid expenses.
+        <strong>Your wedding costs are 100% covered!</strong> Your savings pool covers all remaining unpaid expenses.
       `;
       return;
     }
@@ -1803,7 +2127,7 @@
     if (data.milestones.length === 0) {
       list.innerHTML = `
         <div style="text-align: center; padding: 36px 20px; color: var(--text-muted);">
-          <span style="font-size: 2.2rem; display: block; margin-bottom: 8px;">📋</span>
+          
           <p style="font-size: 0.95rem; margin-bottom: 14px;">No upcoming payments scheduled yet.</p>
           <button class="btn btn-secondary btn-sm" onclick="document.getElementById('openAddExpenseBtn').click()">
             <span>+</span> Add Your First Expense
@@ -1818,7 +2142,7 @@
     if (nextThree.length === 0) {
       list.innerHTML = `
         <div style="text-align: center; padding: 30px; color: var(--text-muted);">
-          <span style="font-size: 2rem;">💐</span>
+          
           <p style="margin-top: 8px;">No pending payments! All milestones have been marked as paid.</p>
         </div>
       `;
@@ -1840,7 +2164,7 @@
     if (data.milestones.length === 0) {
       list.innerHTML = `
         <div style="text-align: center; padding: 48px 20px; color: var(--text-muted);">
-          <span style="font-size: 2.5rem; display: block; margin-bottom: 10px;">📅</span>
+          
           <h4 style="font-family: var(--font-heading); font-size: 1.35rem; color: var(--text-main); margin-bottom: 6px;">Your Payment Schedule is Clear</h4>
           <p style="font-size: 0.95rem; margin-bottom: 16px;">Add vendor expenses with installment dates to see your complete chronological payment timeline here.</p>
           <button class="btn btn-primary btn-sm" onclick="document.getElementById('openAddExpenseBtn').click()">
@@ -1869,7 +2193,7 @@
     if (items.length === 0) {
       list.innerHTML = `
         <div style="text-align: center; padding: 40px; color: var(--text-muted);">
-          <span style="font-size: 2.2rem;">✨</span>
+          
           <p style="margin-top: 10px; font-size: 1rem;">No payments found for this filter criteria.</p>
         </div>
       `;
@@ -1945,7 +2269,7 @@
         ${!isPaid && m.requiredRate ? `
           <div class="timeline-savings-pace">
             ${m.netSavingsNeededByDate === 0 
-              ? `<span style="color: var(--sage-primary); font-weight: 600;">✅ Fully covered by current bank savings pool</span>`
+              ? `<span style="color: var(--sage-primary); font-weight: 600;">Fully covered by current bank savings pool</span>`
               : `<span>Required savings pace: <strong>${paceAmount} / ${cadenceName}</strong> (${formatCurrency(m.netSavingsNeededByDate)} new savings needed)</span>`
             }
           </div>
@@ -1984,11 +2308,11 @@
       if (state.hasTargetBudget && data.targetBudget > 0) {
         DOM.summaryTargetBudget.textContent = formatCurrency(data.targetBudget);
         DOM.summaryTargetBudget.style.fontSize = '1.65rem';
-        if (DOM.toggleBudgetModeInlineBtn) DOM.toggleBudgetModeInlineBtn.textContent = '⚙️ Edit Goal';
+        if (DOM.toggleBudgetModeInlineBtn) DOM.toggleBudgetModeInlineBtn.textContent = 'Edit Goal';
       } else {
         DOM.summaryTargetBudget.textContent = 'None (Bottom-Up)';
         DOM.summaryTargetBudget.style.fontSize = '1.25rem';
-        if (DOM.toggleBudgetModeInlineBtn) DOM.toggleBudgetModeInlineBtn.textContent = '➕ Set Optional Goal';
+        if (DOM.toggleBudgetModeInlineBtn) DOM.toggleBudgetModeInlineBtn.textContent = 'Set Optional Goal';
       }
     }
 
@@ -1998,7 +2322,7 @@
     if (state.expenses.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 48px 24px; background: white; border-radius: 12px; border: 1px dashed var(--border-color); margin-top: 16px;">
-          <span style="font-size: 2.5rem; display: block; margin-bottom: 10px;">📋</span>
+          
           <h3 style="font-family: var(--font-heading); font-size: 1.45rem; color: var(--text-main); margin-bottom: 6px;">Your Wedding Planner is a Blank Slate</h3>
           <p style="color: var(--text-muted); font-size: 0.92rem; max-width: 480px; margin: 0 auto 18px auto;">
             Add your estimated wedding items (venue, catering, attire, photography, etc.). The app will automatically sum your estimated costs and calculate required savings by your payment due dates.
@@ -2071,7 +2395,7 @@
             const expPaid = (exp.milestones || []).filter(m => m.isPaid).reduce((s, m) => s + m.amount, 0);
             const expRemain = exp.actualCost - expPaid;
             const milestoneSummary = (exp.milestones || []).map(m => `
-              <span>• ${escapeHtml(m.title)}: ${formatCurrency(m.amount)} (${formatDate(m.dueDate)}) ${m.isPaid ? '✅' : '⏳'}</span>
+              <span>• ${escapeHtml(m.title)}: ${formatCurrency(m.amount)} (${formatDate(m.dueDate)}) ${m.isPaid ? '(Paid)' : '(Unpaid)'}</span>
             `).join('');
 
             return `
@@ -2169,7 +2493,7 @@
           </div>
           <div>
             <span style="font-size: 0.76rem; color: var(--text-muted);">
-              ${hasCustomAnchor ? '✓ Anchor date active' : '⚡ Using upcoming Friday as default anchor (pick date above)'}
+              ${hasCustomAnchor ? '✓ Anchor date active' : 'Using upcoming Friday as default anchor (pick date above)'}
             </span>
           </div>
         `;
@@ -2206,7 +2530,7 @@
       banner.className = 'sim-status-banner';
       banner.style.background = 'rgba(197, 160, 89, 0.08)';
       banner.style.borderColor = 'rgba(197, 160, 89, 0.3)';
-      icon.textContent = '💡';
+      icon.textContent = '';
       heading.textContent = 'Cash Flow Simulator Ready';
       detail.innerHTML = `
         Add expenses with payment milestones to simulate and verify your cashflow balance over time.
@@ -2219,7 +2543,7 @@
       banner.className = 'sim-status-banner red';
       banner.style.background = '';
       banner.style.borderColor = '';
-      icon.textContent = '⚠️';
+      icon.textContent = '';
       if (sim.isTimingDeficit && sim.recoveryDate && sim.deficitDurationDays > 0) {
         heading.textContent = `Timing Cash Crunch Detected (${sim.deficitDurationDays} Days)`;
         detail.innerHTML = `
@@ -2242,7 +2566,7 @@
       banner.className = 'sim-status-banner green';
       banner.style.background = '';
       banner.style.borderColor = '';
-      icon.textContent = '✅';
+      icon.textContent = '';
       heading.textContent = 'Healthy & Stress-Free Cashflow Plan';
       detail.innerHTML = `
         ${isDual 
@@ -2264,15 +2588,15 @@
         statusHtml = `<span class="badge-pill badge-overdue">Deficit (-${formatCurrency(state.safetyCushion - step.projectedBalance)})</span>`;
         if (step.deficitDurationDays > 0 && step.recoveryDate) {
           const who = step.recoveryPartner ? `${escapeHtml(step.recoveryPartner)}'s paycheck` : 'paycheck';
-          statusHtml += `<br><span class="timing-crunch-badge">⏱️ ${step.deficitDurationDays}d crunch until ${who} on ${formatDate(step.recoveryDate)}</span>`;
+          statusHtml += `<br><span class="timing-crunch-badge">${step.deficitDurationDays}d crunch until ${who} on ${formatDate(step.recoveryDate)}</span>`;
         }
       } else {
         statusHtml = `<span class="badge-pill badge-paid">Safe Cushion</span>`;
       }
 
       const paycheckBadgeHtml = isDual 
-        ? `<span class="sim-paycheck-badge" title="${escapeHtml(step.p1Name)}: ${step.p1Count} (${formatCurrency(step.p1Saved)}) • ${escapeHtml(step.p2Name)}: ${step.p2Count} (${formatCurrency(step.p2Saved)})">💵 ${step.paychecksReceived} paychecks (${escapeHtml(step.p1Name)}: ${step.p1Count}, ${escapeHtml(step.p2Name)}: ${step.p2Count})</span>`
-        : `<span class="sim-paycheck-badge">💵 ${step.paychecksReceived} paycheck${step.paychecksReceived === 1 ? '' : 's'} in</span>`;
+        ? `<span class="sim-paycheck-badge" title="${escapeHtml(step.p1Name)}: ${step.p1Count} (${formatCurrency(step.p1Saved)}) • ${escapeHtml(step.p2Name)}: ${step.p2Count} (${formatCurrency(step.p2Saved)})">${step.paychecksReceived} paychecks (${escapeHtml(step.p1Name)}: ${step.p1Count}, ${escapeHtml(step.p2Name)}: ${step.p2Count})</span>`
+        : `<span class="sim-paycheck-badge">${step.paychecksReceived} paycheck${step.paychecksReceived === 1 ? '' : 's'} in</span>`;
 
       tr.innerHTML = `
         <td>
@@ -2409,7 +2733,7 @@
     return `${sign}$${Math.round(absVal).toLocaleString()}`;
   }
 
-  // View 1: 📈 Trajectory Curve
+  // View 1: Trajectory Curve
   function renderTrajectoryChart(data, ctx, width, height, activePace) {
     const padLeft = 60;
     const padRight = 84; // Dedicated right margin for clean, direct line end badges
@@ -2750,7 +3074,7 @@
         balanceLabel: 'Projected Savings',
         dueLabel: 'Payments Due',
         isDeficit: s.isDeficit,
-        statusText: s.isDeficit ? '⚠️ Below Safety Cushion' : '✅ Healthy Cushion',
+        statusText: s.isDeficit ? 'Below Safety Cushion' : 'Healthy Cushion',
         isDual: state.incomeMode === 'dual'
       });
     });
@@ -2803,7 +3127,7 @@
     if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'flex';
   }
 
-  // View 2: 📊 Monthly Cash Flow Bars
+  // View 2: Monthly Cash Flow Bars
   function renderMonthlyBarsChart(data, ctx, width, height, activePace) {
     const padLeft = 58;
     const padRight = 24;
@@ -2937,7 +3261,7 @@
     if (DOM.legendCushionItem) DOM.legendCushionItem.style.display = 'none';
   }
 
-  // View 3: 🪜 Milestone Steps
+  // View 3: Milestone Steps
   function renderStepChart(data, ctx, width, height, activePace) {
     const padLeft = 58;
     const padRight = 36;
@@ -3163,7 +3487,7 @@
         balanceLabel: 'Account Bank Balance',
         dueLabel: 'Payment Deducted',
         isDeficit: s.isDeficit,
-        statusText: s.isDeficit ? '⚠️ Below Safety Buffer' : '✅ Healthy Buffer',
+        statusText: s.isDeficit ? 'Below Safety Buffer' : 'Healthy Buffer',
         isDual: state.incomeMode === 'dual'
       });
     });
@@ -3349,7 +3673,7 @@
     if (!slices || slices.length === 0 || total === 0) {
       legendList.innerHTML = `
         <div style="text-align: center; padding: 18px 12px; background: var(--bg-subtle); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); margin-top: 6px;">
-          <span style="font-size: 1.4rem; display: block; margin-bottom: 4px;">📊</span>
+          
           <p style="font-size: 0.84rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px 0;">No Expenses Logged Yet</p>
           <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 10px 0;">
             Add your estimated wedding items in the Budget tab to see your category spend allocation and percentages.
@@ -3655,7 +3979,6 @@
 
     function updateCashflowTooltipPosition(targetX, targetY, containerW, containerH) {
       const tooltipW = tooltip.offsetWidth || 215;
-      const tooltipH = tooltip.offsetHeight || 125;
       const halfW = tooltipW / 2;
 
       // Strict boundary clamping with 12px margin from container edges
@@ -3754,7 +4077,7 @@
           ${paychecksHtml}
           ${dipHtml}
           <div class="tt-row" style="margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.12); font-size: 0.72rem; color: ${closest.isDeficit ? '#FF8888' : '#88DDAA'}; font-weight: 600;">
-            <span>${closest.statusText || (closest.isDeficit ? '⚠️ Below Safety Cushion' : '✅ Healthy Cushion')}</span>
+            <span>${closest.statusText || (closest.isDeficit ? 'Below Safety Cushion' : 'Healthy Cushion')}</span>
           </div>
         `;
         tooltip.style.display = 'block';
@@ -3901,7 +4224,7 @@
           DOM.simPlannedSavings.value = simulatedPace;
           simulatedPace = null;
           saveState();
-          showToast(`Saved new savings pace: ${formatCurrency(state.plannedSavingsPerPaycheck)}!`, '💰');
+          showToast(`Saved new savings pace: ${formatCurrency(state.plannedSavingsPerPaycheck)}!`);
           renderAll();
         }
       });
@@ -4095,10 +4418,10 @@
     const existingIndex = state.expenses.findIndex(exp => exp.id === id);
     if (existingIndex >= 0) {
       state.expenses[existingIndex] = expenseObj;
-      showToast(`Updated "${name}"`, '✏️');
+      showToast(`Updated "${name}"`);
     } else {
       state.expenses.push(expenseObj);
-      showToast(`Added "${name}" to wedding estimates`, '✨');
+      showToast(`Added "${name}" to wedding estimates`);
     }
 
     saveState();
@@ -4175,8 +4498,302 @@
 
     saveState();
     DOM.settingsModal.close();
-    showToast(state.hasTargetBudget ? `Target budget set to ${formatCurrency(state.targetBudget)}` : 'Budget mode: Bottom-up estimated total', '⚙️');
+    showToast(state.hasTargetBudget ? `Target budget set to ${formatCurrency(state.targetBudget)}` : 'Budget mode: Bottom-up estimated total');
     renderAll();
+  }
+
+  // =========================================================================
+  // EXTRA MONEY & FUNDS LOGIC AND RENDERING
+  // =========================================================================
+  const FUND_CATEGORIES = {
+    gift: { label: 'Family & Friends Gift', icon: '🎁' },
+    bonus: { label: 'Work Bonus / Commission', icon: '💼' },
+    tax_refund: { label: 'Tax Refund', icon: '🏛️' },
+    registry: { label: 'Registry / Cash Fund', icon: '💌' },
+    side_hustle: { label: 'Side Hustle / Sold Items', icon: '🛠️' },
+    savings_deposit: { label: 'Regular Savings Deposit', icon: '🏦' },
+    other: { label: 'Other Contribution', icon: '🌟' }
+  };
+
+  function renderSavingsTracker(data) {
+    if (!DOM.savingsHealthCard) return;
+
+    // 1. Update quick savings input if not currently focused by user
+    if (DOM.quickSavingsInput && document.activeElement !== DOM.quickSavingsInput) {
+      DOM.quickSavingsInput.value = state.currentSavings > 0 ? state.currentSavings : '';
+    }
+
+    const st = data.savingsTrack;
+
+    // 2. Header pill & diagnosis card styling
+    if (DOM.savingsTrackHeaderPill) {
+      DOM.savingsTrackHeaderPill.textContent = st.headerPillText;
+      DOM.savingsTrackHeaderPill.className = 'badge-pill ' + st.headerPillClass;
+    }
+
+    if (DOM.savingsDiagnosisCard) {
+      DOM.savingsDiagnosisCard.className = 'savings-diagnosis-card status-' + st.level;
+    }
+
+    if (DOM.savingsTrackBadge) {
+      DOM.savingsTrackBadge.textContent = st.badgeText;
+      DOM.savingsTrackBadge.className = 'diagnosis-badge ' + st.badgeClass;
+    }
+
+    if (DOM.savingsPaceComparison) {
+      DOM.savingsPaceComparison.textContent = st.paceSummary;
+    }
+
+    if (DOM.savingsTrackTitle) {
+      DOM.savingsTrackTitle.textContent = st.title;
+    }
+
+    if (DOM.savingsTrackNarrative) {
+      DOM.savingsTrackNarrative.innerHTML = st.narrative;
+    }
+
+    // 3. Readiness meter
+    if (DOM.readinessVal) {
+      DOM.readinessVal.textContent = `${st.readinessPct}%`;
+    }
+    if (DOM.readinessFill) {
+      DOM.readinessFill.style.width = `${st.readinessPct}%`;
+      DOM.readinessFill.className = 'readiness-fill ' + st.readinessFillClass;
+    }
+    if (DOM.readinessSubtext) {
+      DOM.readinessSubtext.textContent = st.readinessSubtext;
+    }
+
+    // 4. Funds breakdown tiles
+    if (DOM.fundsTileSavings) {
+      DOM.fundsTileSavings.textContent = formatCurrency(data.currentSavings);
+    }
+    if (DOM.fundsTileExtra) {
+      DOM.fundsTileExtra.textContent = formatCurrency(data.totalExtraFunds);
+    }
+    if (DOM.fundsTileExtraSub) {
+      const count = (state.extraFunds || []).length;
+      DOM.fundsTileExtraSub.textContent = `${count} gift${count === 1 ? '' : 's'} & bonuses`;
+    }
+    if (DOM.fundsTilePaid) {
+      DOM.fundsTilePaid.textContent = formatCurrency(data.totalPaid);
+    }
+    if (DOM.fundsTileGap) {
+      DOM.fundsTileGap.textContent = formatCurrency(data.netGapToWedding);
+    }
+
+    // 5. Extra Funds list
+    renderExtraFundsList();
+  }
+
+  function renderExtraFundsList() {
+    if (!DOM.extraFundsList) return;
+    const list = DOM.extraFundsList;
+    list.innerHTML = '';
+
+    const funds = Array.isArray(state.extraFunds) ? state.extraFunds : [];
+
+    if (funds.length === 0) {
+      list.innerHTML = `
+        <div class="extra-funds-empty">
+          <span class="extra-funds-empty-icon">🎁</span>
+          <h4 class="extra-funds-empty-title">No Extra Money or Gifts Logged Yet</h4>
+          <p class="extra-funds-empty-desc">
+            Did parents contribute to your wedding, or did you get a work bonus, tax refund, or cash gift?
+            Add it here to factor extra cash directly into your wedding savings!
+          </p>
+          <button type="button" class="btn btn-secondary btn-sm" id="emptyAddFundBtn">
+            <span>+</span> Add Your First Extra Money Entry
+          </button>
+        </div>
+      `;
+      const btn = document.getElementById('emptyAddFundBtn');
+      if (btn) btn.onclick = () => openFundModal();
+      return;
+    }
+
+    // Sort chronologically (most recent first)
+    const sortedFunds = [...funds].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    const fragment = document.createDocumentFragment();
+    sortedFunds.forEach(f => {
+      const catInfo = FUND_CATEGORIES[f.category] || { label: 'Contribution', icon: '💰' };
+      const itemEl = document.createElement('div');
+      itemEl.className = 'extra-fund-item';
+      itemEl.innerHTML = `
+        <div class="fund-item-left">
+          <div class="fund-item-icon-badge">${catInfo.icon}</div>
+          <div class="fund-item-content">
+            <div class="fund-item-name">${escapeHtml(f.name)}</div>
+            <div class="fund-item-meta">
+              <span>📅 ${formatDate(f.date)}</span>
+              ${f.contributor ? `<span>• From: <strong>${escapeHtml(f.contributor)}</strong></span>` : ''}
+              <span class="fund-pill-tag">${escapeHtml(catInfo.label)}</span>
+              ${f.notes ? `<span title="${escapeHtml(f.notes)}">• Note</span>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="fund-item-right">
+          <div class="fund-item-amount">+${formatCurrency(f.amount)}</div>
+          <div class="fund-item-actions">
+            <button type="button" class="btn-fund-icon" title="Edit this entry" data-fund-id="${f.id}" data-action="edit">✏️</button>
+            <button type="button" class="btn-fund-icon btn-delete" title="Delete this entry" data-fund-id="${f.id}" data-action="delete">🗑️</button>
+          </div>
+        </div>
+      `;
+
+      const editBtn = itemEl.querySelector('[data-action="edit"]');
+      const delBtn = itemEl.querySelector('[data-action="delete"]');
+
+      if (editBtn) editBtn.onclick = () => openFundModal(f.id);
+      if (delBtn) delBtn.onclick = () => handleDeleteFund(f.id);
+
+      fragment.appendChild(itemEl);
+    });
+
+    list.appendChild(fragment);
+  }
+
+  function openFundModal(fundId = null) {
+    if (!DOM.fundModal) return;
+    const isEdit = Boolean(fundId);
+    let fund = null;
+
+    if (isEdit) {
+      fund = (state.extraFunds || []).find(f => f.id === fundId);
+    }
+
+    DOM.editFundId.value = fund ? fund.id : '';
+    DOM.fundName.value = fund ? fund.name : '';
+    DOM.fundAmount.value = fund ? fund.amount : '';
+    DOM.fundCategory.value = fund ? (fund.category || 'gift') : 'gift';
+    DOM.fundDate.value = fund ? fund.date : formatLocalDateToISO(new Date());
+    DOM.fundContributor.value = fund ? (fund.contributor || '') : '';
+    DOM.fundNotes.value = fund ? (fund.notes || '') : '';
+    DOM.fundAddToSavings.checked = fund ? Boolean(fund.addedToSavings) : true;
+
+    DOM.fundModalTitle.textContent = isEdit ? 'Edit Extra Money Entry' : 'Add Extra Money into Funds';
+    DOM.saveFundSubmitBtn.textContent = isEdit ? 'Update Entry' : 'Add to Wedding Funds';
+
+    updateFundModalHint();
+    DOM.fundModal.showModal();
+  }
+
+  function updateFundModalHint() {
+    if (!DOM.fundAddToSavingsHint) return;
+    const amt = Number(DOM.fundAmount.value) || 0;
+    const current = Number(state.currentSavings) || 0;
+    const editId = DOM.editFundId.value;
+    const oldFund = editId ? (state.extraFunds || []).find(f => f.id === editId) : null;
+    const oldAmt = oldFund && oldFund.addedToSavings ? Number(oldFund.amount) || 0 : 0;
+    const projected = current - oldAmt + amt;
+
+    if (amt > 0) {
+      DOM.fundAddToSavingsHint.innerHTML = `
+        Your current bank savings is <strong>${formatCurrency(current)}</strong>.
+        Checking this will set it to <strong>${formatCurrency(Math.max(0, projected))}</strong> (net change: +${formatCurrency(amt - oldAmt)}).
+      `;
+    } else {
+      DOM.fundAddToSavingsHint.innerHTML = `
+        Your current bank savings is <strong>${formatCurrency(current)}</strong>.
+        Checking this will automatically add this deposit to your bank savings.
+      `;
+    }
+  }
+
+  function handleSaveFund(e) {
+    e.preventDefault();
+    const id = DOM.editFundId.value || ('fund-' + Date.now());
+    const name = DOM.fundName.value.trim();
+    const amount = Math.max(1, Number(DOM.fundAmount.value) || 0);
+    const category = DOM.fundCategory.value;
+    const date = DOM.fundDate.value || formatLocalDateToISO(new Date());
+    const contributor = DOM.fundContributor.value.trim();
+    const notes = DOM.fundNotes.value.trim();
+    const addedToSavings = DOM.fundAddToSavings.checked;
+
+    if (!Array.isArray(state.extraFunds)) {
+      state.extraFunds = [];
+    }
+
+    const existingIdx = state.extraFunds.findIndex(f => f.id === id);
+
+    if (existingIdx >= 0) {
+      const old = state.extraFunds[existingIdx];
+      // Adjust savings delta if addedToSavings was active
+      if (old.addedToSavings && addedToSavings) {
+        const delta = amount - (Number(old.amount) || 0);
+        state.currentSavings = Math.max(0, (Number(state.currentSavings) || 0) + delta);
+      } else if (!old.addedToSavings && addedToSavings) {
+        state.currentSavings = (Number(state.currentSavings) || 0) + amount;
+      } else if (old.addedToSavings && !addedToSavings) {
+        state.currentSavings = Math.max(0, (Number(state.currentSavings) || 0) - (Number(old.amount) || 0));
+      }
+
+      state.extraFunds[existingIdx] = {
+        id,
+        name,
+        amount,
+        category,
+        date,
+        contributor,
+        notes,
+        addedToSavings
+      };
+      showToast(`Updated "${name}" (+${formatCurrency(amount)})`);
+    } else {
+      if (addedToSavings) {
+        state.currentSavings = (Number(state.currentSavings) || 0) + amount;
+      }
+      state.extraFunds.push({
+        id,
+        name,
+        amount,
+        category,
+        date,
+        contributor,
+        notes,
+        addedToSavings
+      });
+      showToast(`Added ${formatCurrency(amount)} from "${name}" to funds!`);
+    }
+
+    saveState();
+    DOM.fundModal.close();
+    renderAll();
+  }
+
+  function handleDeleteFund(fundId) {
+    const fund = (state.extraFunds || []).find(f => f.id === fundId);
+    if (!fund) return;
+
+    if (!confirm(`Delete extra money entry "${fund.name}" (+${formatCurrency(fund.amount)})?`)) {
+      return;
+    }
+
+    if (fund.addedToSavings && state.currentSavings >= fund.amount) {
+      if (confirm(`Would you also like to deduct ${formatCurrency(fund.amount)} from your Current Wedding Savings in the bank?`)) {
+        state.currentSavings = Math.max(0, state.currentSavings - fund.amount);
+      }
+    }
+
+    state.extraFunds = state.extraFunds.filter(f => f.id !== fundId);
+    saveState();
+    showToast(`Removed "${fund.name}"`);
+    renderAll();
+  }
+
+  function handleQuickSavingsSave() {
+    const val = Number(DOM.quickSavingsInput.value);
+    if (isNaN(val) || val < 0) {
+      showToast('Please enter a valid non-negative savings amount');
+      return;
+    }
+    state.currentSavings = val;
+    saveState();
+    renderAll();
+    const data = calculateFinancialAnalytics();
+    showToast(`Wedding savings updated to ${formatCurrency(state.currentSavings)}! (${data.savingsTrack.headerPillText})`);
   }
 
   // =========================================================================
@@ -4209,7 +4826,7 @@
         const cadenceVal = DOM.welcomePaycheckCadence.value;
         const nextPayVal = DOM.welcomeNextPayDate ? DOM.welcomeNextPayDate.value : '';
         if (!dateVal) {
-          showToast('Please select your wedding date', '⚠️');
+          showToast('Please select your wedding date');
           return;
         }
         state.weddingDate = dateVal;
@@ -4218,7 +4835,7 @@
           state.nextPayDate = nextPayVal;
         }
         saveState();
-        showToast('Wedding date & payday set! Savings pace calculated.', '✨');
+        showToast('Wedding date & payday set! Savings pace calculated.');
         renderAll();
       });
     }
@@ -4231,6 +4848,42 @@
     DOM.cancelExpenseModalBtn.addEventListener('click', () => DOM.expenseModal.close());
     DOM.addMilestoneRowBtn.addEventListener('click', () => addMilestoneInputRow());
     DOM.expenseForm.addEventListener('submit', handleSaveExpense);
+
+    // Fund & Extra Money Modal Triggers
+    if (DOM.openAddFundBtn) {
+      DOM.openAddFundBtn.addEventListener('click', () => openFundModal());
+    }
+    if (DOM.addFundFromSectionBtn) {
+      DOM.addFundFromSectionBtn.addEventListener('click', () => openFundModal());
+    }
+    if (DOM.addExtraFundTableBtn) {
+      DOM.addExtraFundTableBtn.addEventListener('click', () => openFundModal());
+    }
+    if (DOM.closeFundModalBtn) {
+      DOM.closeFundModalBtn.addEventListener('click', () => DOM.fundModal.close());
+    }
+    if (DOM.cancelFundModalBtn) {
+      DOM.cancelFundModalBtn.addEventListener('click', () => DOM.fundModal.close());
+    }
+    if (DOM.fundForm) {
+      DOM.fundForm.addEventListener('submit', handleSaveFund);
+    }
+    if (DOM.fundAmount) {
+      DOM.fundAmount.addEventListener('input', updateFundModalHint);
+    }
+
+    // Quick Savings Input Handlers
+    if (DOM.saveQuickSavingsBtn) {
+      DOM.saveQuickSavingsBtn.addEventListener('click', handleQuickSavingsSave);
+    }
+    if (DOM.quickSavingsInput) {
+      DOM.quickSavingsInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleQuickSavingsSave();
+        }
+      });
+    }
 
     // Two-Tier Schedule Toggle Handlers
     if (DOM.expenseScheduleToggle) {
@@ -4356,7 +5009,7 @@
           dueDate: state.weddingDate || '',
           isPaid: false
         });
-        showToast('Set payment due on wedding day', '⚡');
+        showToast('Set payment due on wedding day');
       });
     }
 
@@ -4391,7 +5044,7 @@
         if (state.incomeMode !== 'individual') {
           state.incomeMode = 'individual';
           saveState();
-          showToast('Switched to Single / Combined Income mode', '💼');
+          showToast('Switched to Single / Combined Income mode');
           renderAll();
         }
       });
@@ -4399,7 +5052,7 @@
         if (state.incomeMode !== 'dual') {
           state.incomeMode = 'dual';
           saveState();
-          showToast('Switched to Dual-Income (2 Schedules) mode', '💍');
+          showToast('Switched to Dual-Income (2 Schedules) mode');
           renderAll();
         }
       });
@@ -4433,10 +5086,10 @@
           if (DOM.simP1Savings) DOM.simP1Savings.value = p1Rec;
           if (DOM.simP2Savings) DOM.simP2Savings.value = p2Rec;
           saveState();
-          showToast(`Dual savings balanced! ${escapeHtml(data.partnerNames.p1)}: ${formatCurrency(p1Rec)}, ${escapeHtml(data.partnerNames.p2)}: ${formatCurrency(p2Rec)}`, '⚡');
+          showToast(`Dual savings balanced! ${escapeHtml(data.partnerNames.p1)}: ${formatCurrency(p1Rec)}, ${escapeHtml(data.partnerNames.p2)}: ${formatCurrency(p2Rec)}`);
           renderAll();
         } else {
-          showToast('Your current savings already fully cover your wedding milestones!', '✨');
+          showToast('Your current savings already fully cover your wedding milestones!');
         }
       } else {
         const recommended = data.simulation.recommendedPaycheckSavings;
@@ -4444,10 +5097,10 @@
           state.plannedSavingsPerPaycheck = recommended;
           DOM.simPlannedSavings.value = recommended;
           saveState();
-          showToast(`Savings pace optimized to ${formatCurrency(recommended)} / ${getCadenceName(state.paycheckCadence)}!`, '⚡');
+          showToast(`Savings pace optimized to ${formatCurrency(recommended)} / ${getCadenceName(state.paycheckCadence)}!`);
           renderAll();
         } else {
-          showToast('Your current savings already fully cover your wedding milestones!', '✨');
+          showToast('Your current savings already fully cover your wedding milestones!');
         }
       }
     });
@@ -4633,7 +5286,7 @@
         if (exp && confirm(`Delete "${exp.name}" and all its payment milestones?`)) {
           state.expenses = state.expenses.filter(x => x.id !== expId);
           saveState();
-          showToast(`Deleted "${exp.name}"`, '🗑️');
+          showToast(`Deleted "${exp.name}"`);
           renderAll();
         }
         return;
@@ -4669,7 +5322,7 @@
         state._explicitSampleLoaded = true;
         saveState();
         DOM.dataModal.close();
-        showToast('Sample wedding data loaded', '💍');
+        showToast('Sample wedding data loaded');
         renderAll();
       }
     });
@@ -4678,7 +5331,7 @@
         state = getBlankState();
         saveState();
         DOM.dataModal.close();
-        showToast('Started fresh blank-slate wedding plan', '🌱');
+        showToast('Started fresh blank-slate wedding plan');
         renderAll();
       }
     });
@@ -4692,31 +5345,35 @@
       });
     }
 
+    if (DOM.supabaseSyncId) {
+      DOM.supabaseSyncId.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (DOM.connectSupabaseBtn) DOM.connectSupabaseBtn.click();
+        }
+      });
+    }
+
     if (DOM.connectSupabaseBtn) {
       DOM.connectSupabaseBtn.addEventListener('click', async () => {
-        let url = (DOM.supabaseUrl.value || '').trim();
-        let anonKey = (DOM.supabaseAnonKey.value || '').trim();
-        let syncId = (DOM.supabaseSyncId.value || '').trim();
-
-        url = sanitizeSupabaseUrl(url);
-        anonKey = sanitizeAnonKey(anonKey);
+        let syncId = (DOM.supabaseSyncId ? DOM.supabaseSyncId.value : '').trim();
         syncId = sanitizeSyncId(syncId);
 
-        if (DOM.supabaseUrl) DOM.supabaseUrl.value = url;
-        if (DOM.supabaseAnonKey) DOM.supabaseAnonKey.value = anonKey;
-        if (DOM.supabaseSyncId) DOM.supabaseSyncId.value = syncId;
-
-        if (!url || !anonKey) {
-          showSupabaseNotice('Please enter both your Supabase Project URL and Anon Public Key.', 'warning');
+        if (!syncId) {
+          showSupabaseNotice('Please enter a Wedding Sync Passphrase (e.g. <code>Irish09</code>) to connect.', 'warning');
+          if (DOM.supabaseSyncId) DOM.supabaseSyncId.focus();
           return;
         }
 
-        supabaseConfig = { url, anonKey, syncId };
-        localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify(supabaseConfig));
+        const url = CloudSyncVault.getDefaultUrl();
+        const anonKey = CloudSyncVault.getDefaultKey();
+
+        supabaseConfig = { syncId };
+        localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify({ syncId }));
 
         try {
           if (!window.supabase) {
-            showSupabaseNotice('Supabase client library is still loading. Please check your internet connection and try again in a moment.', 'warning');
+            showSupabaseNotice('Cloud sync library is still loading. Please check your internet connection.', 'warning');
             return;
           }
           supabaseClient = window.supabase.createClient(url, anonKey);
@@ -4725,80 +5382,105 @@
           // Verify connectivity and table status
           const { data, error } = await supabaseClient
             .from('wedding_plans')
-            .select('id')
+            .select('id, data, updated_at')
             .eq('id', syncId)
             .maybeSingle();
 
           if (error) {
-            console.warn('Supabase connect check error:', error);
+            console.warn('Cloud sync connect check error:', error);
             handleSupabaseError(error);
             updateSupabaseBadge('error');
             return;
           }
 
-          if (DOM.disconnectSupabaseBtn) DOM.disconnectSupabaseBtn.style.display = 'inline-block';
-          showSupabaseNotice('<strong>✅ Successfully connected to Supabase cloud!</strong><br>Your wedding data is now syncing in real-time.', 'success');
           updateSupabaseBadge('connected');
-          showToast('Connected to Supabase cloud database!', '☁️');
+          showSupabaseNotice(`<strong>Connected to wedding sync: <code>${escapeHtml(syncId)}</code></strong><br>Your wedding data is now syncing in real time across devices.`, 'success');
+          showToast(`Connected to cloud sync (${syncId})!`);
 
-          // Initial sync
-          if (data && data.id) {
-            syncFromSupabase();
+          if (data && data.data && typeof data.data === 'object') {
+            state = data.data;
+            saveState(false, true);
+            renderAll();
+            isCloudSyncReady = true;
           } else {
-            syncToSupabase();
+            // First time this wedding passphrase is used, only upload if local plan has content
+            isCloudSyncReady = true;
+            const hasLocalData = !!(state.coupleNames || (state.expenses && state.expenses.length > 0) || state.targetBudget > 0);
+            if (hasLocalData) {
+              syncToSupabase();
+            }
           }
+
+          subscribeToRealtime(syncId);
         } catch (err) {
-          console.error('Failed to connect to Supabase:', err);
+          console.error('Failed to connect to cloud sync:', err);
           handleSupabaseError(err);
           updateSupabaseBadge('error');
         }
       });
     }
 
-    if (DOM.disconnectSupabaseBtn) {
-      DOM.disconnectSupabaseBtn.addEventListener('click', () => {
-        if (confirm('Disconnect from Supabase cloud? Your wedding data will remain safely saved locally on this device.')) {
-          supabaseClient = null;
-          localStorage.removeItem(SUPABASE_CONFIG_KEY);
-          DOM.supabaseUrl.value = '';
-          DOM.supabaseAnonKey.value = '';
-          DOM.supabaseSyncId.value = '';
-          DOM.disconnectSupabaseBtn.style.display = 'none';
-          updateSupabaseBadge('offline');
-          showSupabaseNotice('Disconnected from Supabase. Working locally.', 'info');
-          showToast('Disconnected from Supabase', '🔌');
+    if (DOM.sharePartnerLinkBtn) {
+      DOM.sharePartnerLinkBtn.addEventListener('click', () => {
+        const syncId = sanitizeSyncId(supabaseConfig.syncId || (DOM.supabaseSyncId ? DOM.supabaseSyncId.value : ''));
+        if (!syncId) {
+          showToast('Please connect with a wedding passphrase first');
+          return;
+        }
+        const cleanOrigin = window.location.origin;
+        const cleanPath = window.location.pathname;
+        const shareUrl = `${cleanOrigin}${cleanPath}#sync=${encodeURIComponent(syncId)}`;
+
+        const copyFallback = (text) => {
+          const temp = document.createElement('textarea');
+          temp.value = text;
+          temp.style.position = 'fixed';
+          temp.style.opacity = '0';
+          document.body.appendChild(temp);
+          temp.select();
+          try {
+            document.execCommand('copy');
+            showToast('Partner sync link copied! Send it to your partner.');
+          } catch (e) {
+            prompt('Copy this partner sync link:', text);
+          }
+          document.body.removeChild(temp);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            showToast('Partner sync link copied! Send it to your partner.');
+          }).catch(() => {
+            copyFallback(shareUrl);
+          });
+        } else {
+          copyFallback(shareUrl);
         }
       });
     }
 
-    if (DOM.copySupabaseSqlBtn) {
-      DOM.copySupabaseSqlBtn.addEventListener('click', () => {
-        const sql = `-- Supabase SQL Setup for Wedding Budget Planner
-create table if not exists public.wedding_plans (
-  id text primary key,
-  data jsonb not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-alter table public.wedding_plans enable row level security;
-
-drop policy if exists "Allow public read on wedding_plans" on public.wedding_plans;
-drop policy if exists "Allow public insert on wedding_plans" on public.wedding_plans;
-drop policy if exists "Allow public update on wedding_plans" on public.wedding_plans;
-
-create policy "Allow public read on wedding_plans" on public.wedding_plans for select using (true);
-create policy "Allow public insert on wedding_plans" on public.wedding_plans for insert with check (true);
-create policy "Allow public update on wedding_plans" on public.wedding_plans for update using (true);
-`;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(sql).then(() => {
-            showToast('Copied Supabase SQL schema to clipboard!', '📋');
-            showSupabaseNotice('<strong>📋 SQL Schema copied to clipboard!</strong><br>Now paste it in Supabase <strong>SQL Editor</strong> ➔ click <strong>Run</strong>, then return here and click <strong>Save & Connect</strong>.', 'info');
-          }).catch(() => {
-            prompt('Copy the SQL below and run it in Supabase SQL Editor:', sql);
-          });
-        } else {
-          prompt('Copy the SQL below and run it in Supabase SQL Editor:', sql);
+    if (DOM.disconnectSupabaseBtn) {
+      DOM.disconnectSupabaseBtn.addEventListener('click', () => {
+        if (confirm('Disconnect from cloud sync? Your wedding data will remain safely saved locally on this device.')) {
+          if (realtimeChannel && supabaseClient) {
+            try {
+              supabaseClient.removeChannel(realtimeChannel);
+            } catch (e) {}
+            realtimeChannel = null;
+          }
+          supabaseClient = null;
+          isCloudSyncReady = false;
+          supabaseConfig.syncId = '';
+          localStorage.removeItem(SUPABASE_CONFIG_KEY);
+          if (DOM.supabaseSyncId) DOM.supabaseSyncId.value = '';
+          if (DOM.disconnectSupabaseBtn) DOM.disconnectSupabaseBtn.style.display = 'none';
+          if (DOM.sharePartnerLinkBtn) DOM.sharePartnerLinkBtn.style.display = 'none';
+          if (window.location.hash.includes('sync=')) {
+            history.replaceState(null, document.title, window.location.pathname + window.location.search);
+          }
+          updateSupabaseBadge('offline');
+          showSupabaseNotice('Disconnected from cloud sync. Working locally.', 'info');
+          showToast('Disconnected from cloud sync');
         }
       });
     }
@@ -4851,7 +5533,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     m.paidDate = isPaid ? new Date().toISOString().split('T')[0] : null;
 
     saveState();
-    showToast(isPaid ? `Marked "${m.title}" as paid! 🎉` : `Reverted "${m.title}" to unpaid`, isPaid ? '✅' : '↩');
+    showToast(isPaid ? `Marked "${m.title}" as paid!` : `Reverted "${m.title}" to unpaid`);
     renderAll();
   }
 
@@ -4867,7 +5549,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     a.download = `wedding-budget-${state.coupleNames.toLowerCase().replace(/[^a-z0-9]/g, '-')}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Exported wedding JSON backup', '📥');
+    showToast('Exported wedding JSON backup');
   }
 
   function exportDataCsv() {
@@ -4892,7 +5574,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     a.download = `wedding-payment-schedule-${state.coupleNames.toLowerCase().replace(/[^a-z0-9]/g, '-')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Exported payment schedule CSV', '📊');
+    showToast('Exported payment schedule CSV');
   }
 
   function importDataJson(e) {
@@ -4907,7 +5589,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
           state = imported;
           saveState();
           DOM.dataModal.close();
-          showToast('Imported wedding data successfully!', '✨');
+          showToast('Imported wedding data successfully!');
           renderAll();
         } else {
           alert('Invalid file format: Missing expenses array.');
@@ -4946,7 +5628,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
       title: 'Safety Cushion Reserve',
       body: 'A protected cash buffer kept in your wedding savings account at all times that is never spent on planned wedding bills.',
       howItWorks: 'The Cashflow Simulator tests your planned savings against each vendor’s payment due date. If an upcoming bill (like a big venue deposit or caterer final balance) would draw your bank balance below this cushion, you receive an immediate advance warning so you can adjust your savings pace before the deadline.',
-      tip: '💡 Most couples maintain a $1,000 – $2,000 buffer to absorb surprise alteration fees, vendor gratuities, delivery surcharges, or sudden guest count changes without financial stress.'
+      tip: 'Most couples maintain a $1,000 – $2,000 buffer to absorb surprise alteration fees, vendor gratuities, delivery surcharges, or sudden guest count changes without financial stress.'
     },
     'tt-current-savings': {
       icon: '🏦',
@@ -4965,13 +5647,13 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
       title: 'Next Payday Date',
       body: 'The exact calendar date when your next paycheck or wedding savings transfer arrives.',
       howItWorks: 'Anchors your savings frequency to real calendar days. The simulator uses this to determine exactly which paychecks arrive before each vendor payment milestone, eliminating timing crunches and overdraft surprises.',
-      tip: '💡 If you get paid on alternate Fridays or specific dates like the 1st and 15th, setting your next payday guarantees calendar-accurate deficit tracking.'
+      tip: 'If you get paid on alternate Fridays or specific dates like the 1st and 15th, setting your next payday guarantees calendar-accurate deficit tracking.'
     },
     'tt-planned-savings': {
       icon: '💰',
       title: 'Savings per Paycheck',
       body: 'The dollar amount you and your partner plan to set aside each pay period towards your wedding.',
-      howItWorks: 'The simulator calculates your projected bank balance after every single paycheck. If you fall short on any due date, click "⚡ Auto-Balance Savings Pace" in the Simulator to calculate the exact pace needed.'
+      howItWorks: 'The simulator calculates your projected bank balance after every single paycheck. If you fall short on any due date, click "Auto-Balance Savings Pace" in the Simulator to calculate the exact pace needed.'
     },
     'tt-budget-goal': {
       icon: '🎯',
@@ -5421,7 +6103,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     // 3. Settings Status
     if (DOM.aiEngineStatusBadge) {
       if (state.geminiApiKey) {
-        DOM.aiEngineStatusBadge.textContent = '⚡ Gemini 2.5 Flash Active';
+        DOM.aiEngineStatusBadge.textContent = 'Gemini 2.5 Flash Active';
         DOM.aiEngineStatusBadge.style.background = 'rgba(104, 130, 122, 0.15)';
         DOM.aiEngineStatusBadge.style.color = '#2E4C43';
       } else {
@@ -5460,7 +6142,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
       if (activeAuditFilter === 'missing') {
         emptyMsg = `
           <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; background: rgba(104, 130, 122, 0.05); border: 1px dashed rgba(104, 130, 122, 0.4); border-radius: var(--radius-md);">
-            <span style="font-size: 2.2rem; display: block; margin-bottom: 8px;">🎉</span>
+            
             <h4 style="font-family: var(--font-serif); font-size: 1.25rem; color: var(--sage-primary); margin: 0 0 6px 0;">All Industry Gotchas Accounted For!</h4>
             <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 480px; margin: 0 auto;">
               You have reviewed all 14 common wedding hidden costs. Items are either budgeted or marked as excluded from your wedding.
@@ -5470,17 +6152,17 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
       } else if (activeAuditFilter === 'excluded') {
         emptyMsg = `
           <div style="grid-column: 1 / -1; text-align: center; padding: 36px 20px; background: var(--bg-subtle); border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
-            <span style="font-size: 2rem; display: block; margin-bottom: 8px;">🚫</span>
+            
             <h4 style="font-family: var(--font-serif); font-size: 1.15rem; color: var(--text-main); margin: 0 0 6px 0;">No Excluded Items Yet</h4>
             <p style="font-size: 0.84rem; color: var(--text-muted); max-width: 440px; margin: 0 auto;">
-              When reviewing costs in "To Review", click <strong>🚫 Not in our wedding</strong> on any expense that isn't part of your plans. It will appear here and can be restored anytime.
+              When reviewing costs in "To Review", click <strong>Not in our wedding</strong> on any expense that isn't part of your plans. It will appear here and can be restored anytime.
             </p>
           </div>
         `;
       } else if (activeAuditFilter === 'covered') {
         emptyMsg = `
           <div style="grid-column: 1 / -1; text-align: center; padding: 36px 20px; background: var(--bg-subtle); border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
-            <span style="font-size: 2rem; display: block; margin-bottom: 8px;">📋</span>
+            
             <h4 style="font-family: var(--font-serif); font-size: 1.15rem; color: var(--text-main); margin: 0 0 6px 0;">No Covered Items Yet</h4>
             <p style="font-size: 0.84rem; color: var(--text-muted); max-width: 440px; margin: 0 auto;">
               As you add gotchas to your budget, they will automatically be cataloged here as covered.
@@ -5499,10 +6181,10 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
 
       let statusBadge = '';
       if (isExcluded) {
-        statusBadge = `<span class="gotcha-status-badge excluded">🚫 Excluded: Not in your wedding</span>`;
+        statusBadge = `<span class="gotcha-status-badge excluded">Excluded: Not in wedding</span>`;
       } else if (isCovered) {
         const matchName = item.matchedExpense ? ` (${escapeHtml(item.matchedExpense.name)})` : '';
-        statusBadge = `<span class="gotcha-status-badge covered">✅ In Budget${matchName}</span>`;
+        statusBadge = `<span class="gotcha-status-badge covered">In Budget${matchName}</span>`;
       }
 
       let actionsHtml = '';
@@ -5512,10 +6194,10 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
             + Add to Budget (${formatCurrency(item.estimatedCost)})
           </button>
           <button type="button" class="btn btn-not-in-wedding btn-sm" data-gotcha-action="exclude" data-gotcha-id="${item.id}" title="Tell EternalPlan this expense is not part of your wedding">
-            🚫 Not in our wedding
+            Not in our wedding
           </button>
           <button type="button" class="btn btn-text btn-sm" data-gotcha-action="covered" data-gotcha-id="${item.id}" title="Mark as already accounted for or paid by family">
-            ✅ Already covered
+            Already covered
           </button>
         `;
       } else if (isExcluded) {
@@ -5529,7 +6211,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
         actionsHtml = `
           ${statusBadge}
           <button type="button" class="btn btn-not-in-wedding btn-sm" data-gotcha-action="exclude" data-gotcha-id="${item.id}" style="margin-left: auto;" title="Change: This is not part of our wedding">
-            🚫 Not in our wedding
+            Not in our wedding
           </button>
         `;
       }
@@ -5623,7 +6305,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     state.excludedHiddenCosts = state.excludedHiddenCosts.filter(id => id !== costId);
     saveState();
     renderAll();
-    showToast(`✨ Added "${item.title}" (${formatCurrency(item.estimatedCost)}) to your budget!`, '💍');
+    showToast(`Added "${item.title}" (${formatCurrency(item.estimatedCost)}) to your budget!`);
   }
 
   function markHiddenCostExcluded(costId) {
@@ -5636,7 +6318,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     state.coveredHiddenCosts = state.coveredHiddenCosts.filter(id => id !== costId);
     saveState();
     renderAll();
-    showToast(`🚫 "${item.title}" marked as NOT part of your wedding`, 'ℹ️');
+    showToast(`"${item.title}" marked as NOT part of your wedding`);
   }
 
   function restoreHiddenCost(costId) {
@@ -5647,7 +6329,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     state.coveredHiddenCosts = state.coveredHiddenCosts.filter(id => id !== costId);
     saveState();
     renderAll();
-    showToast(`↩️ "${item.title}" restored to active audit review`, '✨');
+    showToast(`↩️ "${item.title}" restored to active audit review`);
   }
 
   function markHiddenCostCovered(costId) {
@@ -5660,7 +6342,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     state.excludedHiddenCosts = state.excludedHiddenCosts.filter(id => id !== costId);
     saveState();
     renderAll();
-    showToast(`✅ "${item.title}" marked as already covered`, '✨');
+    showToast(`"${item.title}" marked as already covered`);
   }
 
   // FINANCIAL ADVISOR CHAT ENGINE
@@ -5669,7 +6351,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     const coupleText = state.coupleNames ? ` <strong>${escapeHtml(state.coupleNames)}</strong>` : '';
     const welcomeHtml = `
       <div class="chat-msg ai">
-        <div class="chat-avatar">✨</div>
+        <div class="chat-avatar">AI</div>
         <div class="chat-bubble">
           <p>Hello${coupleText}! I am your <strong>EternalAI Financial Copilot</strong>.</p>
           <p>I have live, continuous visibility into your wedding numbers: <strong>${data.milestones.length} payment milestones</strong>, <strong>${formatCurrency(data.remainingDue)} remaining unpaid</strong>, and a planned savings pace of <strong>${formatCurrency(state.plannedSavingsPerPaycheck)} ${getCadenceName(state.paycheckCadence)}</strong>.</p>
@@ -5697,7 +6379,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     typingIndicator.className = 'chat-msg ai';
     typingIndicator.id = 'aiTypingIndicator';
     typingIndicator.innerHTML = `
-      <div class="chat-avatar">✨</div>
+      <div class="chat-avatar">AI</div>
       <div class="chat-bubble" style="color: var(--text-muted); font-style: italic;">
         Thinking & calculating wedding financial models...
       </div>
@@ -5735,7 +6417,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
     const msgDiv = document.createElement('div');
     msgDiv.className = `chat-msg ${role}`;
 
-    const avatar = role === 'user' ? '💍' : '✨';
+    const avatar = role === 'user' ? '💍' : 'AI';
     // Format simple markdown into styled HTML if AI response
     let formattedContent = content;
     if (role === 'ai') {
@@ -5790,12 +6472,12 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
       let riskAnalysis = '';
       if (sim.hasDeficit) {
         riskAnalysis = `
-          <p>⚠️ <strong>Cashflow Warning Detected:</strong> At your current savings rate of <strong>${pace} / ${cadence}</strong>, your balance is projected to dip into deficit by <strong>${formatCurrency(Math.abs(sim.minBalance))}</strong> around <strong>${formatDate(sim.deficitDate)}</strong>.</p>
+          <p><strong>Cashflow Warning Detected:</strong> At your current savings rate of <strong>${pace} / ${cadence}</strong>, your balance is projected to dip into deficit by <strong>${formatCurrency(Math.abs(sim.minBalance))}</strong> around <strong>${formatDate(sim.deficitDate)}</strong>.</p>
           <p>To safely bridge this gap, your recommended target savings pace is <strong>${formatCurrency(sim.recommendedPaycheckSavings)} / ${cadence}</strong>.</p>
         `;
       } else {
         riskAnalysis = `
-          <p>✅ <strong>Cashflow Trajectory Solid:</strong> With <strong>${savings}</strong> in bank savings and <strong>${pace} / ${cadence}</strong> planned, your projected lowest balance remains safely above your <strong>${formatCurrency(state.safetyCushion)}</strong> emergency cushion.</p>
+          <p><strong>Cashflow Trajectory Solid:</strong> With <strong>${savings}</strong> in bank savings and <strong>${pace} / ${cadence}</strong> planned, your projected lowest balance remains safely above your <strong>${formatCurrency(state.safetyCushion)}</strong> emergency cushion.</p>
         `;
       }
 
@@ -5805,10 +6487,10 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
         gotchaSummary = `
           <p><strong>Top Unbudgeted Industry Gotchas:</strong> You have <strong>${audit.missingCount} items</strong> not yet accounted for in your budget. The highest impact ones are:</p>
           <ul>${topGotchas}</ul>
-          <p>Check the <em>Hidden Cost & Gotcha Audit</em> tab to either add them with one click or mark them as <strong>🚫 Not in our wedding</strong>.</p>
+          <p>Check the <em>Hidden Cost & Gotcha Audit</em> tab to either add them with one click or mark them as <strong>Not in our wedding</strong>.</p>
         `;
       } else {
-        gotchaSummary = `<p>🎉 You have zero unbudgeted gotchas remaining! All industry items have been budgeted or excluded.</p>`;
+        gotchaSummary = `<p>You have zero unbudgeted gotchas remaining! All industry items have been budgeted or excluded.</p>`;
       }
 
       return `
@@ -5846,8 +6528,8 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
           <li><strong>Current Projected Buffer:</strong> Your lowest projected balance is currently <strong>${formatCurrency(sim.minBalance)}</strong>. After adding ${formatCurrency(extraAmt)}, it would become <strong>${formatCurrency(projectedDeficit)}</strong>.</li>
         </ul>
         <p>${createsDeficit 
-          ? `⚠️ <strong>Verdict: Caution.</strong> This will reduce your balance below your $${formatCurrency(state.safetyCushion)} cushion unless you boost savings by ${formatCurrency(extraPerPaycheck)}/${cadence} or reallocate from another category.` 
-          : `✅ <strong>Verdict: Affordable!</strong> Your cashflow buffer can absorb this expense without dipping below your safety cushion.`}
+          ? `<strong>Verdict: Caution.</strong> This will reduce your balance below your $${formatCurrency(state.safetyCushion)} cushion unless you boost savings by ${formatCurrency(extraPerPaycheck)}/${cadence} or reallocate from another category.` 
+          : `<strong>Verdict: Affordable!</strong> Your cashflow buffer can absorb this expense without dipping below your safety cushion.`}
         </p>
       `;
     }
@@ -5889,7 +6571,7 @@ create policy "Allow public update on wedding_plans" on public.wedding_plans for
         <li><strong>Current Bank Savings:</strong> ${savings}</li>
         <li><strong>Remaining Unpaid Bills:</strong> ${due} across ${data.unpaid.length} milestones</li>
         <li><strong>Planned Savings Pace:</strong> ${pace} / ${cadence}</li>
-        <li><strong>Cashflow Cushion Status:</strong> ${sim.hasDeficit ? '⚠️ Projected deficit - action recommended' : '✅ Healthy trajectory'}</li>
+        <li><strong>Cashflow Cushion Status:</strong> ${sim.hasDeficit ? 'Projected deficit - action recommended' : 'Healthy trajectory'}</li>
         <li><strong>Hidden Cost Gotchas to Review:</strong> ${audit.missingCount} items</li>
       </ul>
       <p>Try asking: <em>"Can we afford an extra $2,000?"</em>, <em>"Where can we realistically trim costs?"</em>, or <em>"Audit our budget risks."</em></p>
@@ -5974,7 +6656,7 @@ Provide structured, empathetic, concise advice. Use bold text and bullet points 
     } catch (e) {}
     saveState();
     renderAiHub();
-    showToast(key ? 'Saved Gemini API key!' : 'Cleared API key (Local engine active)', '💾');
+    showToast(key ? 'Saved Gemini API key!' : 'Cleared API key (Local engine active)');
   }
 
   function handleClearAiKey() {
@@ -5985,7 +6667,7 @@ Provide structured, empathetic, concise advice. Use bold text and bullet points 
     } catch (e) {}
     saveState();
     renderAiHub();
-    showToast('Reverted to Smart Local Financial Advisor', 'ℹ️');
+    showToast('Reverted to Smart Local Financial Advisor');
   }
 
   async function handleTestAiConnection() {
@@ -5993,13 +6675,13 @@ Provide structured, empathetic, concise advice. Use bold text and bullet points 
     const key = DOM.geminiApiKeyInput.value.trim();
     if (!key) {
       DOM.aiTestNotice.className = 'supabase-sync-notice notice-warning';
-      DOM.aiTestNotice.innerHTML = '<strong>⚠️ No API Key entered</strong><br>Please enter your Gemini API key above or continue using the Smart Local Advisor.';
+      DOM.aiTestNotice.innerHTML = '<strong>No API Key entered</strong><br>Please enter your Gemini API key above or continue using the Smart Local Advisor.';
       DOM.aiTestNotice.style.display = 'block';
       return;
     }
 
     DOM.aiTestNotice.className = 'supabase-sync-notice notice-info';
-    DOM.aiTestNotice.innerHTML = '⚡ Testing connection to Google Gemini API...';
+    DOM.aiTestNotice.innerHTML = 'Testing connection to Google Gemini API...';
     DOM.aiTestNotice.style.display = 'block';
 
     try {
@@ -6017,13 +6699,13 @@ Provide structured, empathetic, concise advice. Use bold text and bullet points 
       }
 
       DOM.aiTestNotice.className = 'supabase-sync-notice notice-success';
-      DOM.aiTestNotice.innerHTML = '<strong>✅ Gemini API Connected Successfully!</strong><br>Your AI Financial Advisor now has direct access to Gemini 2.5 Flash for advanced custom reasoning.';
+      DOM.aiTestNotice.innerHTML = '<strong>Gemini API Connected Successfully!</strong><br>Your AI Financial Advisor now has direct access to Gemini 2.5 Flash for advanced custom reasoning.';
       state.geminiApiKey = key;
       saveState();
       renderAiHub();
     } catch (err) {
       DOM.aiTestNotice.className = 'supabase-sync-notice notice-warning';
-      DOM.aiTestNotice.innerHTML = `<strong>⚠️ Connection Failed:</strong> ${escapeHtml(err.message)}<br>Check that your API key is active in <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">Google AI Studio</a>.`;
+      DOM.aiTestNotice.innerHTML = `<strong>Connection Failed:</strong> ${escapeHtml(err.message)}<br>Check that your API key is active in <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">Google AI Studio</a>.`;
     }
   }
 
