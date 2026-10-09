@@ -62,6 +62,9 @@
         <button class="btn btn-primary" id="openAddExpenseBtn">
           <span>+</span> Add Expense
         </button>
+        <button class="btn btn-secondary" id="openExcelImportBtn" title="Upload Excel or CSV spreadsheet to automatically create expenses">
+          📊 Import Excel
+        </button>
         <button class="btn btn-secondary" id="openAddFundBtn" title="Add extra money, gifts, bonuses, or savings deposits into funds">
           Add Funds
         </button>
@@ -592,6 +595,9 @@
             <p>Manage individual vendors, contracts, estimates, and payment splits</p>
           </div>
           <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary btn-sm" id="importExcelBudgetBtn" title="Import expenses from Excel or CSV spreadsheet">
+              📊 Import Excel
+            </button>
             <button class="btn btn-secondary btn-sm" id="toggleAllCategoriesBtn">
               Expand / Collapse All
             </button>
@@ -1319,7 +1325,14 @@
         </button>
         
         <div style="margin-top: 6px;">
-          <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Restore from JSON File</label>
+          <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Import Expenses from Spreadsheet</label>
+          <button type="button" class="btn btn-secondary" id="openExcelFromDataModalBtn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span>📊</span> Upload Excel / CSV Spreadsheet (.xlsx, .xls, .csv)
+          </button>
+        </div>
+
+        <div style="margin-top: 6px;">
+          <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Restore Full Backup from JSON File</label>
           <input type="file" id="importJsonInput" accept=".json" class="form-control">
         </div>
 
@@ -1468,6 +1481,266 @@
     </div>
   </dialog>
 
+  <!-- =========================================================================
+       MODAL: EXCEL / SPREADSHEET IMPORT & CONFIRMATION DASHBOARD
+       ========================================================================= -->
+  <dialog id="excelImportModal" class="ai-modal excel-modal" aria-labelledby="excelModalTitle">
+    <div class="modal-header excel-modal-header">
+      <div class="excel-header-brand">
+        <div class="excel-brand-badge">📊</div>
+        <div>
+          <h3 id="excelModalTitle">Import Expenses from Spreadsheet</h3>
+          <span class="excel-header-sub">Excel (.xlsx, .xls) &amp; CSV (.csv) Intelligent Parser</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn-text" id="closeExcelModalBtn" aria-label="Close modal">✕</button>
+    </div>
+
+    <div class="excel-modal-body">
+      <!-- VIEW 1: DROPZONE / FILE SELECTOR VIEW -->
+      <div id="excelUploadView" class="excel-view-panel">
+        <div class="excel-dropzone" id="excelDropzone" role="button" tabindex="0" aria-label="Upload spreadsheet drop zone">
+          <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" aria-hidden="true">
+          <div class="excel-dropzone-icon">📁</div>
+          <h4 class="excel-dropzone-title">Upload Wedding Budget Spreadsheet</h4>
+          <p class="excel-dropzone-desc">
+            Drag and drop your <strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong> file here, or <span class="dropzone-link">browse files</span>
+          </p>
+          <div class="excel-format-chips">
+            <span class="format-chip">Microsoft Excel (.xlsx, .xls)</span>
+            <span class="format-chip">Google Sheets (.xlsx / .csv)</span>
+            <span class="format-chip">Standard CSV (.csv)</span>
+          </div>
+        </div>
+
+        <div class="excel-upload-features-grid">
+          <div class="excel-feature-card">
+            <div class="feature-icon">🔍</div>
+            <div class="feature-text">
+              <strong>Smart Column &amp; Category Detection</strong>
+              <p>Automatically maps items, vendor names, costs, due dates, and recognizes wedding categories.</p>
+            </div>
+          </div>
+          <div class="excel-feature-card">
+            <div class="feature-icon">🛡️</div>
+            <div class="feature-text">
+              <strong>Interactive Confirmation Dashboard</strong>
+              <p>Review every row, fix or fill missing estimates, choose target categories, and verify before importing.</p>
+            </div>
+          </div>
+          <div class="excel-feature-card">
+            <div class="feature-icon">🔒</div>
+            <div class="feature-text">
+              <strong>100% Client-Side &amp; Private</strong>
+              <p>Processed completely within your browser. No financial data is uploaded to external servers.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="excel-template-bar">
+          <div class="template-info">
+            <span class="template-icon">💡</span>
+            <span>Need a clean starter template? Download our ready-to-use wedding spreadsheet:</span>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="downloadExcelTemplateBtn">
+            📥 Download Budget Template (.csv)
+          </button>
+        </div>
+      </div>
+
+      <!-- VIEW 2: CONFIRMATION & REVIEW DASHBOARD VIEW -->
+      <div id="excelDashboardView" class="excel-view-panel" style="display: none;">
+        <!-- Top File Ribbon -->
+        <div class="excel-file-bar">
+          <div class="excel-file-info-group">
+            <div class="excel-file-chip">
+              <span class="chip-icon">📄</span>
+              <span id="excelFileName" class="chip-name">wedding_budget.xlsx</span>
+              <span id="excelFileSize" class="chip-size">14 KB</span>
+            </div>
+            <div id="excelSheetSelectorWrapper" class="excel-sheet-wrapper" style="display: none;">
+              <label for="excelSheetSelect" class="sheet-label">Sheet:</label>
+              <select id="excelSheetSelect" class="form-control form-control-sm"></select>
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="excelReuploadBtn" title="Upload a different spreadsheet">
+            ↺ Choose Different File
+          </button>
+        </div>
+
+        <!-- KPI Summary Ribbon -->
+        <div class="excel-kpi-ribbon">
+          <div class="excel-kpi-item">
+            <span class="excel-kpi-label">Total Found</span>
+            <span class="excel-kpi-num" id="excelStatTotal">0</span>
+            <span class="excel-kpi-sub">Spreadsheet rows</span>
+          </div>
+          <div class="excel-kpi-item">
+            <span class="excel-kpi-label">Ready to Import</span>
+            <span class="excel-kpi-num text-success" id="excelStatReady">0</span>
+            <span class="excel-kpi-sub" id="excelStatReadySub">Complete data</span>
+          </div>
+          <div class="excel-kpi-item">
+            <span class="excel-kpi-label">Needs Attention</span>
+            <span class="excel-kpi-num text-warning" id="excelStatNeedsAttention">0</span>
+            <span class="excel-kpi-sub">Missing fields flagged</span>
+          </div>
+          <div class="excel-kpi-item">
+            <span class="excel-kpi-label">Projected Total</span>
+            <span class="excel-kpi-num" id="excelStatSum">$0</span>
+            <span class="excel-kpi-sub">Selected items sum</span>
+          </div>
+        </div>
+
+        <!-- Column Mapping Inspector / Adjuster -->
+        <details class="excel-mapping-details" id="excelMappingDetails">
+          <summary class="excel-mapping-summary">
+            <div class="mapping-summary-left">
+              <span>⚙️ Column Mapping Settings</span>
+              <span class="mapping-summary-hint" id="excelMappingSummaryText">Automatically detected from headers</span>
+            </div>
+            <span class="mapping-toggle-arrow">▼</span>
+          </summary>
+          <div class="excel-mapping-grid">
+            <div class="mapping-field">
+              <label for="mapNameCol">Item / Expense Name <span class="req-star">*</span></label>
+              <select id="mapNameCol" class="form-control form-control-sm"></select>
+            </div>
+            <div class="mapping-field">
+              <label for="mapCategoryCol">Category</label>
+              <select id="mapCategoryCol" class="form-control form-control-sm"></select>
+            </div>
+            <div class="mapping-field">
+              <label for="mapEstCostCol">Estimated Cost ($)</label>
+              <select id="mapEstCostCol" class="form-control form-control-sm"></select>
+            </div>
+            <div class="mapping-field">
+              <label for="mapActCostCol">Actual / Booked Cost ($)</label>
+              <select id="mapActCostCol" class="form-control form-control-sm"></select>
+            </div>
+            <div class="mapping-field">
+              <label for="mapDueDateCol">Payment Due Date</label>
+              <select id="mapDueDateCol" class="form-control form-control-sm"></select>
+            </div>
+            <div class="mapping-field">
+              <label for="mapVendorCol">Vendor / Supplier</label>
+              <select id="mapVendorCol" class="form-control form-control-sm"></select>
+            </div>
+            <div class="mapping-field">
+              <label for="mapNotesCol">Notes / Details</label>
+              <select id="mapNotesCol" class="form-control form-control-sm"></select>
+            </div>
+          </div>
+        </details>
+
+        <!-- Batch Toolbar & Quick Fixes -->
+        <div class="excel-toolbar">
+          <div class="excel-filter-tabs" role="tablist">
+            <button type="button" class="excel-filter-btn active" data-filter="all" id="filterAllBtn">
+              All Items (<span id="filterAllCount">0</span>)
+            </button>
+            <button type="button" class="excel-filter-btn" data-filter="attention" id="filterAttentionBtn">
+              ⚠️ Needs Attention (<span id="filterAttentionCount">0</span>)
+            </button>
+            <button type="button" class="excel-filter-btn" data-filter="ready" id="filterReadyBtn">
+              ✓ Ready (<span id="filterReadyCount">0</span>)
+            </button>
+          </div>
+
+          <div class="excel-quick-fixes-row">
+            <div class="quick-fix-item">
+              <label for="bulkCategorySelect">Set unassigned category to:</label>
+              <div class="quick-fix-input-group">
+                <select id="bulkCategorySelect" class="form-control form-control-sm">
+                  <!-- Categories injected -->
+                </select>
+                <button type="button" class="btn btn-secondary btn-sm" id="applyBulkCategoryBtn">Apply</button>
+              </div>
+            </div>
+
+            <div class="quick-fix-item">
+              <label for="bulkDueDateInput">Set missing due dates to:</label>
+              <div class="quick-fix-input-group">
+                <input type="date" id="bulkDueDateInput" class="form-control form-control-sm">
+                <button type="button" class="btn btn-secondary btn-sm" id="applyBulkDueDateBtn">Apply</button>
+                <button type="button" class="btn btn-text btn-sm" id="applyWeddingDateBulkBtn" title="Use current wedding ceremony date">Use Wedding Date</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="excel-options-row">
+            <div class="excel-import-mode-radios">
+              <span class="mode-label">Import Mode:</span>
+              <label class="radio-label">
+                <input type="radio" name="excelImportMode" value="append" checked>
+                <span>Add to current budget</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="excelImportMode" value="replace">
+                <span>Replace existing expenses</span>
+              </label>
+            </div>
+            <div class="excel-bulk-select-actions">
+              <button type="button" class="btn btn-text btn-sm" id="selectAllRowsBtn">Select All</button>
+              <span class="sep">|</span>
+              <button type="button" class="btn btn-text btn-sm" id="deselectAllRowsBtn">Deselect All</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Review Table Container -->
+        <div class="excel-table-scroll-container">
+          <table class="excel-review-table" id="excelReviewTable">
+            <thead>
+              <tr>
+                <th style="width: 38px; text-align: center;">
+                  <input type="checkbox" id="masterRowCheckbox" checked title="Toggle all">
+                </th>
+                <th style="width: 140px;">Status</th>
+                <th style="min-width: 180px;">Item / Service Name <span class="req-star">*</span></th>
+                <th style="min-width: 180px;">Category</th>
+                <th style="width: 120px;">Est. Cost ($)</th>
+                <th style="width: 120px;">Booked ($)</th>
+                <th style="width: 140px;">Due Date</th>
+                <th style="min-width: 140px;">Vendor</th>
+                <th style="min-width: 150px;">Notes</th>
+                <th style="width: 44px; text-align: center;">✕</th>
+              </tr>
+            </thead>
+            <tbody id="excelTableBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Table Bottom Action Bar -->
+        <div class="excel-table-bottom-bar">
+          <button type="button" class="btn btn-secondary btn-sm" id="addNewExcelRowBtn">
+            + Add Another Item Manually
+          </button>
+          <button type="button" class="btn btn-text btn-sm" id="downloadExcelTemplateBottomBtn">
+            📥 Download Sample Template (.csv)
+          </button>
+          <span class="table-legend-text">
+            💡 Highlighted fields with amber borders can be edited directly before importing.
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer Actions -->
+    <div class="modal-footer excel-modal-footer">
+      <div class="footer-left">
+        <button type="button" class="btn btn-secondary" id="cancelExcelModalBtn">Cancel</button>
+      </div>
+      <div class="footer-right">
+        <button type="button" class="btn btn-primary" id="confirmExcelImportBtn" style="display: none;">
+          Confirm &amp; Import Expenses (<span id="confirmImportCount">0</span>) →
+        </button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer" aria-live="assertive"></div>
 
@@ -1476,8 +1749,10 @@
 
   <!-- Scripts (non-blocking defer) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <script src="sample-data.js?v=2.7" defer></script>
   <script src="app.js?v=2.7" defer></script>
+  <script src="excel-importer.js?v=1.0" defer></script>
   <script src="consent-manager.js" defer></script>
 </body>
 </html>

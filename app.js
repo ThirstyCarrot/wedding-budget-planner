@@ -6709,6 +6709,18 @@ Provide structured, empathetic, concise advice. Use bold text and bullet points 
     }
   }
 
+  // Expose bridge for external helper modules like excel-importer.js
+  window.EternalPlanApp = {
+    getState: () => state,
+    setState: (newState) => { state = newState; },
+    saveState: (pushToCloud = true, immediate = false) => saveState(pushToCloud, immediate),
+    renderAll: () => renderAll(),
+    showToast: (msg, icon = '') => showToast(msg, icon),
+    formatCurrency: (val) => formatCurrency(val),
+    switchTab: (tabName) => switchTab(tabName),
+    openExpenseModal: (exp, forceSchedule) => openExpenseModal(exp, forceSchedule)
+  };
+
   // Start the application
   window.addEventListener('DOMContentLoaded', init);
 })();
