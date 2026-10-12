@@ -1,19 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EternalPlan - Wedding Budget & Due-Date Savings Planner</title>
-  <meta name="description" content="Plan your dream wedding budget and calculate exactly how much money you need to save by every payment due date to ensure smooth, stress-free cash flow.">
+  <meta name="description"
+    content="Plan your dream wedding budget and calculate exactly how much money you need to save by every payment due date to ensure smooth, stress-free cash flow.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="styles.css?v=2.7">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#B38A58">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%3E<text y=%2226%22 font-size=%2226%22>💍</text></svg>">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%3E<text y=%2226%22 font-size=%2226%22>💍</text></svg>">
 </head>
+
 <body>
   <!-- Accessible Skip-to-Content Link (WCAG 2.4.1) -->
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -62,10 +67,12 @@
         <button class="btn btn-primary" id="openAddExpenseBtn">
           <span>+</span> Add Expense
         </button>
-        <button class="btn btn-secondary" id="openExcelImportBtn" title="Upload Excel or CSV spreadsheet to automatically create expenses">
-          📊 Import Excel
+        <button class="btn btn-secondary" id="openExcelImportBtn"
+          title="Upload Excel or CSV spreadsheet to automatically create expenses">
+          Import Excel
         </button>
-        <button class="btn btn-secondary" id="openAddFundBtn" title="Add extra money, gifts, bonuses, or savings deposits into funds">
+        <button class="btn btn-secondary" id="openAddFundBtn"
+          title="Add extra money, gifts, bonuses, or savings deposits into funds">
           Add Funds
         </button>
         <button class="btn btn-ai" id="openAiHubBtn" title="EternalAI Financial Advisor & Hidden Cost Scanner">
@@ -114,7 +121,8 @@
           <span class="welcome-setup-icon">💍</span>
           <div>
             <h3 class="welcome-setup-title">Let's personalize your wedding countdown & savings pace</h3>
-            <p class="welcome-setup-subtitle">Set your dates and paycheck cycle to calculate exact savings & avoid payment crunches:</p>
+            <p class="welcome-setup-subtitle">Set your dates and paycheck cycle to calculate exact savings & avoid
+              payment crunches:</p>
           </div>
         </div>
       </div>
@@ -195,7 +203,8 @@
         <div class="kpi-main-val" id="kpiCurrentSavings">$0</div>
         <div class="kpi-meta" id="kpiFundsMeta">
           <span id="kpiExtraFundsSummary">$0 extra gifts/bonuses</span>
-          <span class="badge-pill badge-upcoming" id="kpiTrackBadge" style="font-size: 0.72rem; padding: 2px 7px; margin-left: auto;">On Track</span>
+          <span class="badge-pill badge-upcoming" id="kpiTrackBadge"
+            style="font-size: 0.72rem; padding: 2px 7px; margin-left: auto;">On Track</span>
         </div>
         <div class="kpi-progress">
           <div class="kpi-progress-bar success" id="kpiSavingsCoverageBar" style="width: 0%;"></div>
@@ -286,7 +295,8 @@
               <h2>Wedding Funds & Savings Health</h2>
               <span class="badge-pill" id="savingsTrackHeaderPill">Evaluating Track...</span>
             </div>
-            <p>Input your actual money in savings to verify you're on the right track, and log any extra gifts or bonuses obtained</p>
+            <p>Input your actual money in savings to verify you're on the right track, and log any extra gifts or
+              bonuses obtained</p>
           </div>
           <div class="savings-card-actions">
             <button type="button" class="btn btn-primary btn-sm" id="addFundFromSectionBtn">
@@ -308,7 +318,8 @@
             <div class="savings-input-action-row">
               <div class="savings-currency-field">
                 <span class="currency-symbol">$</span>
-                <input type="number" id="quickSavingsInput" class="form-control savings-input-lg" min="0" step="1" placeholder="0" aria-label="Current Money in Wedding Savings">
+                <input type="number" id="quickSavingsInput" class="form-control savings-input-lg" min="0" step="1"
+                  placeholder="0" aria-label="Current Money in Wedding Savings">
               </div>
               <button type="button" class="btn btn-primary" id="saveQuickSavingsBtn">
                 Save Balance
@@ -372,7 +383,8 @@
         <div class="extra-funds-container">
           <div class="extra-funds-header">
             <div>
-              <h3 style="font-size: 1.02rem; font-weight: 700; color: var(--text-main);">Extra Money & Financial Contributions</h3>
+              <h3 style="font-size: 1.02rem; font-weight: 700; color: var(--text-main);">Extra Money & Financial
+                Contributions</h3>
               <p style="font-size: 0.84rem; color: var(--text-muted); margin-top: 2px;">
                 Family gifts, bonuses, tax refunds, and registry funds obtained:
               </p>
@@ -416,31 +428,36 @@
               <div class="chart-guide-title">
                 <strong>How to Read the Savings vs. Payment Deadlines Chart</strong>
               </div>
-              <button type="button" class="chart-guide-close" id="closeChartGuideBtn" aria-label="Close chart guide">✕</button>
+              <button type="button" class="chart-guide-close" id="closeChartGuideBtn"
+                aria-label="Close chart guide">✕</button>
             </div>
             <div class="chart-guide-body">
               <div class="guide-card">
                 <div class="guide-card-content">
                   <h5>3 View Modes</h5>
-                  <p><strong>Timeline:</strong> Compares total savings growing over time against cumulative payment deadlines.<br>
-                  <strong>Monthly:</strong> Cash in vs. cash out during each calendar month.<br>
-                  <strong>Milestones:</strong> Step-by-step account balance after paying each vendor.</p>
+                  <p><strong>Timeline:</strong> Compares total savings growing over time against cumulative payment
+                    deadlines.<br>
+                    <strong>Monthly:</strong> Cash in vs. cash out during each calendar month.<br>
+                    <strong>Milestones:</strong> Step-by-step account balance after paying each vendor.
+                  </p>
                 </div>
               </div>
               <div class="guide-card">
                 <div class="guide-card-content">
                   <h5>What the Lines & Dots Mean</h5>
                   <p><strong>Terracotta Line:</strong> Total cumulative savings saved to date.<br>
-                  <strong>Slate Line:</strong> Cumulative vendor bills due by each date.<br>
-                  <strong>Amber Dashed Line:</strong> Minimum emergency buffer reserve ($1,000).<br>
-                  <strong>Orange Dot:</strong> Milestone on track with healthy buffer.<br>
-                  <strong>Red Dot:</strong> Shortfall dip! Hover to view recovery days.</p>
+                    <strong>Slate Line:</strong> Cumulative vendor bills due by each date.<br>
+                    <strong>Amber Dashed Line:</strong> Minimum emergency buffer reserve ($1,000).<br>
+                    <strong>Orange Dot:</strong> Milestone on track with healthy buffer.<br>
+                    <strong>Red Dot:</strong> Shortfall dip! Hover to view recovery days.
+                  </p>
                 </div>
               </div>
               <div class="guide-card">
                 <div class="guide-card-content">
                   <h5>Test a Savings Pace</h5>
-                  <p>Drag the slider below to simulate different savings amounts per paycheck. Watch the chart update live to see how adjustments fix future shortfalls!</p>
+                  <p>Drag the slider below to simulate different savings amounts per paycheck. Watch the chart update
+                    live to see how adjustments fix future shortfalls!</p>
                 </div>
               </div>
             </div>
@@ -455,11 +472,16 @@
                 <span class="chart-sim-badge" id="chartSimPaceDisplay">$0 / cadence</span>
               </div>
               <div class="chart-sim-presets">
-                <button type="button" class="btn-sim-preset" id="presetPaceMinus50" title="Decrease pace by $50">-$50</button>
-                <button type="button" class="btn-sim-preset active" id="presetPaceCurrent" title="Reset to planned savings rate">Current</button>
-                <button type="button" class="btn-sim-preset" id="presetPacePlus50" title="Increase pace by $50">+$50</button>
-                <button type="button" class="btn-sim-preset" id="presetPaceAuto" title="Set to auto-balanced safe pace">Auto-Safe</button>
-                <button type="button" class="btn-sim-save" id="applySimPaceBtn" title="Permanently apply this simulated rate as your planned savings pace">Save Pace</button>
+                <button type="button" class="btn-sim-preset" id="presetPaceMinus50"
+                  title="Decrease pace by $50">-$50</button>
+                <button type="button" class="btn-sim-preset active" id="presetPaceCurrent"
+                  title="Reset to planned savings rate">Current</button>
+                <button type="button" class="btn-sim-preset" id="presetPacePlus50"
+                  title="Increase pace by $50">+$50</button>
+                <button type="button" class="btn-sim-preset" id="presetPaceAuto"
+                  title="Set to auto-balanced safe pace">Auto-Safe</button>
+                <button type="button" class="btn-sim-save" id="applySimPaceBtn"
+                  title="Permanently apply this simulated rate as your planned savings pace">Save Pace</button>
               </div>
             </div>
 
@@ -467,7 +489,9 @@
             <div class="chart-slider-track-row">
               <span class="slider-boundary-label" id="sliderMinBound">$0</span>
               <div class="slider-wrapper">
-                <input type="range" id="chartSimPaceSlider" class="chart-pace-slider" min="0" max="3000" step="25" value="500" title="Drag to see how adjusting your savings pace affects your balances before each payment">
+                <input type="range" id="chartSimPaceSlider" class="chart-pace-slider" min="0" max="3000" step="25"
+                  value="500"
+                  title="Drag to see how adjusting your savings pace affects your balances before each payment">
               </div>
               <span class="slider-boundary-label" id="sliderMaxBound">$3,000</span>
             </div>
@@ -479,7 +503,8 @@
           </div>
 
           <div class="chart-legend-row" id="cashflowLegendRow">
-            <div class="legend-item-card" id="legendItemSavings" title="Total money accumulated from initial savings and scheduled paychecks">
+            <div class="legend-item-card" id="legendItemSavings"
+              title="Total money accumulated from initial savings and scheduled paychecks">
               <div class="legend-swatch-box">
                 <span class="legend-color-line" style="background: #9A3412;"></span>
                 <span class="legend-color-dot" style="background: #9A3412;"></span>
@@ -489,7 +514,8 @@
                 <span class="legend-desc" id="legendDescSavings">Total saved from paychecks & pool</span>
               </div>
             </div>
-            <div class="legend-item-card" id="legendItemDue" title="Total vendor payment deadlines and deposits due up to this date">
+            <div class="legend-item-card" id="legendItemDue"
+              title="Total vendor payment deadlines and deposits due up to this date">
               <div class="legend-swatch-box">
                 <span class="legend-color-line" style="background: #64748B;"></span>
                 <span class="legend-color-dot" style="background: #64748B;"></span>
@@ -499,7 +525,8 @@
                 <span class="legend-desc" id="legendDescDue">Vendor bills due by each milestone</span>
               </div>
             </div>
-            <div class="legend-item-card" id="legendCushionItem" title="Minimum emergency buffer you should keep in reserve (default $1,000)">
+            <div class="legend-item-card" id="legendCushionItem"
+              title="Minimum emergency buffer you should keep in reserve (default $1,000)">
               <div class="legend-swatch-box">
                 <span class="legend-dash-line"></span>
               </div>
@@ -595,7 +622,8 @@
             <p>Manage individual vendors, contracts, estimates, and payment splits</p>
           </div>
           <div style="display: flex; gap: 10px;">
-            <button class="btn btn-secondary btn-sm" id="importExcelBudgetBtn" title="Import expenses from Excel or CSV spreadsheet">
+            <button class="btn btn-secondary btn-sm" id="importExcelBudgetBtn"
+              title="Import expenses from Excel or CSV spreadsheet">
               📊 Import Excel
             </button>
             <button class="btn btn-secondary btn-sm" id="toggleAllCategoriesBtn">
@@ -611,7 +639,8 @@
         <div class="ai-audit-callout-banner" id="aiAuditCalloutBanner">
           <div class="ai-callout-left">
             <span class="ai-sparkle-badge">EternalAI Audit</span>
-            <span>Unsure if you forgot something? Scan your budget for overlooked costs like service fees, alterations, and tips.</span>
+            <span>Unsure if you forgot something? Scan your budget for overlooked costs like service fees, alterations,
+              and tips.</span>
           </div>
           <button type="button" class="btn btn-ai btn-sm" id="launchAuditFromBudgetBtn">
             Audit for Hidden Costs
@@ -772,7 +801,8 @@
               <div class="partner-card-header">
                 <div class="partner-title-badge">
                   <span>💍</span>
-                  <input type="text" id="simP1Name" class="partner-name-input" placeholder="Partner 1" title="Click to rename Partner 1">
+                  <input type="text" id="simP1Name" class="partner-name-input" placeholder="Partner 1"
+                    title="Click to rename Partner 1">
                 </div>
                 <span class="partner-monthly-stat" id="simP1MonthlyEquivalent">~$0 / mo</span>
               </div>
@@ -792,7 +822,8 @@
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                   <label for="simP1Savings">Savings Contribution per Paycheck ($)</label>
-                  <input type="number" id="simP1Savings" class="form-control" value="0" min="0" step="1" placeholder="Amount set aside">
+                  <input type="number" id="simP1Savings" class="form-control" value="0" min="0" step="1"
+                    placeholder="Amount set aside">
                 </div>
               </div>
             </div>
@@ -802,7 +833,8 @@
               <div class="partner-card-header">
                 <div class="partner-title-badge">
                   <span>💍</span>
-                  <input type="text" id="simP2Name" class="partner-name-input" placeholder="Partner 2" title="Click to rename Partner 2">
+                  <input type="text" id="simP2Name" class="partner-name-input" placeholder="Partner 2"
+                    title="Click to rename Partner 2">
                 </div>
                 <span class="partner-monthly-stat" id="simP2MonthlyEquivalent">~$0 / mo</span>
               </div>
@@ -822,7 +854,8 @@
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                   <label for="simP2Savings">Savings Contribution per Paycheck ($)</label>
-                  <input type="number" id="simP2Savings" class="form-control" value="0" min="0" step="1" placeholder="Amount set aside">
+                  <input type="number" id="simP2Savings" class="form-control" value="0" min="0" step="1"
+                    placeholder="Amount set aside">
                 </div>
               </div>
             </div>
@@ -834,7 +867,8 @@
               <span>Total Joint Savings Pace:</span>
               <strong id="simDualCombinedMonthly">$0 / month</strong>
             </div>
-            <div class="dual-split-track" id="simDualSplitTrack" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div class="dual-split-track" id="simDualSplitTrack" role="progressbar" aria-valuemin="0"
+              aria-valuemax="100">
               <div class="dual-split-fill-p1" id="simDualFillP1" style="width: 50%;"></div>
               <div class="dual-split-fill-p2" id="simDualFillP2" style="width: 50%;"></div>
             </div>
@@ -858,7 +892,8 @@
             </div>
           </div>
 
-          <h4 style="font-family: var(--font-serif); font-size: 1.25rem; margin-bottom: 12px;">Payment Schedule Balance Forecast</h4>
+          <h4 style="font-family: var(--font-serif); font-size: 1.25rem; margin-bottom: 12px;">Payment Schedule Balance
+            Forecast</h4>
           <div style="overflow-x: auto;">
             <table class="sim-breakdown-table" id="simBreakdownTable">
               <thead>
@@ -880,18 +915,22 @@
     </main>
 
     <!-- Accessible & Regulatory Compliant Footer -->
-    <footer role="contentinfo" class="app-footer" style="margin-top: 48px; padding: 24px 0 16px 0; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; font-size: 0.82rem; color: var(--text-muted);">
+    <footer role="contentinfo" class="app-footer"
+      style="margin-top: 48px; padding: 24px 0 16px 0; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; font-size: 0.82rem; color: var(--text-muted);">
       <div style="display: flex; align-items: center; gap: 8px;">
         <span>💍 <strong>EternalPlan</strong> — Built for mindful couples.</span>
         <span>•</span>
         <span>© 2026 EternalPlan (Personal Hobby Project). Made for fun, not for monetary value.</span>
       </div>
-      <nav aria-label="Legal, privacy, and compliance links" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+      <nav aria-label="Legal, privacy, and compliance links"
+        style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
         <a href="/privacy-policy" style="color: var(--text-muted); text-decoration: none;">Privacy Policy</a>
         <a href="/terms-of-service" style="color: var(--text-muted); text-decoration: none;">Terms of Service</a>
         <a href="/cookie-policy" style="color: var(--text-muted); text-decoration: none;">Cookie Policy</a>
         <a href="/dsar" style="color: var(--text-muted); text-decoration: none;">Data Rights (DSAR)</a>
-        <button type="button" onclick="if(window.ConsentManager) window.ConsentManager.openSettings();" style="background: none; border: none; padding: 0; color: var(--gold-primary); cursor: pointer; font-size: inherit; text-decoration: underline; font-weight: 600;">Cookie Preferences</button>
+        <button type="button" onclick="if(window.ConsentManager) window.ConsentManager.openSettings();"
+          style="background: none; border: none; padding: 0; color: var(--gold-primary); cursor: pointer; font-size: inherit; text-decoration: underline; font-weight: 600;">Cookie
+          Preferences</button>
       </nav>
     </footer>
   </div>
@@ -918,7 +957,8 @@
             </div>
             <div class="form-group">
               <label for="expenseName">Item or Vendor Name</label>
-              <input type="text" id="expenseName" class="form-control" placeholder="e.g. Photographer, Florist, DJ" required>
+              <input type="text" id="expenseName" class="form-control" placeholder="e.g. Photographer, Florist, DJ"
+                required>
             </div>
           </div>
 
@@ -928,21 +968,24 @@
                 <span>Estimated Cost ($)</span>
                 <span class="field-hint" style="color: var(--accent-primary); font-weight: 600;">Planned Budget</span>
               </label>
-              <input type="number" id="expenseEstimatedCost" class="form-control" min="0" step="1" placeholder="e.g. 2500" required>
+              <input type="number" id="expenseEstimatedCost" class="form-control" min="0" step="1"
+                placeholder="e.g. 2500" required>
             </div>
             <div class="form-group">
               <label for="expenseActualCost">
                 <span>Booked / Final Price ($)</span>
                 <span class="field-hint">Optional</span>
               </label>
-              <input type="number" id="expenseActualCost" class="form-control" min="0" step="1" placeholder="Defaults to estimate">
+              <input type="number" id="expenseActualCost" class="form-control" min="0" step="1"
+                placeholder="Defaults to estimate">
             </div>
           </div>
         </div>
 
         <!-- TIER 2A: CUSTOM PAYMENT SCHEDULE TOGGLE & BUILDER -->
         <div class="tier-toggle-card" id="expenseScheduleCard">
-          <div class="tier-toggle-header" id="expenseScheduleHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="expenseScheduleBody">
+          <div class="tier-toggle-header" id="expenseScheduleHeader" role="button" tabindex="0" aria-expanded="false"
+            aria-controls="expenseScheduleBody">
             <div class="tier-toggle-info">
               <span class="tier-toggle-icon">📅</span>
               <div class="tier-toggle-text">
@@ -960,10 +1003,13 @@
           <div class="tier-collapsible-body" id="expenseScheduleBody" style="display: none;">
             <div class="modal-milestones-box">
               <div class="milestone-header-line">
-                <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">Deposit & Balance Schedule</span>
+                <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">Deposit & Balance
+                  Schedule</span>
                 <div style="display: flex; gap: 6px;">
-                  <button type="button" class="btn btn-secondary btn-sm" id="autoFillMilestoneBtn" title="Set single payment for full cost">Pay on Wedding Day</button>
-                  <button type="button" class="btn btn-secondary btn-sm" id="addMilestoneRowBtn">+ Add Payment Date</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="autoFillMilestoneBtn"
+                    title="Set single payment for full cost">Pay on Wedding Day</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="addMilestoneRowBtn">+ Add Payment
+                    Date</button>
                 </div>
               </div>
               <p class="field-hint" style="margin-bottom: 10px;">
@@ -988,7 +1034,8 @@
             </div>
             <div class="form-group">
               <label for="expenseNotes">Notes / Contract Details</label>
-              <textarea id="expenseNotes" class="form-control" rows="2" placeholder="Inclusions, package tier, cancellation terms..."></textarea>
+              <textarea id="expenseNotes" class="form-control" rows="2"
+                placeholder="Inclusions, package tier, cancellation terms..."></textarea>
             </div>
           </div>
         </details>
@@ -1008,7 +1055,8 @@
     <div class="modal-header">
       <div>
         <h3 id="fundModalTitle">Add Extra Money into Funds</h3>
-        <p class="field-hint" style="margin-top: 2px;">Record gifts, bonuses, tax refunds, or extra contributions toward your wedding</p>
+        <p class="field-hint" style="margin-top: 2px;">Record gifts, bonuses, tax refunds, or extra contributions toward
+          your wedding</p>
       </div>
       <button type="button" class="btn btn-text" id="closeFundModalBtn" aria-label="Close modal">✕</button>
     </div>
@@ -1018,7 +1066,8 @@
         <div class="form-row-2col">
           <div class="form-group">
             <label for="fundName">Source / Description</label>
-            <input type="text" id="fundName" class="form-control" placeholder="e.g. Gift from Parents, Work Bonus, Tax Refund" required>
+            <input type="text" id="fundName" class="form-control"
+              placeholder="e.g. Gift from Parents, Work Bonus, Tax Refund" required>
           </div>
           <div class="form-group">
             <label for="fundAmount">Amount ($)</label>
@@ -1050,12 +1099,14 @@
             <span>Contributor / Giver (Optional)</span>
             <span class="field-hint">Who provided this money?</span>
           </label>
-          <input type="text" id="fundContributor" class="form-control" placeholder="e.g. Mom & Dad, Employer, Guests, Aunt Sarah">
+          <input type="text" id="fundContributor" class="form-control"
+            placeholder="e.g. Mom & Dad, Employer, Guests, Aunt Sarah">
         </div>
 
         <div class="form-group">
           <label for="fundNotes">Notes / Earmark (Optional)</label>
-          <textarea id="fundNotes" class="form-control" rows="2" placeholder="e.g. Earmarked for photographer deposit or open bar"></textarea>
+          <textarea id="fundNotes" class="form-control" rows="2"
+            placeholder="e.g. Earmarked for photographer deposit or open bar"></textarea>
         </div>
 
         <!-- Automatic Bank Balance Deposit Option Card -->
@@ -1101,8 +1152,10 @@
 
         <!-- Optional Target Budget Goal Section -->
         <div class="form-group budget-option-card">
-          <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 0;">
-            <span class="label-text-with-tooltip" data-tooltip-id="tt-budget-goal" tabindex="0" style="font-weight: 700; color: var(--text-main);">
+          <label
+            style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 0;">
+            <span class="label-text-with-tooltip" data-tooltip-id="tt-budget-goal" tabindex="0"
+              style="font-weight: 700; color: var(--text-main);">
               Set a Fixed Budget Goal?
               <span class="info-badge" aria-label="Info about Fixed Budget Goal">ℹ️</span>
             </span>
@@ -1129,10 +1182,12 @@
         </div>
 
         <div class="form-group" style="margin-top: 6px;">
-          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px; display: block;">
+          <label
+            style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px; display: block;">
             Income & Savings Schedule Mode
           </label>
-          <div class="income-mode-segmented" id="setIncomeModeToggle" role="radiogroup" aria-label="Settings Income Mode">
+          <div class="income-mode-segmented" id="setIncomeModeToggle" role="radiogroup"
+            aria-label="Settings Income Mode">
             <button type="button" class="btn-segmented active" data-mode="individual" id="setModeIndividualBtn">
               Individual / Combined
             </button>
@@ -1274,38 +1329,50 @@
     </div>
     <div class="modal-body">
       <p style="font-size: 0.9rem; color: var(--text-muted);">
-        Your wedding budget data is automatically saved locally in your browser. Use the tools below to export backups or reset.
+        Your wedding budget data is automatically saved locally in your browser. Use the tools below to export backups
+        or reset.
       </p>
 
       <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
         <!-- Wedding Cloud Sync & Partner Collaboration Card -->
-        <div class="supabase-sync-card" style="background: rgba(197, 160, 89, 0.08); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 8px;">
+        <div class="supabase-sync-card"
+          style="background: rgba(197, 160, 89, 0.08); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 8px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 1.3rem;">☁️</span>
               <strong style="color: var(--text-main); font-size: 0.98rem;">Cloud Sync &amp; Partner Sharing</strong>
             </div>
-            <span class="badge-pill" id="supabaseStatusBadge" style="background: #E8E5E1; color: var(--text-muted); font-size: 0.75rem; cursor: pointer;" title="Click to view cloud sync details">Offline (Local Only)</span>
+            <span class="badge-pill" id="supabaseStatusBadge"
+              style="background: #E8E5E1; color: var(--text-muted); font-size: 0.75rem; cursor: pointer;"
+              title="Click to view cloud sync details">Offline (Local Only)</span>
           </div>
           <p style="font-size: 0.83rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.45;">
-            Sync your wedding budget across devices in real time. Anyone with your <strong>Wedding Sync Passphrase</strong> can view and edit the same plan—no account, database setup, or API keys required.
+            Sync your wedding budget across devices in real time. Anyone with your <strong>Wedding Sync
+              Passphrase</strong> can view and edit the same plan—no account, database setup, or API keys required.
           </p>
 
           <div style="display: flex; flex-direction: column; gap: 10px;">
             <div>
-              <label for="supabaseSyncId" style="font-size: 0.82rem; font-weight: 600; display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <label for="supabaseSyncId"
+                style="font-size: 0.82rem; font-weight: 600; display: flex; justify-content: space-between; margin-bottom: 4px;">
                 <span>Wedding Sync Passphrase / ID</span>
                 <span style="font-size: 0.74rem; font-weight: 500; color: var(--accent-primary);">Shared Secret</span>
               </label>
-              <input type="text" id="supabaseSyncId" class="form-control" placeholder="e.g. Irish09" autocomplete="off" spellcheck="false" style="font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px;">
-              <span class="field-hint" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: block;">Share this passphrase with your partner so both devices stay synchronized.</span>
+              <input type="text" id="supabaseSyncId" class="form-control" placeholder="e.g. married2028Yippee!!"
+                autocomplete="off" spellcheck="false"
+                style="font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px;">
+              <span class="field-hint"
+                style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: block;">Share this
+                passphrase with your partner so both devices stay synchronized.</span>
             </div>
 
             <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
-              <button type="button" class="btn btn-primary btn-sm" id="connectSupabaseBtn" style="flex: 1.2; min-width: 140px;">
+              <button type="button" class="btn btn-primary btn-sm" id="connectSupabaseBtn"
+                style="flex: 1.2; min-width: 140px;">
                 Connect &amp; Sync
               </button>
-              <button type="button" class="btn btn-secondary btn-sm" id="sharePartnerLinkBtn" title="Copy 1-click sync link for your partner" style="flex: 1; min-width: 130px; display: none;">
+              <button type="button" class="btn btn-secondary btn-sm" id="sharePartnerLinkBtn"
+                title="Copy 1-click sync link for your partner" style="flex: 1; min-width: 130px; display: none;">
                 Copy Partner Link
               </button>
               <button type="button" class="btn btn-secondary btn-sm" id="disconnectSupabaseBtn" style="display: none;">
@@ -1323,16 +1390,19 @@
         <button class="btn btn-secondary" id="exportCsvBtn">
           Export Payment Schedule to CSV
         </button>
-        
+
         <div style="margin-top: 6px;">
-          <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Import Expenses from Spreadsheet</label>
-          <button type="button" class="btn btn-secondary" id="openExcelFromDataModalBtn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Import Expenses from
+            Spreadsheet</label>
+          <button type="button" class="btn btn-secondary" id="openExcelFromDataModalBtn"
+            style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
             <span>📊</span> Upload Excel / CSV Spreadsheet (.xlsx, .xls, .csv)
           </button>
         </div>
 
         <div style="margin-top: 6px;">
-          <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Restore Full Backup from JSON File</label>
+          <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Restore Full Backup
+            from JSON File</label>
           <input type="file" id="importJsonInput" accept=".json" class="form-control">
         </div>
 
@@ -1396,13 +1466,18 @@
       <div class="audit-intro-bar">
         <div>
           <h4>Overlooked Wedding Expenses & Industry "Gotchas"</h4>
-          <p>We audited your expenses against 2,000+ real weddings. You can add items to your budget, or tell us if an item is not part of your wedding.</p>
+          <p>We audited your expenses against 2,000+ real weddings. You can add items to your budget, or tell us if an
+            item is not part of your wedding.</p>
         </div>
         <div class="audit-filter-segmented" id="auditFilterGroup">
-          <button type="button" class="btn-segmented active" data-audit-filter="missing">To Review (<span id="auditMissingCount">0</span>)</button>
-          <button type="button" class="btn-segmented" data-audit-filter="excluded">Not in Our Wedding (<span id="auditExcludedCount">0</span>)</button>
-          <button type="button" class="btn-segmented" data-audit-filter="covered">Already Covered (<span id="auditCoveredCount">0</span>)</button>
-          <button type="button" class="btn-segmented" data-audit-filter="all">All (<span id="auditTotalCount">0</span>)</button>
+          <button type="button" class="btn-segmented active" data-audit-filter="missing">To Review (<span
+              id="auditMissingCount">0</span>)</button>
+          <button type="button" class="btn-segmented" data-audit-filter="excluded">Not in Our Wedding (<span
+              id="auditExcludedCount">0</span>)</button>
+          <button type="button" class="btn-segmented" data-audit-filter="covered">Already Covered (<span
+              id="auditCoveredCount">0</span>)</button>
+          <button type="button" class="btn-segmented" data-audit-filter="all">All (<span
+              id="auditTotalCount">0</span>)</button>
         </div>
       </div>
 
@@ -1420,23 +1495,28 @@
 
         <!-- Quick Prompt Suggestion Chips -->
         <div class="ai-quick-chips" id="aiQuickChips">
-          <button type="button" class="ai-chip-prompt" data-prompt="Audit my budget: what are our biggest financial risks and what hidden costs should we budget for?">
+          <button type="button" class="ai-chip-prompt"
+            data-prompt="Audit my budget: what are our biggest financial risks and what hidden costs should we budget for?">
             Audit our biggest budget risks
           </button>
-          <button type="button" class="ai-chip-prompt" data-prompt="Can we afford to add an extra $1,500 expense without creating a deficit? Walk through our numbers.">
+          <button type="button" class="ai-chip-prompt"
+            data-prompt="Can we afford to add an extra $1,500 expense without creating a deficit? Walk through our numbers.">
             Can we afford an extra $1,500?
           </button>
-          <button type="button" class="ai-chip-prompt" data-prompt="Where can we realistically trim $1,000 - $2,000 from our budget without hurting guest experience?">
+          <button type="button" class="ai-chip-prompt"
+            data-prompt="Where can we realistically trim $1,000 - $2,000 from our budget without hurting guest experience?">
             Where can we trim costs?
           </button>
-          <button type="button" class="ai-chip-prompt" data-prompt="Write a polite email to our caterer or venue asking to split payments into 3 milestones instead of 2.">
+          <button type="button" class="ai-chip-prompt"
+            data-prompt="Write a polite email to our caterer or venue asking to split payments into 3 milestones instead of 2.">
             Vendor payment split email script
           </button>
         </div>
 
         <!-- Chat Input Row -->
         <form id="aiChatForm" class="ai-chat-input-form">
-          <input type="text" id="aiChatInput" class="form-control" placeholder="Ask anything about your wedding finances, trade-offs, or milestones..." autocomplete="off">
+          <input type="text" id="aiChatInput" class="form-control"
+            placeholder="Ask anything about your wedding finances, trade-offs, or milestones..." autocomplete="off">
           <button type="submit" class="btn btn-primary" id="aiSendBtn">
             <span>Send</span>
           </button>
@@ -1451,17 +1531,23 @@
           <div>
             <h4 style="margin-bottom: 4px;">Google Gemini API Integration</h4>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
-              EternalPlan includes smart built-in intelligence, plus optional direct access to <strong>Gemini 3.8 Flash</strong> for unlimited custom reasoning and advice.
+              EternalPlan includes smart built-in intelligence, plus optional direct access to <strong>Gemini 3.8
+                Flash</strong> for unlimited custom reasoning and advice.
             </p>
           </div>
           <span class="badge-pill" id="aiEngineStatusBadge">Smart Local Active</span>
         </div>
 
         <div style="margin-bottom: 14px;">
-          <label for="geminiApiKeyInput" style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 6px;">Gemini API Key (Optional)</label>
-          <input type="password" id="geminiApiKeyInput" class="form-control" placeholder="AIzaSy..." style="font-size: 0.85rem;">
+          <label for="geminiApiKeyInput"
+            style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 6px;">Gemini API Key
+            (Optional)</label>
+          <input type="password" id="geminiApiKeyInput" class="form-control" placeholder="AIzaSy..."
+            style="font-size: 0.85rem;">
           <span class="field-hint" style="font-size: 0.76rem; margin-top: 4px; display: block;">
-            Stored strictly in your private local browser. You can generate a free Gemini API key in 30 seconds at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color: var(--gold-hover); text-decoration: underline;">Google AI Studio</a>.
+            Stored strictly in your private local browser. You can generate a free Gemini API key in 30 seconds at <a
+              href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener"
+              style="color: var(--gold-hover); text-decoration: underline;">Google AI Studio</a>.
           </span>
         </div>
 
@@ -1499,12 +1585,14 @@
     <div class="excel-modal-body">
       <!-- VIEW 1: DROPZONE / FILE SELECTOR VIEW -->
       <div id="excelUploadView" class="excel-view-panel">
-        <div class="excel-dropzone" id="excelDropzone" role="button" tabindex="0" aria-label="Upload spreadsheet drop zone">
+        <div class="excel-dropzone" id="excelDropzone" role="button" tabindex="0"
+          aria-label="Upload spreadsheet drop zone">
           <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" aria-hidden="true">
           <div class="excel-dropzone-icon">📁</div>
           <h4 class="excel-dropzone-title">Upload Wedding Budget Spreadsheet</h4>
           <p class="excel-dropzone-desc">
-            Drag and drop your <strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong> file here, or <span class="dropzone-link">browse files</span>
+            Drag and drop your <strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong> file here, or
+            <span class="dropzone-link">browse files</span>
           </p>
           <div class="excel-format-chips">
             <span class="format-chip">Microsoft Excel (.xlsx, .xls)</span>
@@ -1525,7 +1613,8 @@
             <div class="feature-icon">🛡️</div>
             <div class="feature-text">
               <strong>Interactive Confirmation Dashboard</strong>
-              <p>Review every row, fix or fill missing estimates, choose target categories, and verify before importing.</p>
+              <p>Review every row, fix or fill missing estimates, choose target categories, and verify before importing.
+              </p>
             </div>
           </div>
           <div class="excel-feature-card">
@@ -1563,7 +1652,8 @@
               <select id="excelSheetSelect" class="form-control form-control-sm"></select>
             </div>
           </div>
-          <button type="button" class="btn btn-secondary btn-sm" id="excelReuploadBtn" title="Upload a different spreadsheet">
+          <button type="button" class="btn btn-secondary btn-sm" id="excelReuploadBtn"
+            title="Upload a different spreadsheet">
             ↺ Choose Different File
           </button>
         </div>
@@ -1663,7 +1753,8 @@
               <div class="quick-fix-input-group">
                 <input type="date" id="bulkDueDateInput" class="form-control form-control-sm">
                 <button type="button" class="btn btn-secondary btn-sm" id="applyBulkDueDateBtn">Apply</button>
-                <button type="button" class="btn btn-text btn-sm" id="applyWeddingDateBulkBtn" title="Use current wedding ceremony date">Use Wedding Date</button>
+                <button type="button" class="btn btn-text btn-sm" id="applyWeddingDateBulkBtn"
+                  title="Use current wedding ceremony date">Use Wedding Date</button>
               </div>
             </div>
           </div>
@@ -1755,4 +1846,5 @@
   <script src="excel-importer.js?v=1.0" defer></script>
   <script src="consent-manager.js" defer></script>
 </body>
+
 </html>
