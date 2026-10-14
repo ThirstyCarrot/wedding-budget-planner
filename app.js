@@ -129,6 +129,16 @@
     kpiTrackBadge: document.getElementById('kpiTrackBadge'),
     kpiSavingsGap: document.getElementById('kpiSavingsGap'),
     kpiSavingsCoverageBar: document.getElementById('kpiSavingsCoverageBar'),
+    kpiNeedSaveCard: document.getElementById('kpiNeedSaveCard'),
+    kpiNeedSaveTitle: document.getElementById('kpiNeedSaveTitle'),
+    kpiNeedSaveIcon: document.getElementById('kpiNeedSaveIcon'),
+    kpiNeedSaveVal: document.getElementById('kpiNeedSaveVal'),
+    kpiNeedSaveMeta: document.getElementById('kpiNeedSaveMeta'),
+    kpiNeedSaveSub: document.getElementById('kpiNeedSaveSub'),
+    kpiNeedSaveBadge: document.getElementById('kpiNeedSaveBadge'),
+    kpiNeedSaveBar: document.getElementById('kpiNeedSaveBar'),
+    crunchMoreToSaveLabel: document.getElementById('crunchMoreToSaveLabel'),
+    crunchMoreToSaveVal: document.getElementById('crunchMoreToSaveVal'),
 
     // Velocity Rates
     ratePerDay: document.getElementById('ratePerDay'),
@@ -153,6 +163,8 @@
     summaryTotalActual: document.getElementById('summaryTotalActual'),
     summaryTargetBudget: document.getElementById('summaryTargetBudget'),
     toggleBudgetModeInlineBtn: document.getElementById('toggleBudgetModeInlineBtn'),
+    summaryMoreToSave: document.getElementById('summaryMoreToSave'),
+    summaryMoreToSaveSub: document.getElementById('summaryMoreToSaveSub'),
 
     // Simulator Income Mode & Controls
     simIncomeModeToggle: document.getElementById('simIncomeModeToggle'),
@@ -282,6 +294,26 @@
     closeFundModalBtn: document.getElementById('closeFundModalBtn'),
     cancelFundModalBtn: document.getElementById('cancelFundModalBtn'),
     saveFundSubmitBtn: document.getElementById('saveFundSubmitBtn'),
+
+    // Record Payment Modal
+    openRecordPaymentBtn: document.getElementById('openRecordPaymentBtn'),
+    paymentModal: document.getElementById('paymentModal'),
+    paymentForm: document.getElementById('paymentForm'),
+    paymentModalTitle: document.getElementById('paymentModalTitle'),
+    paymentModalSavingsAvailable: document.getElementById('paymentModalSavingsAvailable'),
+    paymentExpenseSelect: document.getElementById('paymentExpenseSelect'),
+    paymentMilestoneSelectGroup: document.getElementById('paymentMilestoneSelectGroup'),
+    paymentMilestoneSelect: document.getElementById('paymentMilestoneSelect'),
+    paymentAmount: document.getElementById('paymentAmount'),
+    paymentDate: document.getElementById('paymentDate'),
+    paymentTitle: document.getElementById('paymentTitle'),
+    previewCurrentSavings: document.getElementById('previewCurrentSavings'),
+    previewPaymentDeduct: document.getElementById('previewPaymentDeduct'),
+    previewNewSavings: document.getElementById('previewNewSavings'),
+    previewNewNeedSave: document.getElementById('previewNewNeedSave'),
+    closePaymentModalBtn: document.getElementById('closePaymentModalBtn'),
+    cancelPaymentModalBtn: document.getElementById('cancelPaymentModalBtn'),
+    savePaymentSubmitBtn: document.getElementById('savePaymentSubmitBtn'),
 
     settingsModal: document.getElementById('settingsModal'),
     settingsForm: document.getElementById('settingsForm'),
@@ -1289,8 +1321,23 @@
     const p2AnchorPayday = getAnchorPayday(state.partner2NextPayDate || state.nextPayDate, state.partner2Cadence || 'semi-monthly');
     const p2DaysUntilNextPayday = Math.max(0, Math.ceil((p2AnchorPayday.getTime() - (new Date().setHours(0,0,0,0))) / (1000 * 60 * 60 * 24)));
 
+    // Total wedding financial scope: target budget if active, else total booked/actual, else total estimated
+    const totalScope = (state.hasTargetBudget && targetBudget > 0)
+      ? targetBudget
+      : (totalActual > 0 ? totalActual : totalEstimated);
+
     // Net savings gap needed to cover everything by wedding day
     const netGapToWedding = Math.max(0, totalRemainingDue - currentSavings);
+    const moreToSave = netGapToWedding;
+
+    // Total money committed or in-hand toward total scope (paid so far + saved in bank)
+    const totalFunded = totalPaid + currentSavings;
+    const fundedPct = totalScope > 0
+      ? Math.min(100, Math.round((totalFunded / totalScope) * 100))
+      : (totalRemainingDue === 0 ? 100 : 0);
+    const savingsCoverageOfRemainingPct = totalRemainingDue > 0
+      ? Math.min(100, Math.round((currentSavings / totalRemainingDue) * 100))
+      : 100;
 
     // Overall wedding velocity rates
     const velocity = {
@@ -1481,6 +1528,11 @@
       targetBudget,
       totalEstimated,
       totalActual,
+      totalScope,
+      moreToSave,
+      totalFunded,
+      fundedPct,
+      savingsCoverageOfRemainingPct,
       totalPaid,
       totalRemainingDue,
       currentSavings,
@@ -1966,6 +2018,10 @@
         DOM.chartStatusPill.className = 'badge-pill badge-paid';
       }
     }
+
+    if (DOM.crunchMoreToSaveVal) {
+      DOM.crunchMoreToSaveVal.textContent = formatCurrency(data.moreToSave);
+    }
   }
 
   function renderKpiCards(data) {
@@ -2005,7 +2061,11 @@
     // 2. Wedding Funds in Bank (Actual Savings + Extra Money)
     if (DOM.kpiCurrentSavings) DOM.kpiCurrentSavings.textContent = formatCurrency(data.currentSavings);
     if (DOM.kpiExtraFundsSummary) {
-      DOM.kpiExtraFundsSummary.textContent = `${formatCurrency(data.totalExtraFunds)} extra gifts/bonuses`;
+      if (data.moreToSave > 0) {
+        DOM.kpiExtraFundsSummary.textContent = `${formatCurrency(data.totalExtraFunds)} extra · Need ${formatCurrency(data.moreToSave)} more`;
+      } else {
+        DOM.kpiExtraFundsSummary.textContent = `${formatCurrency(data.totalExtraFunds)} extra gifts/bonuses`;
+      }
     }
     if (DOM.kpiTrackBadge && data.savingsTrack) {
       DOM.kpiTrackBadge.textContent = data.savingsTrack.badgeText;
@@ -2027,14 +2087,56 @@
       };
     }
 
-    // 3. Paid So Far
+    // 3. Still Need to Save (How Much More Out of Total)
+    if (DOM.kpiNeedSaveVal) {
+      DOM.kpiNeedSaveVal.textContent = formatCurrency(data.moreToSave);
+    }
+    if (DOM.kpiNeedSaveSub) {
+      if (data.totalScope === 0) {
+        DOM.kpiNeedSaveSub.textContent = 'Add expenses to calculate';
+      } else if (data.moreToSave === 0) {
+        DOM.kpiNeedSaveSub.innerHTML = `<span style="color: var(--sage-primary); font-weight: 600;">100% funded! All costs covered</span>`;
+      } else {
+        DOM.kpiNeedSaveSub.textContent = `Out of ${formatCurrency(data.totalScope)} total`;
+      }
+    }
+    if (DOM.kpiNeedSaveBadge) {
+      if (data.totalScope === 0) {
+        DOM.kpiNeedSaveBadge.textContent = '0% Funded';
+        DOM.kpiNeedSaveBadge.className = 'badge-pill badge-upcoming';
+      } else if (data.moreToSave === 0) {
+        DOM.kpiNeedSaveBadge.textContent = '100% Funded';
+        DOM.kpiNeedSaveBadge.className = 'badge-pill badge-paid';
+      } else {
+        DOM.kpiNeedSaveBadge.textContent = `${data.fundedPct}% Funded`;
+        DOM.kpiNeedSaveBadge.className = 'badge-pill badge-upcoming';
+      }
+    }
+    if (DOM.kpiNeedSaveBar) {
+      DOM.kpiNeedSaveBar.style.width = `${data.fundedPct}%`;
+      DOM.kpiNeedSaveBar.className = data.fundedPct >= 100 
+        ? 'kpi-progress-bar success' 
+        : (data.fundedPct >= 50 ? 'kpi-progress-bar highlight-need-save-bar' : 'kpi-progress-bar rose');
+    }
+    if (DOM.kpiNeedSaveCard) {
+      DOM.kpiNeedSaveCard.style.cursor = 'pointer';
+      DOM.kpiNeedSaveCard.onclick = () => {
+        switchTab('dashboard');
+        const card = document.getElementById('savingsHealthCard');
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+    }
+
+    // 4. Paid So Far
     DOM.kpiPaidSoFar.textContent = formatCurrency(data.totalPaid);
     const paidPct = data.totalActual > 0 ? Math.min(100, Math.round((data.totalPaid / data.totalActual) * 100)) : (data.totalEstimated > 0 ? Math.min(100, Math.round((data.totalPaid / data.totalEstimated) * 100)) : 0);
     const bookedLabel = data.totalActual > 0 ? ` (${formatCurrency(data.totalActual)} booked total)` : '';
     DOM.kpiPaidPct.textContent = `${paidPct}% paid${bookedLabel}`;
     if (DOM.kpiPaidBar) DOM.kpiPaidBar.style.width = `${paidPct}%`;
 
-    // 4. Remaining to Pay & Savings Coverage
+    // 5. Remaining to Pay & Savings Coverage
     DOM.kpiRemainingDue.textContent = formatCurrency(data.totalRemainingDue);
     const upcomingPaymentsText = `${data.unpaid.length} payment${data.unpaid.length === 1 ? '' : 's'} upcoming`;
     const savingsEl = document.getElementById('kpiSavingsSummary');
@@ -2052,7 +2154,7 @@
       if (data.netGapToWedding <= 0) {
         if (savingsEl) savingsEl.innerHTML = `<span style="color: var(--sage-primary); font-weight: 600;">100% covered by savings</span>`;
       } else {
-        if (savingsEl) savingsEl.textContent = `${formatCurrency(data.currentSavings)} saved (${coveragePct}% covered)`;
+        if (savingsEl) savingsEl.textContent = `Need ${formatCurrency(data.moreToSave)} more (${coveragePct}% covered)`;
       }
       if (DOM.kpiRemainingBar) {
         DOM.kpiRemainingBar.style.width = `${coveragePct}%`;
@@ -2114,7 +2216,8 @@
     }
 
     DOM.velocityAdviceText.innerHTML = `
-      To cover your remaining <strong>${formatCurrency(data.netGapToWedding)}</strong> 
+      You currently have <strong>${formatCurrency(data.currentSavings)}</strong> in bank savings. 
+      To save the remaining <strong>${formatCurrency(data.moreToSave)}</strong> needed out of your <strong>${formatCurrency(data.totalScope)}</strong> total 
       over the next <strong>${data.daysToWedding} days</strong> (${data.paychecksToWedding.toFixed(1)} ${getCadenceName(state.paycheckCadence).toLowerCase()} paychecks),
       set aside <strong>${formatCurrency(data.velocity.perPaycheck)}</strong> per paycheck.
     `;
@@ -2316,6 +2419,19 @@
       }
     }
 
+    if (DOM.summaryMoreToSave) {
+      DOM.summaryMoreToSave.textContent = formatCurrency(data.moreToSave);
+      if (DOM.summaryMoreToSaveSub) {
+        if (data.totalScope === 0) {
+          DOM.summaryMoreToSaveSub.textContent = 'No expenses yet';
+        } else if (data.moreToSave === 0) {
+          DOM.summaryMoreToSaveSub.textContent = '100% funded!';
+        } else {
+          DOM.summaryMoreToSaveSub.textContent = `Out of ${formatCurrency(data.totalScope)} (${data.fundedPct}% funded)`;
+        }
+      }
+    }
+
     const container = DOM.budgetCategoryGroupsContainer;
     container.innerHTML = '';
 
@@ -2420,6 +2536,13 @@
                   ${milestoneSummary || '<span style="color: var(--text-light);">No payment milestones set</span>'}
                 </div>
                 <div class="item-row-actions">
+                  ${expRemain > 0 ? `
+                    <button class="btn btn-primary btn-sm pay-expense-btn" data-exp-id="${exp.id}" title="Pay or record payment for this expense">
+                      💳 Pay
+                    </button>
+                  ` : `
+                    <span class="badge-pill badge-paid" style="font-size: 0.72rem; padding: 2px 7px;">Paid</span>
+                  `}
                   <button class="btn btn-secondary btn-sm edit-expense-btn" data-exp-id="${exp.id}" title="Edit Expense">
                     ✏️ Edit
                   </button>
@@ -4416,12 +4539,38 @@
     };
 
     const existingIndex = state.expenses.findIndex(exp => exp.id === id);
+    let oldPaid = 0;
+    if (existingIndex >= 0) {
+      const oldExp = state.expenses[existingIndex];
+      oldPaid = (oldExp.milestones || []).filter(m => m.isPaid).reduce((s, m) => s + (Number(m.amount) || 0), 0);
+    }
+    const newPaid = milestones.filter(m => m.isPaid).reduce((s, m) => s + (Number(m.amount) || 0), 0);
+    const paidDelta = newPaid - oldPaid;
+
+    if (paidDelta > 0) {
+      // More money was paid: deduct from savings
+      state.currentSavings = Math.max(0, (Number(state.currentSavings) || 0) - paidDelta);
+    } else if (paidDelta < 0) {
+      // Money was reverted to unpaid: restore to savings
+      state.currentSavings = (Number(state.currentSavings) || 0) + Math.abs(paidDelta);
+    }
+
     if (existingIndex >= 0) {
       state.expenses[existingIndex] = expenseObj;
-      showToast(`Updated "${name}"`);
+      if (paidDelta > 0) {
+        showToast(`Updated "${name}" · Deducted ${formatCurrency(paidDelta)} from savings`);
+      } else if (paidDelta < 0) {
+        showToast(`Updated "${name}" · Restored ${formatCurrency(Math.abs(paidDelta))} to savings`);
+      } else {
+        showToast(`Updated "${name}"`);
+      }
     } else {
       state.expenses.push(expenseObj);
-      showToast(`Added "${name}" to wedding estimates`);
+      if (newPaid > 0) {
+        showToast(`Added "${name}" · Deducted ${formatCurrency(newPaid)} from savings`);
+      } else {
+        showToast(`Added "${name}" to wedding estimates`);
+      }
     }
 
     saveState();
@@ -4579,7 +4728,17 @@
       DOM.fundsTilePaid.textContent = formatCurrency(data.totalPaid);
     }
     if (DOM.fundsTileGap) {
-      DOM.fundsTileGap.textContent = formatCurrency(data.netGapToWedding);
+      DOM.fundsTileGap.textContent = formatCurrency(data.moreToSave);
+    }
+    const fundsTileGapSub = document.getElementById('fundsTileGapSub');
+    if (fundsTileGapSub) {
+      if (data.totalScope === 0) {
+        fundsTileGapSub.textContent = 'Add expenses to calculate';
+      } else if (data.moreToSave === 0) {
+        fundsTileGapSub.textContent = '100% covered by bank savings!';
+      } else {
+        fundsTileGapSub.textContent = `More out of ${formatCurrency(data.totalScope)} total`;
+      }
     }
 
     // 5. Extra Funds list
@@ -4797,6 +4956,240 @@
   }
 
   // =========================================================================
+  // RECORD PAYMENT LOGIC & MODAL (Deducts from currentSavings)
+  // =========================================================================
+  function openRecordPaymentModal(preselectedExpenseId = null) {
+    if (!DOM.paymentModal) return;
+
+    if (state.expenses.length === 0) {
+      showToast('Please add at least one wedding expense before recording payments.');
+      openExpenseModal();
+      return;
+    }
+
+    // Populate expense dropdown
+    DOM.paymentExpenseSelect.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = '-- Select an Expense / Vendor --';
+    DOM.paymentExpenseSelect.appendChild(placeholderOption);
+
+    state.expenses.forEach(exp => {
+      const expPaid = (exp.milestones || []).filter(m => m.isPaid).reduce((s, m) => s + (Number(m.amount) || 0), 0);
+      const totalCost = Number(exp.actualCost) || Number(exp.estimatedCost) || 0;
+      const remain = Math.max(0, totalCost - expPaid);
+      const opt = document.createElement('option');
+      opt.value = exp.id;
+      opt.textContent = `${exp.name}${exp.vendor ? ` (${exp.vendor})` : ''} · ${formatCurrency(remain)} unpaid`;
+      if (preselectedExpenseId && exp.id === preselectedExpenseId) {
+        opt.selected = true;
+      }
+      DOM.paymentExpenseSelect.appendChild(opt);
+    });
+
+    if (!preselectedExpenseId) {
+      const firstUnpaid = state.expenses.find(exp => {
+        const expPaid = (exp.milestones || []).filter(m => m.isPaid).reduce((s, m) => s + (Number(m.amount) || 0), 0);
+        const totalCost = Number(exp.actualCost) || Number(exp.estimatedCost) || 0;
+        return (totalCost - expPaid) > 0;
+      });
+      if (firstUnpaid) {
+        DOM.paymentExpenseSelect.value = firstUnpaid.id;
+      } else if (state.expenses.length > 0) {
+        DOM.paymentExpenseSelect.value = state.expenses[0].id;
+      }
+    }
+
+    populatePaymentModalMilestones(DOM.paymentExpenseSelect.value);
+
+    DOM.paymentDate.value = formatLocalDateToISO(new Date());
+
+    if (DOM.paymentModalSavingsAvailable) {
+      DOM.paymentModalSavingsAvailable.textContent = `Current funds in bank: ${formatCurrency(state.currentSavings)}`;
+    }
+
+    updatePaymentPreview();
+    DOM.paymentModal.showModal();
+  }
+
+  function populatePaymentModalMilestones(expenseId) {
+    if (!DOM.paymentMilestoneSelect) return;
+    DOM.paymentMilestoneSelect.innerHTML = '';
+
+    const exp = state.expenses.find(x => x.id === expenseId);
+    if (!exp) {
+      const opt = document.createElement('option');
+      opt.value = 'custom';
+      opt.textContent = 'Custom Payment Amount';
+      DOM.paymentMilestoneSelect.appendChild(opt);
+      return;
+    }
+
+    const unpaidMilestones = (exp.milestones || []).filter(m => !m.isPaid);
+
+    if (unpaidMilestones.length > 0) {
+      unpaidMilestones.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = `${m.title} · ${formatCurrency(m.amount)}${m.dueDate ? ` (due ${formatDate(m.dueDate)})` : ''}`;
+        DOM.paymentMilestoneSelect.appendChild(opt);
+      });
+
+      DOM.paymentAmount.value = unpaidMilestones[0].amount;
+      DOM.paymentTitle.value = unpaidMilestones[0].title;
+    } else {
+      const expPaid = (exp.milestones || []).filter(m => m.isPaid).reduce((s, m) => s + (Number(m.amount) || 0), 0);
+      const totalCost = Number(exp.actualCost) || Number(exp.estimatedCost) || 0;
+      const remain = Math.max(0, totalCost - expPaid);
+      DOM.paymentAmount.value = remain > 0 ? remain : '';
+      DOM.paymentTitle.value = 'Payment';
+    }
+
+    const customOpt = document.createElement('option');
+    customOpt.value = 'custom';
+    customOpt.textContent = 'Custom Amount / Partial Payment...';
+    DOM.paymentMilestoneSelect.appendChild(customOpt);
+  }
+
+  function updatePaymentPreview() {
+    const amount = Number(DOM.paymentAmount.value) || 0;
+    const current = Number(state.currentSavings) || 0;
+    const newSavings = Math.max(0, current - amount);
+    const analytics = calculateFinancialAnalytics();
+    const newRemainingDue = Math.max(0, analytics.totalRemainingDue - amount);
+    const newNeedSave = Math.max(0, newRemainingDue - newSavings);
+
+    if (DOM.previewCurrentSavings) DOM.previewCurrentSavings.textContent = formatCurrency(current);
+    if (DOM.previewPaymentDeduct) DOM.previewPaymentDeduct.textContent = `-${formatCurrency(amount)}`;
+    if (DOM.previewNewSavings) {
+      if (amount > current && current > 0) {
+        DOM.previewNewSavings.innerHTML = `${formatCurrency(0)} <span style="color: var(--danger-primary); font-size: 0.75rem;">(Exceeds savings by ${formatCurrency(amount - current)})</span>`;
+      } else if (current === 0) {
+        DOM.previewNewSavings.innerHTML = `${formatCurrency(0)} <span style="color: var(--text-muted); font-size: 0.75rem;">(Savings already $0)</span>`;
+      } else {
+        DOM.previewNewSavings.textContent = formatCurrency(newSavings);
+      }
+    }
+    if (DOM.previewNewNeedSave) DOM.previewNewNeedSave.textContent = formatCurrency(newNeedSave);
+  }
+
+  function handleSavePayment(e) {
+    e.preventDefault();
+
+    const expenseId = DOM.paymentExpenseSelect.value;
+    const milestoneChoice = DOM.paymentMilestoneSelect.value;
+    const amount = Number(DOM.paymentAmount.value) || 0;
+    const date = DOM.paymentDate.value || formatLocalDateToISO(new Date());
+    const note = DOM.paymentTitle.value.trim();
+
+    if (amount <= 0) {
+      alert('Please enter a valid payment amount greater than $0.');
+      return;
+    }
+
+    const exp = state.expenses.find(x => x.id === expenseId);
+    if (!exp) {
+      alert('Please select an expense to apply this payment to.');
+      return;
+    }
+
+    if (!Array.isArray(exp.milestones)) {
+      exp.milestones = [];
+    }
+
+    let paymentDesc = note;
+
+    if (milestoneChoice && milestoneChoice !== 'custom') {
+      const m = exp.milestones.find(x => x.id === milestoneChoice);
+      if (m) {
+        paymentDesc = paymentDesc || m.title;
+        if (amount >= m.amount) {
+          m.isPaid = true;
+          m.paidDate = date;
+          if (amount > m.amount) {
+            const surplus = amount - m.amount;
+            m.amount = amount;
+            exp.actualCost = Math.max(Number(exp.actualCost) || 0, (Number(exp.actualCost) || 0) + surplus);
+          }
+        } else {
+          // Partial milestone payment: split into paid milestone and remaining balance milestone
+          const remainingAmount = m.amount - amount;
+          m.amount = amount;
+          m.isPaid = true;
+          m.paidDate = date;
+          m.title = `${paymentDesc} (Partial)`;
+
+          exp.milestones.push({
+            id: `m-${exp.id}-${Date.now()}`,
+            title: `${paymentDesc || 'Payment'} Balance Remaining`,
+            amount: remainingAmount,
+            dueDate: m.dueDate || state.weddingDate,
+            isPaid: false,
+            paidDate: null
+          });
+        }
+      }
+    } else {
+      // Custom payment
+      paymentDesc = paymentDesc || 'Payment installment';
+      const unpaidMilestones = exp.milestones.filter(m => !m.isPaid);
+      if (unpaidMilestones.length > 0) {
+        const targetM = unpaidMilestones[0];
+        if (amount >= targetM.amount) {
+          targetM.isPaid = true;
+          targetM.paidDate = date;
+          if (amount > targetM.amount) {
+            targetM.amount = amount;
+            exp.actualCost = Math.max(Number(exp.actualCost) || 0, (Number(exp.actualCost) || 0) + (amount - targetM.amount));
+          }
+        } else {
+          const remainingAmount = targetM.amount - amount;
+          targetM.amount = amount;
+          targetM.isPaid = true;
+          targetM.paidDate = date;
+          targetM.title = `${paymentDesc} (Partial)`;
+
+          exp.milestones.push({
+            id: `m-${exp.id}-${Date.now()}`,
+            title: 'Remaining Balance',
+            amount: remainingAmount,
+            dueDate: targetM.dueDate || state.weddingDate,
+            isPaid: false,
+            paidDate: null
+          });
+        }
+      } else {
+        exp.milestones.push({
+          id: `m-${exp.id}-${Date.now()}`,
+          title: paymentDesc,
+          amount: amount,
+          dueDate: date,
+          isPaid: true,
+          paidDate: date
+        });
+        exp.actualCost = (Number(exp.actualCost) || 0) + amount;
+      }
+    }
+
+    // DEDUCT PAYMENT DIRECTLY FROM CURRENT SAVINGS
+    const prevSavings = Number(state.currentSavings) || 0;
+    const newSavings = Math.max(0, prevSavings - amount);
+    state.currentSavings = newSavings;
+
+    saveState();
+    DOM.paymentModal.close();
+
+    const actualDeducted = Math.min(prevSavings, amount);
+    if (actualDeducted === amount) {
+      showToast(`Recorded ${formatCurrency(amount)} payment for "${exp.name}"! Deducted from savings.`);
+    } else {
+      showToast(`Recorded ${formatCurrency(amount)} payment for "${exp.name}"! Savings reduced to $0.`);
+    }
+
+    renderAll();
+  }
+
+  // =========================================================================
   // ACTIONS & EVENT LISTENERS
   // =========================================================================
   function setupEventListeners() {
@@ -4870,6 +5263,44 @@
     }
     if (DOM.fundAmount) {
       DOM.fundAmount.addEventListener('input', updateFundModalHint);
+    }
+
+    // Record Payment Modal Triggers & Handlers
+    if (DOM.openRecordPaymentBtn) {
+      DOM.openRecordPaymentBtn.addEventListener('click', () => openRecordPaymentModal());
+    }
+    if (DOM.closePaymentModalBtn) {
+      DOM.closePaymentModalBtn.addEventListener('click', () => DOM.paymentModal.close());
+    }
+    if (DOM.cancelPaymentModalBtn) {
+      DOM.cancelPaymentModalBtn.addEventListener('click', () => DOM.paymentModal.close());
+    }
+    if (DOM.paymentForm) {
+      DOM.paymentForm.addEventListener('submit', handleSavePayment);
+    }
+    if (DOM.paymentExpenseSelect) {
+      DOM.paymentExpenseSelect.addEventListener('change', () => {
+        populatePaymentModalMilestones(DOM.paymentExpenseSelect.value);
+        updatePaymentPreview();
+      });
+    }
+    if (DOM.paymentMilestoneSelect) {
+      DOM.paymentMilestoneSelect.addEventListener('change', () => {
+        const val = DOM.paymentMilestoneSelect.value;
+        const expId = DOM.paymentExpenseSelect.value;
+        const exp = state.expenses.find(x => x.id === expId);
+        if (exp && val && val !== 'custom') {
+          const m = (exp.milestones || []).find(x => x.id === val);
+          if (m) {
+            DOM.paymentAmount.value = m.amount;
+            DOM.paymentTitle.value = m.title;
+          }
+        }
+        updatePaymentPreview();
+      });
+    }
+    if (DOM.paymentAmount) {
+      DOM.paymentAmount.addEventListener('input', updatePaymentPreview);
     }
 
     // Quick Savings Input Handlers
@@ -5278,15 +5709,29 @@
         return;
       }
 
+      // Pay expense button
+      const payBtn = e.target.closest('.pay-expense-btn');
+      if (payBtn) {
+        const expId = payBtn.dataset.expId;
+        openRecordPaymentModal(expId);
+        return;
+      }
+
       // Delete expense button
       const delBtn = e.target.closest('.delete-expense-btn');
       if (delBtn) {
         const expId = delBtn.dataset.expId;
         const exp = state.expenses.find(x => x.id === expId);
         if (exp && confirm(`Delete "${exp.name}" and all its payment milestones?`)) {
+          const expPaid = (exp.milestones || []).filter(m => m.isPaid).reduce((s, m) => s + (Number(m.amount) || 0), 0);
           state.expenses = state.expenses.filter(x => x.id !== expId);
+          if (expPaid > 0) {
+            state.currentSavings = (Number(state.currentSavings) || 0) + expPaid;
+            showToast(`Deleted "${exp.name}" and restored ${formatCurrency(expPaid)} to savings`);
+          } else {
+            showToast(`Deleted "${exp.name}"`);
+          }
           saveState();
-          showToast(`Deleted "${exp.name}"`);
           renderAll();
         }
         return;
@@ -5529,11 +5974,40 @@
     const m = exp.milestones.find(x => x.id === milestoneId);
     if (!m) return;
 
-    m.isPaid = isPaid;
-    m.paidDate = isPaid ? new Date().toISOString().split('T')[0] : null;
+    if (Boolean(m.isPaid) === Boolean(isPaid)) return;
 
-    saveState();
-    showToast(isPaid ? `Marked "${m.title}" as paid!` : `Reverted "${m.title}" to unpaid`);
+    const amount = Number(m.amount) || 0;
+
+    if (isPaid) {
+      m.isPaid = true;
+      m.paidDate = new Date().toISOString().split('T')[0];
+
+      // DEDUCT DIRECTLY FROM CURRENT WEDDING SAVINGS
+      const prevSavings = Number(state.currentSavings) || 0;
+      const newSavings = Math.max(0, prevSavings - amount);
+      const actualDeducted = prevSavings - newSavings;
+      state.currentSavings = newSavings;
+
+      saveState();
+
+      if (actualDeducted === amount) {
+        showToast(`Marked "${m.title}" paid! Deducted ${formatCurrency(amount)} from savings.`);
+      } else if (actualDeducted > 0) {
+        showToast(`Marked "${m.title}" paid! Deducted ${formatCurrency(actualDeducted)} from savings ($0 remaining).`);
+      } else {
+        showToast(`Marked "${m.title}" paid! (Savings balance was already $0).`);
+      }
+    } else {
+      m.isPaid = false;
+      m.paidDate = null;
+
+      // RESTORE MONEY BACK INTO CURRENT WEDDING SAVINGS
+      state.currentSavings = (Number(state.currentSavings) || 0) + amount;
+
+      saveState();
+      showToast(`Reverted "${m.title}" to unpaid. Restored ${formatCurrency(amount)} to savings.`);
+    }
+
     renderAll();
   }
 
@@ -6718,7 +7192,8 @@ Provide structured, empathetic, concise advice. Use bold text and bullet points 
     showToast: (msg, icon = '') => showToast(msg, icon),
     formatCurrency: (val) => formatCurrency(val),
     switchTab: (tabName) => switchTab(tabName),
-    openExpenseModal: (exp, forceSchedule) => openExpenseModal(exp, forceSchedule)
+    openExpenseModal: (exp, forceSchedule) => openExpenseModal(exp, forceSchedule),
+    openRecordPaymentModal: (expId) => openRecordPaymentModal(expId)
   };
 
   // Start the application

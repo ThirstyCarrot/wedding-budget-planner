@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=2.7">
+  <link rel="stylesheet" href="styles.css?v=2.8">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#B38A58">
   <link rel="icon"
@@ -74,6 +74,10 @@
         <button class="btn btn-secondary" id="openAddFundBtn"
           title="Add extra money, gifts, bonuses, or savings deposits into funds">
           Add Funds
+        </button>
+        <button class="btn btn-secondary" id="openRecordPaymentBtn"
+          title="Pay an expense or vendor milestone and deduct directly from your savings">
+          💳 Record Payment
         </button>
         <button class="btn btn-ai" id="openAiHubBtn" title="EternalAI Financial Advisor & Hidden Cost Scanner">
           EternalAI Hub
@@ -172,6 +176,10 @@
           <div class="crunch-stat-label" id="crunchPaceLabel">Recommended Pace</div>
           <div class="crunch-stat-value highlight" id="crunchNextPace">$0/paycheck</div>
         </div>
+        <div>
+          <div class="crunch-stat-label" id="crunchMoreToSaveLabel">Still Need to Save</div>
+          <div class="crunch-stat-value highlight-need-save" id="crunchMoreToSaveVal">$0</div>
+        </div>
       </div>
     </section>
 
@@ -212,7 +220,24 @@
         <span id="kpiSavingsGap" style="display: none;"></span>
       </div>
 
-      <!-- 3. Paid So Far -->
+      <!-- 3. Still Need to Save (How Much More Out of Total) -->
+      <div class="kpi-card kpi-card-need-save" id="kpiNeedSaveCard" title="Click to view personalized savings velocity">
+        <div class="kpi-header">
+          <span class="kpi-title" id="kpiNeedSaveTitle">Still Need to Save</span>
+          <span class="kpi-icon" id="kpiNeedSaveIcon">🎯</span>
+        </div>
+        <div class="kpi-main-val highlight-need-save" id="kpiNeedSaveVal">$0</div>
+        <div class="kpi-meta" id="kpiNeedSaveMeta">
+          <span id="kpiNeedSaveSub">Out of $0 total</span>
+          <span class="badge-pill badge-upcoming" id="kpiNeedSaveBadge"
+            style="font-size: 0.72rem; padding: 2px 7px; margin-left: auto;">0% Funded</span>
+        </div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-bar highlight-need-save-bar" id="kpiNeedSaveBar" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- 4. Paid So Far -->
       <div class="kpi-card" id="kpiPaidCard">
         <div class="kpi-header">
           <span class="kpi-title">Paid So Far</span>
@@ -225,7 +250,7 @@
         </div>
       </div>
 
-      <!-- 4. Remaining to Pay & Savings Coverage -->
+      <!-- 5. Remaining to Pay & Savings Coverage -->
       <div class="kpi-card" id="kpiRemainingCard">
         <div class="kpi-header">
           <span class="kpi-title">Remaining to Pay</span>
@@ -373,9 +398,9 @@
             <span class="fund-tile-sub" id="fundsTilePaidSub">Contracts & deposits</span>
           </div>
           <div class="fund-tile">
-            <span class="fund-tile-label">Net Remaining Gap</span>
-            <div class="fund-tile-val" id="fundsTileGap">$0</div>
-            <span class="fund-tile-sub" id="fundsTileGapSub">Remaining unpaid costs</span>
+            <span class="fund-tile-label">Still Need to Save</span>
+            <div class="fund-tile-val highlight-need-save" id="fundsTileGap">$0</div>
+            <span class="fund-tile-sub" id="fundsTileGapSub">Remaining to be 100% funded</span>
           </div>
         </div>
 
@@ -669,6 +694,12 @@
                 Set Budget Goal
               </button>
             </div>
+          </div>
+          <div class="totals-banner-divider"></div>
+          <div class="totals-banner-item">
+            <div class="totals-banner-label">Still Need to Save</div>
+            <div class="totals-banner-val highlight-need-save" id="summaryMoreToSave">$0</div>
+            <div class="totals-banner-sub" id="summaryMoreToSaveSub">Out of total</div>
           </div>
         </div>
 
@@ -1126,6 +1157,91 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="cancelFundModalBtn">Cancel</button>
         <button type="submit" class="btn btn-primary" id="saveFundSubmitBtn">Add to Wedding Funds</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- =========================================================================
+       MODAL: RECORD PAYMENT (Deducts directly from Wedding Savings)
+       ========================================================================= -->
+  <dialog id="paymentModal" aria-labelledby="paymentModalTitle">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.25rem;">💳</span>
+        <h3 id="paymentModalTitle">Record a Wedding Payment</h3>
+      </div>
+      <button type="button" class="btn btn-text" id="closePaymentModalBtn" aria-label="Close modal">✕</button>
+    </div>
+    <form id="paymentForm">
+      <div class="modal-body">
+        <div class="payment-source-banner">
+          <div class="payment-source-icon">🏦</div>
+          <div class="payment-source-text">
+            <strong>Deducted from Wedding Savings</strong>
+            <span id="paymentModalSavingsAvailable">Current funds in bank: $0</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="paymentExpenseSelect">Which expense are you paying for? *</label>
+          <select id="paymentExpenseSelect" class="form-control" required>
+            <!-- Populated dynamically with expenses and their remaining balances -->
+          </select>
+        </div>
+
+        <div class="form-group" id="paymentMilestoneSelectGroup">
+          <label for="paymentMilestoneSelect">Payment installment / milestone</label>
+          <select id="paymentMilestoneSelect" class="form-control">
+            <!-- Populated dynamically with unpaid milestones for the selected expense, or Custom Amount -->
+          </select>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="paymentAmount">Amount Paid ($) *</label>
+            <div class="currency-input-wrapper">
+              <span class="currency-symbol">$</span>
+              <input type="number" id="paymentAmount" class="form-control" min="0.01" step="any" placeholder="0.00" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="paymentDate">Payment Date *</label>
+            <input type="date" id="paymentDate" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="paymentTitle">Payment Description / Note</label>
+          <input type="text" id="paymentTitle" class="form-control" placeholder="e.g. Deposit, Catering payment, Final balance">
+        </div>
+
+        <!-- Live Impact Preview Box -->
+        <div class="payment-impact-preview" id="paymentImpactPreview">
+          <div class="preview-title">Impact on your wedding finances:</div>
+          <div class="preview-row">
+            <span>Current Bank Savings:</span>
+            <span id="previewCurrentSavings">$0</span>
+          </div>
+          <div class="preview-row preview-deduct">
+            <span>Payment deduction:</span>
+            <span id="previewPaymentDeduct">-$0</span>
+          </div>
+          <div class="preview-row preview-result">
+            <span>New Bank Savings Balance:</span>
+            <strong id="previewNewSavings">$0</strong>
+          </div>
+          <div class="preview-row preview-gap">
+            <span>Still Need to Save after payment:</span>
+            <strong id="previewNewNeedSave">$0</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelPaymentModalBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="savePaymentSubmitBtn">
+          ✓ Confirm Payment & Deduct from Savings
+        </button>
       </div>
     </form>
   </dialog>
@@ -1841,8 +1957,8 @@
   <!-- Scripts (non-blocking defer) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script src="sample-data.js?v=2.7" defer></script>
-  <script src="app.js?v=2.7" defer></script>
+  <script src="sample-data.js?v=2.8" defer></script>
+  <script src="app.js?v=2.8" defer></script>
   <script src="excel-importer.js?v=1.0" defer></script>
   <script src="consent-manager.js" defer></script>
 </body>

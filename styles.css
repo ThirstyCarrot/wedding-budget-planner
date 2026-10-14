@@ -541,18 +541,24 @@ body {
 /* KPI Summary Cards Grid - Clean, Crisp Metric Cards */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
   margin-bottom: 24px;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1280px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 820px) {
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 540px) {
   .kpi-grid {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -574,6 +580,18 @@ body {
 
 .kpi-card:hover {
   border-color: #D6D3D1;
+}
+
+.kpi-card-need-save {
+  border-top: 2px solid var(--amber-primary, #B45309);
+}
+
+.kpi-card-need-save:hover {
+  border-color: var(--amber-primary, #B45309);
+}
+
+.highlight-need-save {
+  color: var(--amber-primary, #B45309) !important;
 }
 
 .kpi-header {
@@ -636,6 +654,107 @@ body {
 }
 .kpi-progress-bar.rose {
   background: var(--danger-primary);
+}
+.kpi-progress-bar.highlight-need-save-bar {
+  background: var(--amber-primary, #B45309);
+}
+
+/* Payment Modal Specific Styling */
+.payment-source-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--sage-subtle, #F0FDF4);
+  border: 1px solid var(--sage-border, #BBF7D0);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.payment-source-icon {
+  font-size: 1.5rem;
+}
+
+.payment-source-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.payment-source-text strong {
+  font-size: 0.88rem;
+  color: var(--sage-primary, #15803D);
+}
+
+.payment-source-text span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.payment-impact-preview {
+  background: var(--bg-subtle, #F5F2EB);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.payment-impact-preview .preview-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.payment-impact-preview .preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.84rem;
+  color: var(--text-main);
+}
+
+.payment-impact-preview .preview-deduct {
+  color: var(--danger-primary, #B91C1C);
+  font-weight: 600;
+}
+
+.payment-impact-preview .preview-result {
+  border-top: 1px dashed var(--border-color);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+.payment-impact-preview .preview-gap {
+  font-size: 0.86rem;
+  color: var(--amber-primary, #B45309);
+}
+
+/* Pay expense button on budget row */
+.pay-expense-btn {
+  background: var(--sage-primary, #15803D);
+  border: 1px solid var(--sage-primary, #15803D);
+  color: #FFFFFF !important;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pay-expense-btn:hover {
+  background: #166534;
+  border-color: #166534;
+  transform: translateY(-1px);
 }
 
 /* Section Cards / Panels - Solid White, Subtle 1px Stone Border */
